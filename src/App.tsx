@@ -738,7 +738,7 @@ function ClientesMayoristas({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promis
     </main></div></>;
 }
 
-function AprobacionesClientes() {
+export function AprobacionesClientes() {
   const [pendientes,setPendientes]=useState<PerfilAcceso[]>([]);
   const [mensaje,setMensaje]=useState('');
   const [cargando,setCargando]=useState(false);
