@@ -1,0 +1,62 @@
+
+/* JAIVISA - Estilo luminoso */
+
+.jaivisa-login-fondo {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 0% 80%, #7510c5 0%, transparent 42%),
+    radial-gradient(ellipse at 100% 85%, #1454b8 0%, transparent 42%),
+    linear-gradient(135deg, #190825, #371053 65%, #170a34);
+}
+
+.jaivisa-login-fondo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 0% 100%,
+      transparent 52%, #e347ff 52.3%, transparent 53%),
+    radial-gradient(ellipse at 100% 100%,
+      transparent 50%, #38baff 50.3%, transparent 51%);
+  opacity: 0.65;
+}
+
+.jaivisa-login-tarjeta {
+  position: relative;
+  z-index: 1;
+  border-radius: 28px;
+  background: white;
+  box-shadow:
+    0 0 12px #df68ff,
+    0 0 38px #a925ff80,
+    0 24px 70px #10051b66;
+}
+
+.jaivisa-logo-inicio {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  max-height: 170px;
+  object-fit: contain;
+  margin: 0 auto 20px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .jaivisa-login-tarjeta {
+    animation: jaivisa-brillo 5s ease-in-out infinite alternate;
+  }
+
+  @keyframes jaivisa-brillo {
+    from {
+      box-shadow: 0 0 12px #b73bff,
+                  0 20px 60px #10051b66;
+    }
+    to {
+      box-shadow: 0 0 30px #c33cff,
+                  0 0 55px #9131ff70;
+    }
+  }
+}
