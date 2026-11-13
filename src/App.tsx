@@ -1,5 +1,167 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabase';
+
+// ===== COMPONENTE INTEGRADO: CentroPedidos =====
+const { CentroPedidos, crearPedidoCentral } = (() => {
+
+type Rol='vendedor'|'bodega'|'administrador';
+type Linea={productId:string;sku:string;nombre:string;imagen:string;cantidad:number;precio:number;iva:number};
+type Pedido={id:string;numero:number;vendedor_id:string;cliente_nombre:string;cliente_documento:string;cliente_correo:string;cliente_telefono:string;ciudad:string;direccion:string;observaciones:string;lineas:Linea[];estado:string;version:number;updated_at:string;created_at:string;factura_referencia:string|null};
+type Historial={id:number;created_at:string;accion:string;actor_id:string;antes:unknown;despues:unknown};
+const dinero=(v:number)=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(v);
+const total=(p:Pedido)=>p.lineas.reduce((s,l)=>s+l.cantidad*l.precio*(1+l.iva/100),0);
+const boton:React.CSSProperties={background:'#572080',border:0,borderRadius:9,padding:'10px 13px',color:'#fff',cursor:'pointer'};
+const input:React.CSSProperties={width:'100%',padding:10,border:'1px solid #d9cbe4',borderRadius:9,boxSizing:'border-box'};
+const panel:React.CSSProperties={padding:18,background:'#fff',border:'1px solid #e9dff0',borderRadius:15,marginBottom:16};
+function CentroPedidos({rol}:{rol:Rol}){
+ const [pedidos,setPedidos]=useState<Pedido[]>([]),[borrador,setBorrador]=useState<Pedido|null>(null);
+ const [alertas,setAlertas]=useState<{id:number;pedido_id:string;mensaje:string}[]>([]);
+ const [historial,setHistorial]=useState<Historial[]>([]),[mensaje,setMensaje]=useState(''),[cargando,setCargando]=useState(false),[guardando,setGuardando]=useState(false);
+ const cargar=useCallback(async()=>{setCargando(true);const {data,error}=await supabase.from('jv_pedidos').select('*').order('created_at',{ascending:false}).limit(200);setCargando(false);if(error){setMensaje('No se pudieron consultar pedidos: '+error.message);return;}setPedidos((data||[]) as Pedido[]);const a=await supabase.from('jv_alertas_pedido').select('id,pedido_id,mensaje').is('resuelta_en',null).limit(500);if(!a.error)setAlertas((a.data||[]) as {id:number;pedido_id:string;mensaje:string}[]);},[]);
+ useEffect(()=>{void cargar();const canal=supabase.channel('jv_pedidos_cambios').on('postgres_changes',{event:'*',schema:'public',table:'jv_pedidos'},()=>{void cargar()}).subscribe();return()=>{void supabase.removeChannel(canal)}},[cargar]);
+ const abrir=async(p:Pedido)=>{setBorrador(structuredClone(p));const {data}=await supabase.from('jv_pedidos_historial').select('id,created_at,accion,actor_id,antes,despues').eq('pedido_id',p.id).order('created_at',{ascending:false}).limit(30);setHistorial((data||[]) as Historial[]);};
+ const editar=(cambios:Partial<Pedido>)=>setBorrador(v=>v?{...v,...cambios}:v);
+ const guardar=async(estado?:string)=>{if(!borrador||guardando)return;setGuardando(true);setMensaje('');const {data,error}=await supabase.rpc('jv_actualizar_pedido',{p_id:borrador.id,p_version:borrador.version,p_datos:estado==='despachado'?{}:{cliente_nombre:borrador.cliente_nombre,cliente_documento:borrador.cliente_documento,cliente_correo:borrador.cliente_correo,cliente_telefono:borrador.cliente_telefono,ciudad:borrador.ciudad,direccion:borrador.direccion,observaciones:borrador.observaciones,lineas:borrador.lineas},p_estado:estado||null,p_factura_referencia:null});setGuardando(false);if(error){setMensaje('No se guardó: '+error.message+' Actualiza para comprobar si otro usuario modificó el pedido.');return;}setMensaje('Pedido actualizado en Supabase.');await cargar();if(data)await abrir(data as Pedido);};
+ const resolverAlertas=async()=>{if(!borrador)return;const {error}=await supabase.rpc('jv_resolver_alertas',{p_pedido_id:borrador.id});if(error){setMensaje(error.message);return;}await cargar();setMensaje('Alertas revisadas. Verifica físicamente el pedido antes de confirmar.');};
+ const marcarFactura=async()=>{if(!borrador)return;const referencia=window.prompt('Referencia de factura YA emitida y validada fuera de JAIVISA (no emite DIAN):');if(!referencia?.trim())return;setGuardando(true);const {data,error}=await supabase.rpc('jv_actualizar_pedido',{p_id:borrador.id,p_version:borrador.version,p_datos:{},p_estado:'facturado',p_factura_referencia:referencia.trim()});setGuardando(false);if(error){setMensaje(error.message);return;}setMensaje('Referencia de factura externa registrada.');await cargar();if(data)await abrir(data as Pedido);};
+ const imprimir=()=>{if(!borrador)return;const w=window.open('','_blank');if(!w){setMensaje('Permite ventanas emergentes para imprimir.');return;}const safe=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));w.document.write(`<!doctype html><html lang="es"><meta charset="utf-8"><title>JAIVISA ${safe(borrador.numero)}</title><style>body{font:14px Arial;margin:30px;color:#321343}h1{color:#572080}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:10px;text-align:left}img{width:70px;height:70px;object-fit:contain}</style><h1>JAIVISA · Orden de preparación #${safe(borrador.numero)}</h1><p>Cliente: ${safe(borrador.cliente_nombre)} · Documento: ${safe(borrador.cliente_documento)}</p><p>Tel: ${safe(borrador.cliente_telefono)} · ${safe(borrador.ciudad)}, ${safe(borrador.direccion)}</p><p>Observaciones: ${safe(borrador.observaciones)}</p><table><tr><th>Foto</th><th>Producto</th><th>SKU</th><th>Cantidad</th></tr>${borrador.lineas.map(l=>`<tr><td>${l.imagen&&/^https:\/\//.test(l.imagen)?`<img src="${safe(l.imagen)}">`:''}</td><td>${safe(l.nombre)}</td><td>${safe(l.sku)}</td><td>${safe(l.cantidad)}</td></tr>`).join('')}</table><p>Documento interno. NO es factura electrónica.</p><button onclick="window.print()">Imprimir</button>`);w.document.close();};
+ const editable=!!borrador&&borrador.estado!=='facturado'&&borrador.estado!=='despachado'&&(rol!=='vendedor'||borrador.estado!=='facturado');
+ return <section style={{fontFamily:'Inter,system-ui,sans-serif',color:'#321343'}}><div style={{...panel,display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><div><h2 style={{margin:'0 0 5px'}}>📦 Centro de Pedidos JAIVISA</h2><small>Información compartida en Supabase · {rol}</small></div><button style={boton} onClick={()=>void cargar()} disabled={cargando}>{cargando?'Cargando…':'↻ Actualizar'}</button></div>
+ {rol!=='vendedor'&&<div style={{...panel,display:'flex',flexWrap:'wrap',gap:18}}>{[['Pedidos',pedidos.length],['Por preparar',pedidos.filter(p=>p.estado==='nuevo').length],['En preparación',pedidos.filter(p=>p.estado==='preparacion').length],['Alertas pendientes',alertas.length],['Facturados',pedidos.filter(p=>p.estado==='facturado').length]].map(([k,v])=><div key={k} style={{minWidth:100}}><strong style={{fontSize:24}}>{v}</strong><div style={{fontSize:12}}>{k}</div></div>)}</div>}
+ {mensaje&&<p role="status" style={{...panel,color:'#6a277f'}}>{mensaje}</p>}
+ <div style={{...panel,overflowX:'auto'}}><table style={{width:'100%',minWidth:670,borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['N.º','Cliente','Fecha','Estado','Total','Acción'].map(h=><th key={h} style={{padding:10,borderBottom:'1px solid #ddd'}}>{h}</th>)}</tr></thead><tbody>{pedidos.map(p=><tr key={p.id}>{[p.numero,p.cliente_nombre,new Date(p.created_at).toLocaleString('es-CO'),p.estado,dinero(total(p))].map((x,i)=><td key={i} style={{padding:10,borderBottom:'1px solid #eee'}}>{x}</td>)}<td><button style={boton} onClick={()=>void abrir(p)}>Abrir</button></td></tr>)}{!pedidos.length&&<tr><td colSpan={6} style={{padding:20}}>Todavía no hay pedidos visibles para tu cuenta.</td></tr>}</tbody></table></div>
+ {borrador&&<div style={panel}><h3>Pedido #{borrador.numero} · {borrador.estado}</h3>{borrador.estado==='preparacion'&&<p style={{color:'#9a4a00'}}>⚠ Si cambias este pedido, Bodega debe volver a verificar su preparación.</p>}
+ <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>{([['cliente_nombre','Cliente'],['cliente_documento','NIT / documento'],['cliente_correo','Correo de facturación'],['cliente_telefono','Teléfono'],['ciudad','Ciudad'],['direccion','Dirección'],['observaciones','Observaciones']] as const).map(([key,label])=><label key={key} style={{fontSize:13}}>{label}<input style={input} value={borrador[key]||''} disabled={!editable} onChange={e=>editar({[key]:e.target.value})}/></label>)}</div>
+ {alertas.some(a=>a.pedido_id===borrador.id)&&<div role="alert" style={{background:'#fff3dc',padding:12,borderRadius:10,marginTop:12}}><strong>⚠ Pedido modificado durante preparación</strong><p>Revisa nuevamente cantidades y dirección antes de confirmar.</p>{rol!=='vendedor'&&<button style={boton} onClick={()=>void resolverAlertas()}>He revisado los cambios</button>}</div>}
+ <h4>Productos y cantidades</h4>{borrador.lineas.map((l,i)=><div key={i} style={{display:'flex',gap:12,alignItems:'center',borderBottom:'1px solid #eee',padding:'9px 0',flexWrap:'wrap'}}>{l.imagen&&<img src={l.imagen} alt={l.nombre} style={{width:65,height:65,objectFit:'contain'}}/>}<div style={{flex:1,minWidth:140}}><strong>{l.nombre}</strong><div style={{fontSize:12}}>{l.sku} · {dinero(l.precio)} · IVA {l.iva}%</div></div><label>Cantidad <input type="number" min={1} step={1} style={{...input,width:90}} disabled={!editable} value={l.cantidad} onChange={e=>editar({lineas:borrador.lineas.map((x,j)=>j===i?{...x,cantidad:Math.max(1,Math.floor(Number(e.target.value)||1))}:x)})}/></label></div>)}<p><strong>Total: {dinero(total(borrador))}</strong></p>
+ <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{editable&&<button style={boton} disabled={guardando} onClick={()=>void guardar()}>Guardar cambios</button>}{rol!=='vendedor'&&<>{borrador.estado==='nuevo'&&<button style={boton} onClick={()=>void guardar('preparacion')}>Iniciar preparación</button>}{borrador.estado==='preparacion'&&<button style={boton} disabled={alertas.some(a=>a.pedido_id===borrador.id)} onClick={()=>void guardar('verificado')}>Confirmar verificación</button>}{borrador.estado==='verificado'&&<button style={boton} onClick={()=>void marcarFactura()}>Registrar factura externa</button>}{borrador.estado==='facturado'&&<button style={boton} onClick={()=>void guardar('despachado')}>Marcar despachado</button>}</>}<button style={boton} onClick={imprimir}>Imprimir orden</button><button style={{...boton,background:'#776a80'}} onClick={()=>{setBorrador(null)}}>Cerrar</button></div>
+ <h4>Historial de cambios</h4>{historial.map(h=><p key={h.id} style={{fontSize:12,borderBottom:'1px solid #eee',paddingBottom:7}}>{new Date(h.created_at).toLocaleString('es-CO')} · {h.accion} · Usuario {h.actor_id.slice(0,8)}</p>)}{!historial.length&&<p>Sin cambios registrados todavía.</p>}
+ </div>}</section>;
+}
+async function crearPedidoCentral(payload:{cliente_nombre:string;cliente_telefono:string;cliente_correo?:string;cliente_documento?:string;ciudad:string;direccion:string;observaciones?:string;lineas:Linea[]}){
+ const {data,error}=await supabase.rpc('jv_crear_pedido',{p_datos:payload});if(error)throw new Error(error.message);return data as Pedido;
+}
+return { CentroPedidos, crearPedidoCentral };
+})();
+
+// ===== COMPONENTE INTEGRADO: IsaAsistente =====
+const { IsaAsistente } = (() => {
+/** Ayuda contextual local: no envía datos del usuario a servicios externos. */
+function IsaAsistente(){
+ const [abierta,setAbierta]=useState(false);
+ return <aside className="jaivisa-isa-responsive" style={{position:'fixed',right:18,bottom:18,zIndex:1000,fontFamily:'system-ui,sans-serif'}}>
+ <style>{`
+ .jaivisa-isa-responsive{max-width:calc(100vw - 24px);pointer-events:none}
+ .jaivisa-isa-responsive > button,.jaivisa-isa-responsive > [role=dialog]{pointer-events:auto}
+ .jaivisa-isa-responsive > button{display:inline-flex;align-items:center;justify-content:center;gap:8px;max-width:100%;white-space:nowrap}
+ .jaivisa-isa-responsive > [role=dialog]{box-sizing:border-box;max-height:min(70dvh,540px);overflow-y:auto;overscroll-behavior:contain}
+ @media(max-width:600px){
+ .jaivisa-isa-responsive{right:12px!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;z-index:2147483000!important}
+ .jaivisa-isa-responsive > button{padding:9px 12px!important;font-size:13px!important;box-shadow:0 4px 18px #32134355!important}
+ .jaivisa-isa-responsive > button img{width:29px!important;height:29px!important;margin-right:0!important}
+ .jaivisa-isa-responsive > [role=dialog]{width:min(330px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 110px)!important;padding:14px!important}
+ }
+ `}</style>
+ {abierta&&<div role="dialog" aria-label="Ayuda de Isa" style={{width:290,maxWidth:'calc(100vw - 36px)',padding:16,background:'#fff',border:'1px solid #e4d2ef',borderRadius:16,boxShadow:'0 12px 35px #32134333',marginBottom:8,color:'#321343'}}>
+ <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+ <img src="/isa-original.png" alt="Isa, asistente original de JAIVISA" style={{width:88,height:105,objectFit:'contain',borderRadius:12,background:'#faf5fd'}} />
+ <div><strong>¡Hola! Soy Isa</strong><p style={{margin:'4px 0'}}>Tu guía de JAIVISA NEXT.</p></div>
+ </div>
+ <p style={{fontSize:13}}>Para crear un pedido: abre el catálogo, agrega productos y guarda el pedido. En Bodega podrás revisarlo, imprimirlo y marcar su preparación.</p>
+ <p style={{fontSize:12}}>La facturación electrónica debe realizarse en el sistema autorizado. No compartas contraseñas ni datos bancarios conmigo.</p>
+ <button onClick={()=>setAbierta(false)} style={{border:0,borderRadius:8,padding:8,background:'#572080',color:'white'}}>Cerrar</button>
+ </div>}
+ <button aria-expanded={abierta} onClick={()=>setAbierta(x=>!x)} style={{background:'#572080',color:'#fff',border:0,borderRadius:28,padding:'13px 17px',fontWeight:700,boxShadow:'0 6px 22px #32134355',cursor:'pointer'}}><img src="/isa-original.png" alt="" aria-hidden="true" style={{width:30,height:30,objectFit:'cover',objectPosition:'center top',borderRadius:'50%',background:'white',verticalAlign:'middle',marginRight:0}} />Isa · Ayuda</button>
+ </aside>;
+}
+return { IsaAsistente };
+})();
+
+// ===== COMPONENTE INTEGRADO: ModulosEmpresa =====
+const { ModulosEmpresa } = (() => {
+
+type Rol = 'administrador'|'bodega'|'vendedor';
+type Tipo = 'cotizacion'|'despacho'|'pago'|'novedad'|'devolucion'|'proveedor'|'tarea'|'precio_cliente';
+type Registro = {id:string;tipo:Tipo;titulo:string;descripcion:string;referencia:string;importe:number;estado:string;created_at:string;created_by:string};
+type Inventario = {sku:string;nombre:string;existencias:number;reservadas:number;minimo:number;updated_at:string};
+const opciones:{tipo:Tipo;titulo:string;ayuda:string}[]=[
+ {tipo:'cotizacion',titulo:'Cotizaciones',ayuda:'Registra propuestas comerciales. Convertir a pedido requiere validación y creación del pedido en el Centro de Pedidos.'},
+ {tipo:'despacho',titulo:'Despachos y guías',ayuda:'Guarda transportadora, guía, cajas y novedades en la descripción; referencia el número de pedido.'},
+ {tipo:'pago',titulo:'Cartera y abonos',ayuda:'Registro administrativo de pagos informados. No concilia bancos ni sustituye contabilidad.'},
+ {tipo:'novedad',titulo:'Novedades',ayuda:'Reporta faltantes, diferencias de empaque y observaciones.'},
+ {tipo:'devolucion',titulo:'Devoluciones',ayuda:'Control de solicitudes. No genera automáticamente nota crédito ni reintegra inventario.'},
+ {tipo:'proveedor',titulo:'Proveedores y compras',ayuda:'Registra seguimiento a proveedores y órdenes de compra.'},
+ {tipo:'tarea',titulo:'Tareas y avisos',ayuda:'Seguimiento de pendientes de los equipos e Isa.'},
+ {tipo:'precio_cliente',titulo:'Precios y acuerdos',ayuda:'Registra solicitudes de precios especiales; NO cambia automáticamente los precios de pedidos.'}
+];
+const moneda=(n:number)=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n||0);
+const estilo:React.CSSProperties={padding:11,borderRadius:9,border:'1px solid #dfd0ea',width:'100%',boxSizing:'border-box'};
+const boton:React.CSSProperties={padding:'10px 14px',border:0,borderRadius:9,background:'#60278a',color:'white',cursor:'pointer'};
+function ModulosEmpresa({rol}:{rol:Rol}){
+ const [tipo,setTipo]=useState<Tipo>('cotizacion');
+ const [registros,setRegistros]=useState<Registro[]>([]);
+ const [inventario,setInventario]=useState<Inventario[]>([]);
+ const [mensaje,setMensaje]=useState('');
+ const [cargando,setCargando]=useState(false);
+ const [guardando,setGuardando]=useState(false);
+ const [titulo,setTitulo]=useState(''),[descripcion,setDescripcion]=useState(''),[referencia,setReferencia]=useState(''),[importe,setImporte]=useState('');
+ const [sku,setSku]=useState(''),[nombre,setNombre]=useState(''),[cantidad,setCantidad]=useState(''),[minimo,setMinimo]=useState('5');
+ const [buscar,setBuscar]=useState('');
+ const cargar=useCallback(async()=>{
+  setCargando(true);
+  const [r,i]=await Promise.all([
+   supabase.from('jv_registros_operativos').select('id,tipo,titulo,descripcion,referencia,importe,estado,created_at,created_by').order('created_at',{ascending:false}).limit(500),
+   supabase.from('jv_inventario').select('sku,nombre,existencias,reservadas,minimo,updated_at').order('nombre').limit(1000)
+  ]);
+  setCargando(false);
+  if(r.error||i.error){setMensaje('Falta instalar o autorizar el módulo en Supabase: '+(r.error?.message||i.error?.message));return;}
+  setRegistros((r.data||[]) as Registro[]);setInventario((i.data||[]) as Inventario[]);
+ },[]);
+ useEffect(()=>{void cargar()},[cargar]);
+ const filtrados=useMemo(()=>registros.filter(r=>r.tipo===tipo&&`${r.titulo} ${r.referencia} ${r.descripcion}`.toLocaleLowerCase('es').includes(buscar.toLocaleLowerCase('es'))),[registros,tipo,buscar]);
+ const crear=async(e:React.FormEvent)=>{
+  e.preventDefault();if(!titulo.trim()||guardando)return;
+  setGuardando(true);const {error}=await supabase.from('jv_registros_operativos').insert({tipo,titulo:titulo.trim(),descripcion:descripcion.trim(),referencia:referencia.trim(),importe:Number(importe)||0});setGuardando(false);
+  if(error){setMensaje('No se guardó: '+error.message);return;}
+  setTitulo('');setDescripcion('');setReferencia('');setImporte('');setMensaje('Registro guardado en Supabase.');await cargar();
+ };
+ const cambiarEstado=async(r:Registro)=>{
+  const siguiente=r.estado==='abierto'?'cerrado':'abierto';
+  const {error}=await supabase.from('jv_registros_operativos').update({estado:siguiente}).eq('id',r.id);
+  if(error){setMensaje(error.message);return;}await cargar();
+ };
+ const ajustar=async(e:React.FormEvent)=>{
+  e.preventDefault();const delta=Number(cantidad);
+  if(!sku.trim()||!nombre.trim()||!Number.isSafeInteger(delta)||!Number.isSafeInteger(Number(minimo))){setMensaje('SKU, nombre y cantidades enteras son obligatorios.');return;}
+  setGuardando(true);
+  const {error}=await supabase.rpc('jv_ajustar_inventario',{p_sku:sku.trim(),p_nombre:nombre.trim(),p_delta:delta,p_minimo:Number(minimo),p_motivo:'Ajuste manual autorizado desde JAIVISA NEXT'});
+  setGuardando(false);if(error){setMensaje('Inventario no actualizado: '+error.message);return;}
+  setSku('');setNombre('');setCantidad('');setMensaje('Movimiento de inventario registrado.');await cargar();
+ };
+ const exportar=()=>{
+  const csv=[['Tipo','Título','Referencia','Importe','Estado','Fecha','Descripción'],...filtrados.map(r=>[r.tipo,r.titulo,r.referencia,String(r.importe),r.estado,r.created_at,r.descripcion])]
+   .map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='JAIVISA_'+tipo+'.csv';a.click();URL.revokeObjectURL(url);
+ };
+ const datos=opciones.find(o=>o.tipo===tipo)!;
+ return <section style={{color:'#341b43',fontFamily:'Inter,system-ui,sans-serif'}}>
+ <div style={{background:'#fff',borderRadius:16,padding:20,marginBottom:15,border:'1px solid #e7daef'}}><h2 style={{marginTop:0}}>💜 JAIVISA NEXT · Operaciones empresariales</h2><p style={{color:'#74617e'}}>Registros centralizados, permisos en Supabase e inventario con movimientos auditados. Facturación DIAN, reservas automáticas y conciliación bancaria aún requieren integraciones.</p>
+ <button style={boton} onClick={()=>void cargar()} disabled={cargando}>{cargando?'Consultando…':'Actualizar datos'}</button>{mensaje&&<p role="status" style={{padding:12,background:'#f4e9fa',borderRadius:8}}>{mensaje}</p>}</div>
+ <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:16}}>{[['Registros visibles',registros.length],['Pendientes',registros.filter(r=>r.estado==='abierto').length],['Referencias de inventario',inventario.length],['Stock bajo',inventario.filter(i=>i.existencias-i.reservadas<=i.minimo).length]].map(([k,v])=><div key={k} style={{background:'#fff',border:'1px solid #e7daef',padding:16,borderRadius:13}}><strong style={{fontSize:24}}>{v}</strong><div style={{fontSize:12}}>{k}</div></div>)}</div>
+ <div style={{display:'flex',gap:7,flexWrap:'wrap',marginBottom:14}}>{opciones.filter(o=>rol==='administrador'||!['precio_cliente','pago'].includes(o.tipo)).map(o=><button key={o.tipo} style={{...boton,background:tipo===o.tipo?'#60278a':'#eee3f5',color:tipo===o.tipo?'white':'#562176'}} onClick={()=>setTipo(o.tipo)}>{o.titulo}</button>)}</div>
+ <div style={{background:'#fff',border:'1px solid #e7daef',padding:18,borderRadius:14,marginBottom:15}}><h3>{datos.titulo}</h3><p style={{fontSize:13,color:'#766781'}}>{datos.ayuda}</p>
+ <form onSubmit={crear} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginBottom:15}}><label>Título<input style={estilo} required maxLength={150} value={titulo} onChange={e=>setTitulo(e.target.value)}/></label><label>Pedido / referencia<input style={estilo} maxLength={100} value={referencia} onChange={e=>setReferencia(e.target.value)}/></label><label>Valor COP<input style={estilo} type="number" min="0" step="1" value={importe} onChange={e=>setImporte(e.target.value)}/></label><label style={{gridColumn:'1/-1'}}>Detalle / observaciones<textarea style={{...estilo,minHeight:75}} maxLength={3000} value={descripcion} onChange={e=>setDescripcion(e.target.value)}/></label><button style={boton} disabled={guardando}>{guardando?'Guardando…':'Guardar registro'}</button></form>
+ <div style={{display:'flex',gap:10,flexWrap:'wrap'}}><input style={{...estilo,maxWidth:340}} placeholder="Buscar registros" value={buscar} onChange={e=>setBuscar(e.target.value)}/><button style={boton} onClick={exportar} type="button">Exportar CSV</button></div>
+ {filtrados.map(r=><div key={r.id} style={{padding:'12px 0',borderBottom:'1px solid #eee'}}><strong>{r.titulo}</strong> · {r.estado} · {moneda(r.importe)}<div style={{fontSize:12,color:'#766781'}}>{r.referencia} · {new Date(r.created_at).toLocaleString('es-CO')}</div><p style={{whiteSpace:'pre-wrap',fontSize:13}}>{r.descripcion}</p><button style={{...boton,padding:'6px 10px'}} onClick={()=>void cambiarEstado(r)}>{r.estado==='abierto'?'Marcar cerrado':'Reabrir'}</button></div>)}{!filtrados.length&&<p>No hay registros de este tipo.</p>}</div>
+ <div style={{background:'#fff',border:'1px solid #e7daef',padding:18,borderRadius:14}}><h3>📦 Inventario central · movimientos auditados</h3><p style={{fontSize:13,color:'#766781'}}>Los ajustes manuales solo están disponibles para Bodega y Administración. El catálogo original todavía debe migrarse para utilizar estas existencias en pedidos y reservas.</p>
+ {rol!=='vendedor'&&<form onSubmit={ajustar} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:9,alignItems:'end'}}><label>SKU<input required style={estilo} value={sku} onChange={e=>setSku(e.target.value)}/></label><label>Nombre<input required style={estilo} value={nombre} onChange={e=>setNombre(e.target.value)}/></label><label>Movimiento (+ / −)<input required type="number" step="1" style={estilo} value={cantidad} onChange={e=>setCantidad(e.target.value)}/></label><label>Mínimo<input required type="number" min="0" step="1" style={estilo} value={minimo} onChange={e=>setMinimo(e.target.value)}/></label><button disabled={guardando} style={boton}>Registrar movimiento</button></form>}
+ <div style={{overflowX:'auto',marginTop:12}}><table style={{width:'100%',minWidth:500,textAlign:'left'}}><thead><tr><th>SKU</th><th>Producto</th><th>Existencias</th><th>Reservadas</th><th>Disponibles</th><th>Mínimo</th></tr></thead><tbody>{inventario.map(i=><tr key={i.sku} style={{background:i.existencias-i.reservadas<=i.minimo?'#fff2df':'transparent'}}><td>{i.sku}</td><td>{i.nombre}</td><td>{i.existencias}</td><td>{i.reservadas}</td><td>{i.existencias-i.reservadas}</td><td>{i.minimo}</td></tr>)}</tbody></table></div></div>
+ </section>;
+}
+return { ModulosEmpresa };
+})();
+
+// ===== APLICACION ORIGINAL JAIVISA NEXT =====
 
 type Product = { id: string; sku: string; name: string; price: number; iva: number; stock: number; barcode: string; category?: string; image?: string };
 type Worker = { id: string; name: string; document: string; phone: string; email?: string; employeeCode?: string; role: string; enabled: boolean; permissions: string[] };
@@ -459,7 +621,13 @@ function PortalAdministrador() {
     catch (e: any) { setClientNotice('No se pudo cambiar la contraseña: ' + (e?.message || 'Error desconocido')); }
   };
   const editClient = (c: Client) => { setDepartamentoCliente(inferDepartamento(c.city)); setClient({...c}); setClientNotice('Estás editando a '+c.name+'. Modifica los campos y pulsa Guardar cambios.'); document.getElementById('jaivisa-client-form')?.scrollIntoView({behavior:'smooth',block:'start'}); };
-  const saveOrder = () => { if (!customer.customer.trim() || !cart.length) { alert('Indica el cliente y agrega productos.'); return; } const o: Order = { ...customer, id: `J-${Date.now().toString().slice(-8)}`, lines: cart.map(l => ({ ...l })), status: 'Nuevo', created: new Date().toLocaleString('es-CO') }; setOrders(old => [o, ...old]); setCart([]); setCustomer(blankCustomer()); setPage('Bodega'); setSelectedOrder(o.id); alert('Pedido guardado en este navegador. Bodega puede verlo en esta demostración.'); };
+   const saveOrder = async () => {
+     if (!customer.customer.trim() || !cart.length) { alert('Indica el cliente y agrega productos.'); return; }
+     try {
+       const pedido = await crearPedidoCentral({cliente_nombre:customer.customer,cliente_telefono:customer.phone,cliente_correo:customer.email,ciudad:customer.city,direccion:customer.address,lineas:cart.map(l=>{const p=products.find(x=>x.id===l.productId);return {productId:l.productId,sku:p?.sku||'',nombre:p?.name||'Producto',imagen:p?.image||'',cantidad:l.qty,precio:l.price,iva:p?.iva||0};})});
+       setCart([]);setCustomer(blankCustomer());setPage('Centro de Pedidos');alert('Pedido #'+pedido.numero+' guardado en Supabase.');
+     } catch(e:any) {alert('No se pudo guardar el pedido: '+(e?.message||e));}
+   };
   const changeStatus = (id: string, status: string) => setOrders(old => old.map(o => o.id === id ? { ...o, status } : o));
   const totalPedido = (o: Order) => o.lines.reduce((total, l) => total + l.qty * l.price * (1 + (products.find(p => p.id === l.productId)?.iva || 0) / 100), 0);
   const esVentaEfectiva = (o: Order) => o.pago === 'pagado';
@@ -489,7 +657,7 @@ function PortalAdministrador() {
 
   const beep = () => { try { const ctx = new AudioContext(); [0, .25].forEach((t, i) => { const oscillator = ctx.createOscillator(); const gain = ctx.createGain(); oscillator.frequency.value = i ? 950 : 720; gain.gain.setValueAtTime(.0001, ctx.currentTime + t); gain.gain.exponentialRampToValueAtTime(.15, ctx.currentTime + t + .02); gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + t + .18); oscillator.connect(gain); gain.connect(ctx.destination); oscillator.start(ctx.currentTime + t); oscillator.stop(ctx.currentTime + t + .2); }); setTimeout(() => ctx.close(), 900); } catch { alert('El navegador no permitió reproducir audio.'); } };
   const printLabel = () => { if (!chosenOrder) return alert('Primero crea un pedido.'); const w = window.open('', '_blank', 'width=650,height=700'); if (!w) return alert('Permite ventanas emergentes para imprimir.'); const safe = (v: string) => v.replace(/[&<>"']/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x] || x)); const boxes = Array.from({ length: labelCount }, (_, i) => `<div class="label"><h2>JAIVISA · BODEGA</h2><h3>${safe(chosenOrder.id)}</h3><p><b>CLIENTE:</b> ${safe(chosenOrder.customer)}</p><p><b>TEL:</b> ${safe(chosenOrder.phone)}</p><p><b>CIUDAD:</b> ${safe(chosenOrder.city)}</p><p><b>DIRECCIÓN:</b> ${safe(chosenOrder.address)}</p><p><b>CAJA:</b> ${i + 1} / ${labelCount}</p><div class="code">${safe(chosenOrder.id)}-C${String(i + 1).padStart(2, '0')}</div><small>Código interno de caja · No escaneable todavía</small></div>`).join(''); w.document.write(`<!doctype html><html><head><title>Etiquetas JAIVISA</title><style>body{font:12px Arial;margin:8mm}.label{border:1px dashed #555;padding:8px;margin:0 0 12px;break-inside:avoid;max-width:75mm}h2{color:#542078;margin:0 0 6px}h3{margin:0 0 8px}p{margin:4px 0}.code{font-weight:bold;text-align:center;font-size:17px;letter-spacing:1px;border-top:1px solid;padding:9px 0}small{font-size:9px}@media print{.label{page-break-inside:avoid}}</style></head><body>${boxes}</body></html>`); w.document.close(); w.focus(); setTimeout(() => w.print(), 350); };
-  const menu = ['Inicio', 'Catálogo', 'Productos', 'Empleados', 'Clientes', 'Accesos', 'Permisos', 'Carrito', 'Pedidos', 'Bodega', 'Etiquetas', 'Catálogos PDF', 'Personalización', 'WhatsApp y pedidos'];
+  const menu = ['Inicio', 'Catálogo', 'Productos', 'Empleados', 'Clientes', 'Accesos', 'Permisos', 'Carrito', 'Catálogos PDF', 'Personalización', 'WhatsApp y pedidos', 'Centro de Pedidos', 'Operaciones empresariales'];
   return <><style>{`.jv-catalog-thumb{display:flex!important;align-items:center;justify-content:center;position:relative;background:linear-gradient(145deg,#f6f0fa,#e8dcf1);overflow:hidden}
 .jv-catalog-thumb canvas{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;box-shadow:0 3px 14px #32124322}
 .jv-catalog-thumb-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#73458b;text-align:center;padding:8px}
@@ -911,6 +1079,8 @@ function PortalAdministrador() {
   {page === 'Clientes' && <><section id="jaivisa-client-form" className="panel"><div className="sectionEyebrow">CLIENTES MAYORISTAS</div><h3>{client.id ? 'Editar cliente' : 'Registrar cliente'}</h3><p className="muted">Los clientes se guardan en Supabase. Al crear uno, se genera su cuenta de acceso con la contraseña inicial que establezcas.</p>{clientNotice && <p role="status" style={{padding:'12px 16px',background:'#f3e7fb',borderRadius:12,color:'#53216e'}}>{clientNotice}</p>}<form className="grid" onSubmit={saveClient}><label className="field">Nombre o razón social<input required value={client.name} onChange={e=>setClient({...client,name:e.target.value})}/></label><label className="field">NIT / Documento<input value={client.document} onChange={e=>setClient({...client,document:e.target.value})}/></label><label className="field">Correo de acceso<input required type="email" value={client.email} onChange={e=>setClient({...client,email:e.target.value})}/></label><label className="field">País de la empresa<select value={client.country || 'Colombia'} onChange={e=>{const indicativos:Record<string,string>={'Colombia':'+57','México':'+52','Perú':'+51','Ecuador':'+593','Estados Unidos':'+1','Panamá':'+507','Venezuela':'+58','Chile':'+56','Argentina':'+54','España':'+34'};setClient({...client,country:e.target.value,dialCode:indicativos[e.target.value]||'+57',city:''});setDepartamentoCliente('');}}>{['Colombia','México','Perú','Ecuador','Estados Unidos','Panamá','Venezuela','Chile','Argentina','España'].map(p=><option key={p} value={p}>{p}</option>)}</select></label><label className="field">Indicativo internacional<input value={client.dialCode || '+57'} onChange={e=>setClient({...client,dialCode:e.target.value})} placeholder="+57" inputMode="tel" maxLength={6}/></label><label className="field">Teléfono / WhatsApp<input value={client.phone} onChange={e=>setClient({...client,phone:e.target.value})}/></label><SelectorUbicacion pais={client.country || 'Colombia'} departamento={departamentoCliente} ciudad={client.city} onDepartamento={setDepartamentoCliente} onCiudad={v=>setClient(old=>({...old,city:v}))}/><label className="field">Dirección<input value={client.address} onChange={e=>setClient({...client,address:e.target.value})}/></label><button className="primary" disabled={clientSaving}>{clientSaving?'Guardando…':client.id?'Guardar cambios':'Crear cliente'}</button><button type="button" className="secondary" onClick={()=>{setClient(blankClient());setDepartamentoCliente('');setClientNotice('');}}>Limpiar</button></form><div className="securityPanel"><div className="securityTitle">🔐 Acceso y contraseña del cliente</div><p className="muted">Las cuentas y contraseñas se gestionan de forma segura mediante Supabase. Para cambiar una clave directamente, selecciona primero Editar en el cliente. También puedes enviar un enlace de recuperación por correo.</p><div className="securityActions"><button className="secondary" type="button" onClick={async()=>{const email=client.email.trim().toLowerCase();if(!email){setClientNotice('Selecciona un cliente con correo electrónico antes de enviar el enlace.');return;}if(!window.confirm('¿Solicitar un enlace de recuperación para '+email+'?'))return;try{const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error)throw error;setClientNotice('Solicitud enviada. Si existe una cuenta de acceso con ese correo, recibirá un enlace para establecer su contraseña. Revisa también la carpeta de spam.');}catch(e:any){setClientNotice('No fue posible solicitar el enlace: '+(e?.message||'Error desconocido')+'. Si hay límite de correos, inténtalo más tarde.');}}}>✉️ Enviar enlace de contraseña</button><button className="secondary" type="button" onClick={()=>void cambiarClaveCliente()}>🔑 Cambiar contraseña</button></div><small className="securityFoot">Por seguridad, las contraseñas se envían a la función protegida y no se guardan en el navegador. Evita usar contraseñas compartidas.</small></div></section><section className="panel"><h3>Directorio de clientes · {clients.length}</h3><button className="secondary" type="button" disabled={clientsLoading} onClick={()=>void cargarClientes()}>{clientsLoading?'Consultando…':'🔄 Actualizar desde Supabase'}</button>{clients.length===0&&<p className="muted">Todavía no hay clientes registrados.</p>}{clients.map(c=><div className="row" key={c.id}><div><strong>{c.name}</strong><small>{c.email} · {c.document || 'Sin documento'} · {c.country || 'Colombia'} · {c.dialCode || '+57'} {c.phone} · {c.access}</small></div><div className="actions"><button className="secondary" onClick={()=>editClient(c)}>Editar</button><button className="secondary" onClick={()=>void cambiarEstadoCliente(c)}>{c.enabled?'Suspender':'Reactivar'}</button></div></div>)}</section></>}
   {page === 'Accesos' && <><section className="panel"><div className="sectionEyebrow">SEGURIDAD Y ACCESO</div><h3>Activación de cuentas</h3><p className="muted">Aquí se gestionarán las invitaciones, contraseñas temporales y recuperación de acceso por correo. Esta versión no almacena contraseñas ni simula un inicio de sesión seguro.</p><div className="accessTiles"><div><strong>👥 {workers.length} empleados</strong><p className="muted">Creados por administración</p></div><div><strong>🏬 {clients.length} clientes</strong><p className="muted">Registrados para el portal mayorista</p></div></div><div className="securityPanel"><div className="securityTitle">🛡️ Recuperación del administrador general</div><p className="muted">El administrador podrá recuperar su propia clave con un enlace seguro enviado a su correo registrado. Ningún empleado podrá consultar su contraseña.</p><button className="secondary" type="button" onClick={() => alert('La recuperación del administrador por correo se habilitará con autenticación segura.')}>Recuperar clave de administrador</button></div><div className="notice">🔒 Próxima integración: autenticación segura con invitación por correo, contraseña temporal, cambio obligatorio en el primer ingreso y recuperación mediante enlace de un solo uso. Los permisos se verificarán en el servidor.</div><button className="secondary" onClick={()=>setPage('Empleados')}>Gestionar empleados</button> <button className="secondary" onClick={()=>setPage('Clientes')}>Gestionar clientes</button></section><section className="panel"><h3>Vista prevista del acceso</h3><div className="accessDemo"><label className="field">Correo electrónico<input type="email" placeholder="usuario@empresa.com" autoComplete="off"/></label><label className="field">Contraseña<input type="password" placeholder="••••••••" autoComplete="off"/></label><button className="primary" type="button" onClick={()=>alert('Vista de diseño. El acceso real se habilitará cuando conectemos el servicio de autenticación.')}>Iniciar sesión (demostración)</button><button className="secondary" type="button" onClick={()=>alert('El restablecimiento por correo estará disponible al conectar la autenticación.')}>Olvidé mi contraseña</button></div></section></>}
   {page === 'Permisos' && <section className="panel"><h3>Permisos personalizados</h3><p className="muted">El administrador podrá decidir qué puede hacer cada trabajador. Los permisos se guardan en Supabase, pero el servidor debe validarlos antes de autorizar cada operación.</p><select className="wideSelect" value={selectedWorker} onChange={e => setSelectedWorker(e.target.value)}><option value="">Seleccionar empleado</option>{workers.map(w => <option key={w.id} value={w.id}>{w.name} · {w.role}</option>)}</select>{selected && <div style={{ marginTop: 16 }}>{permissions.map(p => <label className="check" key={p}><span>{p}</span><input type="checkbox" checked={selected.permissions.includes(p)} onChange={() => void cambiarPermisoEmpleado(selected,p)}/></label>)}</div>}</section>}
+  {page === 'Centro de Pedidos' && <CentroPedidos rol="administrador"/>}
+  {page === 'Operaciones empresariales' && <ModulosEmpresa rol="administrador"/>}
   {page === 'Carrito' && <><section className="panel"><h3>Datos del cliente</h3><div className="grid">{([['customer','Cliente o negocio'],['phone','Teléfono / WhatsApp'],['email','Correo electrónico'],['city','Ciudad'],['address','Dirección']] as const).map(([key, title]) => <label className="field" key={key}>{title}<input value={customer[key]} onChange={e => setCustomer({ ...customer, [key]: e.target.value })}/></label>)}</div></section><section className="panel"><h3>Productos por categoría</h3><p className="muted">Elige una categoría para ver sus productos. Puedes agregar artículos de varios catálogos al mismo pedido.</p><button className="primary" onClick={() => { setCategory(''); setSearch(''); setPage('Catálogo'); }}>🗂️ Explorar catálogos →</button></section><section className="panel"><h3>Carrito de compras</h3>{cart.length === 0 ? <p className="muted">El carrito está vacío.</p> : <><div className="table"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio negociado</th><th>IVA</th><th>Total</th><th></th></tr></thead><tbody>{cart.map(l => { const p = getProduct(l.productId); return <tr key={l.productId}><td>{p?.name || 'Producto retirado'}</td><td><input type="number" min="1" value={l.qty} onChange={e => updateLine(l.productId, { qty: Math.max(1, Number(e.target.value)) })}/></td><td><input type="number" min="0" value={l.price} onChange={e => updateLine(l.productId, { price: Math.max(0, Number(e.target.value)) })}/></td><td>{p?.iva || 0}%</td><td>{money(l.qty * l.price * (1 + (p?.iva || 0) / 100))}</td><td><button className="secondary danger" onClick={() => setCart(old => old.filter(x => x.productId !== l.productId))}>Quitar</button></td></tr>; })}</tbody></table></div><div className="total"><div>Subtotal sin IVA <strong>{money(subtotal)}</strong></div><div>IVA <strong>{money(iva)}</strong></div><div className="big">TOTAL <span>{money(subtotal + iva)}</span></div></div><button className="primary" onClick={saveOrder}>Guardar pedido</button></>}</section></>}
   {page === 'Pedidos' && <><section className="panel"><h3>Estadísticas de cobros · prototipo local</h3><p className="muted">Las cifras siguientes se calculan sobre pedidos guardados en este navegador. No son todavía ventas sincronizadas con Supabase.</p><div className="grid"><div className="card"><small>Ventas efectivas (pagadas)</small><b>{money(orders.filter(esVentaEfectiva).reduce((t,o)=>t+totalPedido(o),0))}</b></div><div className="card"><small>Dinero recibido</small><b>{money(orders.reduce((t,o)=>t+(o.montoPagado||0),0))}</b></div><div className="card"><small>Cartera pendiente</small><b>{money(orders.reduce((t,o)=>t+Math.max(0,totalPedido(o)-(o.montoPagado||0)),0))}</b></div></div></section><section className="panel"><h3>Historial de pedidos</h3>{orders.length === 0 && <p className="muted">Todavía no hay pedidos.</p>}{orders.map(o => <div className="row" key={o.id}><div><strong>{o.id} · {o.customer}</strong><small>{o.created} · {o.city} · {o.lines.length} referencias · {money(totalPedido(o))}</small><small>Pago: {o.pago === 'pagado' ? 'PAGADO' : o.pago === 'parcial' ? 'PARCIAL' : 'PENDIENTE'}</small></div><div className="actions" style={{flexWrap:'wrap'}}><span className="badge">{o.status}</span><select aria-label="Estado de pago" value={o.pago || 'pendiente'} onChange={e=>registrarPago(o,e.target.value as 'pendiente'|'parcial'|'pagado')}><option value="pendiente">Pago pendiente</option><option value="parcial">Pago parcial</option><option value="pagado">Pagado totalmente</option></select><button className="secondary" onClick={()=>imprimirOrdenIlustrada(o)}>🖨️ Pedido con fotos / PDF</button><button className="secondary" onClick={() => { setSelectedOrder(o.id); setPage('Etiquetas'); }}>Etiquetas</button>{destinatariosWA.filter(d=>d.activo).map(d=><button key={d.id} className="secondary" onClick={()=>compartirWhatsApp(o,d)}>WhatsApp · {d.nombre}</button>)}</div></div>)}</section></>}
   {page === 'Bodega' && <><section className="panel"><h3>🔔 Centro de bodega</h3><p className="muted">Cuando conectemos una base de datos en tiempo real, los pedidos nuevos podrán activar una alerta en los equipos autorizados.</p><button className="primary" onClick={() => { setSound(true); beep(); }}>🔊 Probar alerta sonora</button>{sound && <span className="badge" style={{ marginLeft: 10 }}>Sonido probado</span>}</section><section className="panel"><h3>Pedidos por preparar</h3>{orders.length === 0 && <p className="muted">Crea un pedido desde el carrito para verlo aquí.</p>}{orders.map(o => <div className="row" key={o.id}><div><strong>{o.id} · {o.customer}</strong><small>{o.city} · {o.created}</small></div><div className="actions"><select value={o.status} onChange={e => changeStatus(o.id, e.target.value)}><option>Nuevo</option><option>En preparación</option><option>Empacado</option><option>En ruta</option><option>Entregado</option></select><button className="secondary" onClick={() => { setSelectedOrder(o.id); setPage('Etiquetas'); }}>Imprimir etiqueta</button></div></div>)}</section></>}
@@ -1172,6 +1342,9 @@ function PanelVendedor({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<voi
   const [cargandoPDF,setCargandoPDF]=useState(false);
   const [errorPDF,setErrorPDF]=useState('');
   const [buscarPDF,setBuscarPDF]=useState('');
+  const [referenciaPDF,setReferenciaPDF]=useState('');
+  const [cantidadPDF,setCantidadPDF]=useState(1);
+  const [catalogoOrigen,setCatalogoOrigen]=useState('');
   const [cargando,setCargando]=useState(false);
   const [error,setError]=useState('');
   const [busqueda,setBusqueda]=useState('');
@@ -1219,6 +1392,20 @@ function PanelVendedor({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<voi
     if(p.precio===null){setAviso('Este producto no tiene un precio confirmado. No puede agregarse al borrador.');return;}
     setCarrito(actual=>{const existe=actual.find(x=>x.producto.id===p.id);return existe?actual.map(x=>x.producto.id===p.id?{...x,cantidad:x.cantidad+1}:x):[...actual,{producto:p,cantidad:1}];});
     setAviso('Producto agregado al borrador.');
+  };
+  // PDF y catálogo interactivo comparten exactamente el mismo carrito del vendedor.
+  // La búsqueda usa el catálogo de productos autorizado de Supabase, no interpreta automáticamente el PDF.
+  const coincidenciasPDF=referenciaPDF.trim().length<2?[]:productos.filter(p=>
+    (p.codigo+' '+p.nombre).toLocaleLowerCase('es').includes(referenciaPDF.trim().toLocaleLowerCase('es'))
+  ).slice(0,12);
+  const agregarDesdePDF=(p:ProductoV)=>{
+    if(p.precio===null){setAviso('No hay precio autorizado para '+p.nombre+'.');return;}
+    const cantidad=Math.max(1,Math.min(9999,Math.floor(Number(cantidadPDF)||1)));
+    setCarrito(actual=>{const existe=actual.find(x=>x.producto.id===p.id);return existe
+      ?actual.map(x=>x.producto.id===p.id?{...x,cantidad:x.cantidad+cantidad}:x)
+      :[...actual,{producto:p,cantidad}];});
+    setAviso(cantidad+' unidad(es) de '+p.nombre+' agregadas al mismo carrito del catálogo interactivo'+(catalogoOrigen?' desde '+catalogoOrigen:'')+'.');
+    setReferenciaPDF('');setCantidadPDF(1);
   };
   const subtotal=carrito.reduce((a,x)=>a+(x.producto.precio||0)*x.cantidad,0);
   const formato=(n:number)=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
@@ -1284,12 +1471,41 @@ function PanelVendedor({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<voi
           {errorPDF&&<p role="alert" style={{color:'#a32645'}}>{errorPDF}</p>}
           {cargandoPDF?<p className="jv-muted">Cargando catálogos…</p>:!errorPDF&&<GaleriaCatalogos catalogos={catalogosPDF.filter(c=>c.nombre.toLocaleLowerCase('es').includes(buscarPDF.toLocaleLowerCase('es')))}/>}
           {!cargandoPDF&&!errorPDF&&catalogosPDF.length>0&&catalogosPDF.every(c=>!c.nombre.toLocaleLowerCase('es').includes(buscarPDF.toLocaleLowerCase('es')))&&<p>No se encontraron catálogos con ese nombre.</p>}
+          <section aria-label="Vender desde catálogos PDF" style={{marginTop:22,padding:18,border:'1px solid #e5d3ee',borderRadius:16,background:'#fbf7fe'}}>
+            <h3 style={{marginTop:0}}>🛒 Vender desde el PDF</h3>
+            <p className="jv-muted">Abre el PDF, identifica la referencia del artículo y búscala aquí. El producto se verifica contra la lista de precios de Supabase y se agrega al mismo carrito que el catálogo interactivo.</p>
+            <label className="jv-field">{etiqueta('Catálogo que estás consultando (opcional)')}
+              <select style={campo} value={catalogoOrigen} onChange={e=>setCatalogoOrigen(e.target.value)}>
+                <option value="">Seleccionar catálogo</option>
+                {catalogosPDF.map(c=><option key={c.ruta} value={c.nombre}>{c.nombre}</option>)}
+              </select>
+            </label>
+            <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 110px',gap:10,marginTop:12}}>
+              <label className="jv-field">{etiqueta('Referencia o nombre del producto')}
+                <input style={campo} value={referenciaPDF} onChange={e=>setReferenciaPDF(e.target.value)} placeholder="Ej.: C2-F" autoComplete="off"/>
+              </label>
+              <label className="jv-field">{etiqueta('Cantidad')}
+                <input style={campo} type="number" min={1} max={9999} value={cantidadPDF} onChange={e=>setCantidadPDF(Math.max(1,Math.min(9999,Number(e.target.value)||1)))}/>
+              </label>
+            </div>
+            {referenciaPDF.trim().length>0&&referenciaPDF.trim().length<2&&<p className="jv-muted">Escribe al menos dos caracteres.</p>}
+            {referenciaPDF.trim().length>=2&&coincidenciasPDF.length===0&&<p role="status">No encontramos esa referencia entre los productos autorizados. Verifica que esté registrada en Supabase.</p>}
+            {coincidenciasPDF.map(p=><div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',padding:'12px 0',borderBottom:'1px solid #e9dded'}}>
+              <div><strong>{p.nombre}</strong><div className="jv-muted">Ref. {p.codigo||'Sin código'} · {p.precio===null?'Precio pendiente':formato(p.precio)} {p.stock===null?'':' · Stock informado: '+p.stock}</div></div>
+              <button type="button" style={btn} disabled={p.precio===null} onClick={()=>agregarDesdePDF(p)}>+ Agregar al carrito</button>
+            </div>)}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap',marginTop:15}}>
+              <strong>{carrito.reduce((n,x)=>n+x.cantidad,0)} unidades · {formato(subtotal)}</strong>
+              <button type="button" style={btn} onClick={()=>setVista('pedido')}>Revisar carrito y crear pedido →</button>
+            </div>
+          </section>
         </div>}
         {(vista==='catalogo'||vista==='pedido')&&<>
           {vista==='catalogo'&&<div style={{marginTop:20}}><label className="jv-field">{etiqueta('Buscar productos')}<input style={campo} value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Nombre, código o categoría"/></label><button style={{...btn,marginBottom:14}} onClick={()=>void cargarProductos()} disabled={cargando}>{cargando?'Consultando…':'↻ Actualizar catálogo'}</button>{error&&<p role="alert" style={{color:'#a32645'}}>{error}</p>}{!cargando&&!error&&productos.length===0&&<p className="jv-muted">No hay productos visibles para tu cuenta. Comprueba los permisos de lectura en Supabase.</p>}{encontrados.map(p=><div key={p.id} className="jv-product"><div style={{flex:'1 1 240px'}}><strong>{p.nombre}</strong><div className="jv-muted" style={{fontSize:13}}>{p.codigo||'Sin código'} · {p.categoria||'Sin categoría'}</div><div style={{fontSize:14,marginTop:4}}>{p.precio===null?'Precio no disponible':formato(p.precio)} · {p.stock===null?'Inventario por verificar':'Existencias: '+p.stock}</div></div><button style={btn} disabled={p.precio===null} onClick={()=>agregar(p)}>+ Agregar</button></div>)}</div>}
-          {vista==='pedido'&&<div style={{marginTop:20}}><p className="jv-muted">Referencia {numeroBorrador}. El pedido todavía no se guarda en Supabase.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e=>setCliente(v=>({...v,nombre:e.target.value}))}/></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e=>setCliente(v=>({...v,telefono:e.target.value}))}/></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e=>setCliente(v=>({...v,ciudad:e.target.value}))}/></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e=>setCliente(v=>({...v,direccion:e.target.value}))}/></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{...campo,minHeight:70}} value={cliente.observaciones} onChange={e=>setCliente(v=>({...v,observaciones:e.target.value}))}/></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={()=>setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length===0?<p className="jv-muted">Todavía no has agregado productos.</p>:carrito.map(x=><div key={x.producto.id} className="jv-product"><div style={{flex:'1 1 200px'}}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio||0)} por unidad</div></div><div style={{display:'flex',alignItems:'center',gap:9}}><button style={btn} aria-label="Restar unidad" onClick={()=>setCarrito(v=>v.map(z=>z.producto.id===x.producto.id?{...z,cantidad:Math.max(0,z.cantidad-1)}:z).filter(z=>z.cantidad>0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={()=>agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio||0)*x.cantidad)}</strong></div>)}<div style={{textAlign:'right',margin:'18px 0'}}><strong style={{fontSize:20}}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{fontSize:12}}>IVA y total definitivo requieren validación comercial.</p></div><button style={{...btn,background:'#128C51',width:'100%',fontSize:16}} onClick={compartir} disabled={!carrito.length||!cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{fontSize:12}}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
+          {vista==='pedido'&&<div style={{marginTop:20}}><p className="jv-muted">Referencia {numeroBorrador}. Guarda el pedido en Supabase antes de enviarlo a Bodega.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e=>setCliente(v=>({...v,nombre:e.target.value}))}/></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e=>setCliente(v=>({...v,telefono:e.target.value}))}/></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e=>setCliente(v=>({...v,ciudad:e.target.value}))}/></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e=>setCliente(v=>({...v,direccion:e.target.value}))}/></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{...campo,minHeight:70}} value={cliente.observaciones} onChange={e=>setCliente(v=>({...v,observaciones:e.target.value}))}/></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={()=>setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length===0?<p className="jv-muted">Todavía no has agregado productos.</p>:carrito.map(x=><div key={x.producto.id} className="jv-product"><div style={{flex:'1 1 200px'}}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio||0)} por unidad</div></div><div style={{display:'flex',alignItems:'center',gap:9}}><button style={btn} aria-label="Restar unidad" onClick={()=>setCarrito(v=>v.map(z=>z.producto.id===x.producto.id?{...z,cantidad:Math.max(0,z.cantidad-1)}:z).filter(z=>z.cantidad>0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={()=>agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio||0)*x.cantidad)}</strong></div>)}<div style={{textAlign:'right',margin:'18px 0'}}><strong style={{fontSize:20}}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{fontSize:12}}>IVA y total definitivo requieren validación comercial.</p></div><button style={{...btn,width:'100%',marginBottom:10}} disabled={!carrito.length||!cliente.nombre.trim()} onClick={async()=>{try{const p=await crearPedidoCentral({cliente_nombre:cliente.nombre,cliente_telefono:cliente.telefono,ciudad:cliente.ciudad,direccion:cliente.direccion,observaciones:cliente.observaciones,lineas:carrito.map(x=>({productId:x.producto.id,sku:x.producto.codigo,nombre:x.producto.nombre,imagen:'',cantidad:x.cantidad,precio:x.producto.precio||0,iva:x.producto.iva||0}))});setCarrito([]);setCliente({nombre:'',telefono:'',direccion:'',ciudad:'',observaciones:''});setAviso('Pedido #'+p.numero+' guardado y visible para Bodega.');setVista('historial');}catch(e:any){setAviso('No se pudo guardar: '+e.message)}}}>💜 Guardar pedido en Supabase</button><button style={{...btn,background:'#128C51',width:'100%',fontSize:16}} onClick={compartir} disabled={!carrito.length||!cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{fontSize:12}}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
         </>}
-        {['clientes','historial','agenda','reportes'].includes(vista)&&<div style={{marginTop:25,padding:20,borderRadius:14,background:'#f8f3fb'}}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo se conectará a las tablas y políticas de Supabase correspondientes. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
+        {vista==='historial'&&<CentroPedidos rol="vendedor"/>}
+        {['clientes','agenda','reportes'].includes(vista)&&<div style={{marginTop:25,padding:20,borderRadius:14,background:'#f8f3fb'}}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo se conectará a las tablas y políticas de Supabase correspondientes. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
       </section>}
       <nav className="jv-mobile-nav" aria-label="Navegación del vendedor">
         {([{id:'inicio',titulo:'Inicio',icono:'caja'},{id:'clientes',titulo:'Clientes',icono:'usuarios'},{id:'catalogosPDF',titulo:'Catálogos',icono:'libros'},{id:'catalogo',titulo:'Productos',icono:'caja'},{id:'pedido',titulo:'Pedido',icono:'carrito'}] as const).map(item=><button key={item.id} type="button" aria-current={vista===item.id?'page':undefined} onClick={()=>{setVista(item.id);setAviso('');window.scrollTo({top:0,behavior:'smooth'});}}><IconoNext nombre={item.icono} tamano={21}/><span>{item.titulo}</span></button>)}
@@ -1381,7 +1597,8 @@ function PanelBodega({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<void>
         {seccion==='inventario'&&<><input aria-label="Buscar producto" value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar por producto o referencia" style={{width:'100%',padding:13,border:'1px solid #d8c8e4',borderRadius:10,marginBottom:15}}/><button style={boton} onClick={()=>void cargar()}>Actualizar</button>{error&&<p role="alert">{error}</p>}{cargando?<p>Cargando…</p>:productos.filter(p=>(p.nombre+' '+p.codigo).toLowerCase().includes(busqueda.toLowerCase())).map(p=><div key={p.id} style={{padding:'13px 0',borderBottom:'1px solid #eee5f4'}}><strong>{p.nombre}</strong><div style={{fontSize:13,color:'#746080'}}>Ref. {p.codigo||'Sin referencia'} · {p.stock===null?'Existencias no disponibles':'Existencias: '+p.stock}</div></div>)}</>}
         {seccion==='catalogos'&&<><button style={boton} onClick={()=>void cargar()}>Actualizar catálogos</button><GaleriaCatalogos catalogos={catalogos}/></>}
         {seccion==='notificaciones'&&<><p>🔔 {notificaciones.length===0?'No hay notificaciones reales recibidas.':'Notificaciones recibidas:'}</p><button style={boton} onClick={probarSonido}>🔊 Probar sonido de campana</button><p style={{color:'#756682',fontSize:13}}>Prueba manual de audio. {sonidoHabilitado?'Sonido probado en esta sesión.':'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n=><p key={n.id}>{n.titulo} · {n.fecha}</p>)}</>}
-        {['pedidos','despachos','etiquetas'].includes(seccion)&&<p style={{padding:18,background:'#f8f3fb',borderRadius:12}}>Sección organizada y pendiente de conectar a los pedidos reales de Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
+        {seccion==='pedidos'&&<><CentroPedidos rol="bodega"/><ModulosEmpresa rol="bodega"/></>}
+        {['despachos','etiquetas'].includes(seccion)&&<p style={{padding:18,background:'#f8f3fb',borderRadius:12}}>Esta sección se activará con pedidos reales sincronizados en Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
       </section>}
       <footer style={{textAlign:'center',padding:25,fontSize:12,color:'#8a7894'}}>JAIVISA · Portal Mayorista · Bodega</footer>
     </div>
@@ -1486,6 +1703,29 @@ const JAIVISA_SHARED_CSS = `
 .jv-client-shell .jv-catalog-open:focus-visible,.jv-vendedor .jv-catalog-open:focus-visible{outline:2px solid #8c43b3!important;outline-offset:2px!important;background:#f3e8fb!important}
 .jv-client-shell .jv-catalog-open:active,.jv-vendedor .jv-catalog-open:active{color:#4b176c!important;background:#e9d5f5!important;transform:translateY(0)}
 @media(prefers-reduced-motion:reduce){.jv-client-shell .jv-catalog-open,.jv-vendedor .jv-catalog-open{transition:none!important;transform:none!important}}
+/* Ajuste puntual: Vendedores presenta tres catálogos por fila en pantallas amplias.
+   Los documentos adicionales continúan en las siguientes filas, sin ocultarse. */
+.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-flow:row!important;align-items:stretch!important}
+@media(min-width:581px) and (max-width:900px){.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:580px){.jv-vendedor .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important}}
+/* Bodega: controles cómodos y sin desbordamientos en pantallas pequeñas. */
+.jv-bodega,.jv-bodega *{min-width:0}
+.jv-bodega .jv-catalog-card{max-width:100%}
+.jv-bodega .jv-catalog-card strong{overflow-wrap:anywhere}
+@media(max-width:680px){
+ .jv-bodega.jv-unified{padding:12px 12px 35px!important;overflow-x:hidden!important}
+ .jv-bodega>div{max-width:100%!important}
+ .jv-bodega header{display:flex!important;flex-wrap:wrap!important;gap:12px!important;padding:15px!important}
+ .jv-bodega header>div{max-width:100%;flex-wrap:wrap}
+ .jv-bodega header img{width:78px!important;height:54px!important;object-fit:contain!important}
+ .jv-bodega header button{min-height:44px!important}
+ .jv-bodega .jv-warehouse-status{max-width:100%!important;overflow-wrap:anywhere!important}
+ .jv-bodega .jv-warehouse-status-copy{min-width:0!important}
+ .jv-bodega .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+ .jv-bodega .jv-catalog-cover{height:auto!important;min-height:0!important;aspect-ratio:1.65/1!important}
+ .jv-bodega .jv-catalog-open{min-height:44px!important;display:flex!important;align-items:center;justify-content:center}
+ .jv-bodega input,.jv-bodega button{max-width:100%}
+}
 @media(prefers-reduced-motion:reduce){.jv-unified *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 function MarcoJAIVISANext({rol,nombre,salir,children}:{rol:string;nombre?:string;salir?:()=>Promise<void>;children:React.ReactNode}){
@@ -1600,4 +1840,4 @@ class JaivisaErrorBoundary extends React.Component<
 const JaivisaApp = App;
 export { JaivisaErrorBoundary, JaivisaApp };
 
-export default function AppProtegida() { return <JaivisaErrorBoundary><style>{JAIVISA_SHARED_CSS}</style><JaivisaApp /></JaivisaErrorBoundary>; }
+export default function AppProtegida() { return <JaivisaErrorBoundary><IsaAsistente/><style>{JAIVISA_SHARED_CSS}</style><JaivisaApp /></JaivisaErrorBoundary>; }
