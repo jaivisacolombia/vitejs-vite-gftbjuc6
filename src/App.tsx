@@ -1177,7 +1177,7 @@ function PanelVendedor({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<voi
   const [busqueda,setBusqueda]=useState('');
   const [carrito,setCarrito]=useState<Renglon[]>([]);
   const [cliente,setCliente]=useState({nombre:'',telefono:'',direccion:'',ciudad:'',observaciones:''});
-  const [notificaciones,setNotificaciones]=useState<string[]>([]);
+  const [notificaciones]=useState<string[]>([]);
   const [campana,setCampana]=useState(false);
   const [aviso,setAviso]=useState('');
   const [sonido,setSonido]=useState(false);
@@ -1310,7 +1310,7 @@ function PanelBodega({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<void>
   const [cargando,setCargando]=useState(true);
   const [error,setError]=useState('');
   const [sonidoHabilitado,setSonidoHabilitado]=useState(false);
-  const [notificaciones,setNotificaciones]=useState<{id:string;titulo:string;fecha:string}[]>([]);
+  const [notificaciones]=useState<{id:string;titulo:string;fecha:string}[]>([]);
   const [busqueda,setBusqueda]=useState('');
   const [mensaje,setMensaje]=useState('');
   const cargar=async()=>{
@@ -1537,8 +1537,8 @@ function App() {
   };
   const cambiarClave=async(e:React.FormEvent)=>{e.preventDefault();if(nuevaClave.length<8){setMensaje('Usa al menos 8 caracteres.');return;}setProcesando(true);const {error}=await supabase.auth.updateUser({password:nuevaClave});setProcesando(false);setNuevaClave('');if(error){setMensaje('No se pudo actualizar la contraseña: '+error.message);return;}setMensaje('Contraseña actualizada.');await salir();setMensaje('Contraseña actualizada. Ya puedes iniciar sesión.');};
   const recuperar=async(e:React.FormEvent)=>{e.preventDefault();setProcesando(true);setMensaje('');const {error}=await supabase.auth.resetPasswordForEmail(correo.trim(),{redirectTo:window.location.origin});setProcesando(false);setMensaje(error?'No se pudo enviar el enlace. Comprueba la configuración de correo de Supabase.':'Si el correo está registrado, recibirás instrucciones para recuperar la contraseña.');};
-  if(estado==='administrador')return <MarcoJAIVISANext rol="Administración" nombre={perfil?.nombre} salir={salir}><PortalAdministrador/></MarcoJAIVISANext>;
-  if(estado==='cliente'&&perfil)return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre}><ClientesMayoristas perfil={perfil} salir={salir}/></MarcoJAIVISANext>;
+  if(estado==='administrador')return <MarcoJAIVISANext rol="Administración" nombre={perfil?.nombre ?? 'Usuario'} salir={salir}><PortalAdministrador/></MarcoJAIVISANext>;
+  if(estado==='cliente'&&perfil)return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre ?? 'Usuario'}><ClientesMayoristas perfil={perfil} salir={salir}/></MarcoJAIVISANext>;
   if(estado==='equipo'&&perfil?.rol==='vendedor')return <PanelVendedor perfil={perfil} salir={salir}/>;
   if(estado==='equipo'&&perfil?.rol==='bodega')return <PanelBodega perfil={perfil} salir={salir}/>;
   return <div className="jaivisa-login-fondo" style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'radial-gradient(ellipse at 12% 18%,#52258c 0%,transparent 45%),radial-gradient(ellipse at 92% 85%,#203f99 0%,transparent 40%),linear-gradient(135deg,#1b0d29,#4c1d69)',padding:24,fontFamily:'Inter,system-ui,sans-serif',position:'relative',overflow:'hidden'}}><style>{`
@@ -1601,4 +1601,3 @@ const JaivisaApp = App;
 export { JaivisaErrorBoundary, JaivisaApp };
 
 export default function AppProtegida() { return <JaivisaErrorBoundary><style>{JAIVISA_SHARED_CSS}</style><JaivisaApp /></JaivisaErrorBoundary>; }
-  
