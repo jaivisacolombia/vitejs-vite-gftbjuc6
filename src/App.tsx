@@ -86,12 +86,95 @@ async function listarCatalogosJAIVISA(): Promise<CatalogoPDF[]> {
   }));
   return items.filter((c):c is CatalogoPDF=>Boolean(c));
 }
+function nombreCatalogoLimpio(nombre:string){return nombre.replace(/\.pdf$/i,'').replace(/(?:[ _-]+pdf)$/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();}
+
+// Miniaturas reales de la primera página del PDF (PDF.js).
+// No guarda ni modifica los archivos de Supabase.
+let jaivisaPdfJsCarga: Promise<any> | null = null;
+function cargarPdfJsJAIVISA(): Promise<any> {
+  if (jaivisaPdfJsCarga) return jaivisaPdfJsCarga;
+  jaivisaPdfJsCarga = new Promise((resolve,reject)=>{
+    const existente=(window as any).pdfjsLib;
+    if(existente){resolve(existente);return;}
+    const script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.async=true;
+    script.onload=()=>{
+      const pdfjs=(window as any).pdfjsLib;
+      if(!pdfjs){reject(new Error('No se pudo iniciar el lector PDF'));return;}
+      pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve(pdfjs);
+    };
+    script.onerror=()=>reject(new Error('No se pudo descargar el lector PDF'));
+    document.head.appendChild(script);
+  }).catch(err=>{jaivisaPdfJsCarga=null;throw err;});
+  return jaivisaPdfJsCarga;
+}
+function MiniaturaCatalogoJAIVISA({url,nombre}:{url:string;nombre:string}){
+  const canvasRef=React.useRef<HTMLCanvasElement|null>(null);
+  const contenedorRef=React.useRef<HTMLDivElement|null>(null);
+  const [estado,setEstado]=useState<'esperando'|'cargando'|'lista'|'error'>('esperando');
+  useEffect(()=>{
+    let cancelado=false;
+    let tarea:any=null;
+    let documento:any=null;
+    let render:any=null;
+    const contenedor=contenedorRef.current;
+    if(!contenedor)return;
+    const mostrar=async()=>{
+      setEstado('cargando');
+      try{
+        const pdfjs=await cargarPdfJsJAIVISA();
+        if(cancelado)return;
+        tarea=pdfjs.getDocument({url,withCredentials:false});
+        documento=await tarea.promise;
+        if(cancelado)return;
+        const pagina=await documento.getPage(1);
+        if(cancelado)return;
+        const canvas=canvasRef.current;
+        if(!canvas)return;
+        const base=pagina.getViewport({scale:1});
+        const ancho=Math.min(440,Math.max(200,contenedor.clientWidth*2));
+        const viewport=pagina.getViewport({scale:ancho/base.width});
+        canvas.width=Math.ceil(viewport.width);
+        canvas.height=Math.ceil(viewport.height);
+        const ctx=canvas.getContext('2d');
+        if(!ctx)throw new Error('Canvas no disponible');
+        render=pagina.render({canvasContext:ctx,viewport});
+        await render.promise;
+        if(!cancelado)setEstado('lista');
+      }catch(err){
+        if(!cancelado)setEstado('error');
+      }finally{
+        if(documento){try{await documento.destroy()}catch{}}
+      }
+    };
+    const observador=new IntersectionObserver(entradas=>{
+      if(entradas.some(e=>e.isIntersecting)){observador.disconnect();void mostrar();}
+    },{rootMargin:'180px'});
+    observador.observe(contenedor);
+    return ()=>{
+      cancelado=true;
+      observador.disconnect();
+      if(render){try{render.cancel()}catch{}}
+      if(tarea){try{tarea.destroy()}catch{}}
+    };
+  },[url]);
+  return <div ref={contenedorRef} className="jv-catalog-cover jv-catalog-thumb" aria-label={'Portada de '+nombre}>
+    <canvas ref={canvasRef} style={{display:estado==='lista'?'block':'none'}} aria-hidden="true"/>
+    {estado!=='lista'&&<div className="jv-catalog-thumb-fallback">
+      <span aria-hidden="true" style={{fontSize:35}}>▤</span>
+      <small>{estado==='error'?'Vista previa no disponible':estado==='cargando'?'Generando miniatura…':'PDF'}</small>
+    </div>}
+  </div>;
+}
+
 function GaleriaCatalogos({catalogos,eliminar}:{catalogos:CatalogoPDF[];eliminar?:(ruta:string)=>void}) {
   if(!catalogos.length)return <p style={{padding:'22px 0',color:'#746080'}}>Todavía no hay catálogos publicados.</p>;
   return <div className="jv-catalog-grid">{catalogos.map(c=><article key={c.ruta} className="jv-catalog-card">
-    <div className="jv-catalog-cover"><iframe title={'Primera página de '+c.nombre} src={c.url+'#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH'} loading="lazy" tabIndex={-1} /></div>
-    <div style={{padding:16,display:'grid',gap:9}}><strong style={{overflowWrap:'anywhere',color:'#38134f'}}>{c.nombre}</strong><small style={{color:'#796b82'}}>{c.tamano} · PDF</small>
-      <a href={c.url} target="_blank" rel="noreferrer" className="jv-catalog-open">📖 Abrir catálogo</a>
+    <MiniaturaCatalogoJAIVISA url={c.url} nombre={c.nombre}/>
+    <div style={{padding:16,display:'grid',gap:9}}><strong style={{overflowWrap:'anywhere',color:'#38134f'}}>{nombreCatalogoLimpio(c.nombre)}</strong>
+      <a href={c.url} target="_blank" rel="noreferrer" className="jv-catalog-open">Abrir catálogo ↗</a>
       {eliminar&&<button type="button" className="jv-catalog-delete" onClick={()=>eliminar(c.ruta)}>Eliminar catálogo</button>}
     </div></article>)}</div>;
 }
@@ -407,7 +490,12 @@ function PortalAdministrador() {
   const beep = () => { try { const ctx = new AudioContext(); [0, .25].forEach((t, i) => { const oscillator = ctx.createOscillator(); const gain = ctx.createGain(); oscillator.frequency.value = i ? 950 : 720; gain.gain.setValueAtTime(.0001, ctx.currentTime + t); gain.gain.exponentialRampToValueAtTime(.15, ctx.currentTime + t + .02); gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + t + .18); oscillator.connect(gain); gain.connect(ctx.destination); oscillator.start(ctx.currentTime + t); oscillator.stop(ctx.currentTime + t + .2); }); setTimeout(() => ctx.close(), 900); } catch { alert('El navegador no permitió reproducir audio.'); } };
   const printLabel = () => { if (!chosenOrder) return alert('Primero crea un pedido.'); const w = window.open('', '_blank', 'width=650,height=700'); if (!w) return alert('Permite ventanas emergentes para imprimir.'); const safe = (v: string) => v.replace(/[&<>"']/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x] || x)); const boxes = Array.from({ length: labelCount }, (_, i) => `<div class="label"><h2>JAIVISA · BODEGA</h2><h3>${safe(chosenOrder.id)}</h3><p><b>CLIENTE:</b> ${safe(chosenOrder.customer)}</p><p><b>TEL:</b> ${safe(chosenOrder.phone)}</p><p><b>CIUDAD:</b> ${safe(chosenOrder.city)}</p><p><b>DIRECCIÓN:</b> ${safe(chosenOrder.address)}</p><p><b>CAJA:</b> ${i + 1} / ${labelCount}</p><div class="code">${safe(chosenOrder.id)}-C${String(i + 1).padStart(2, '0')}</div><small>Código interno de caja · No escaneable todavía</small></div>`).join(''); w.document.write(`<!doctype html><html><head><title>Etiquetas JAIVISA</title><style>body{font:12px Arial;margin:8mm}.label{border:1px dashed #555;padding:8px;margin:0 0 12px;break-inside:avoid;max-width:75mm}h2{color:#542078;margin:0 0 6px}h3{margin:0 0 8px}p{margin:4px 0}.code{font-weight:bold;text-align:center;font-size:17px;letter-spacing:1px;border-top:1px solid;padding:9px 0}small{font-size:9px}@media print{.label{page-break-inside:avoid}}</style></head><body>${boxes}</body></html>`); w.document.close(); w.focus(); setTimeout(() => w.print(), 350); };
   const menu = ['Inicio', 'Catálogo', 'Productos', 'Empleados', 'Clientes', 'Accesos', 'Permisos', 'Carrito', 'Pedidos', 'Bodega', 'Etiquetas', 'Catálogos PDF', 'Personalización', 'WhatsApp y pedidos'];
-  return <><style>{`
+  return <><style>{`.jv-catalog-thumb{display:flex!important;align-items:center;justify-content:center;position:relative;background:linear-gradient(145deg,#f6f0fa,#e8dcf1);overflow:hidden}
+.jv-catalog-thumb canvas{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;box-shadow:0 3px 14px #32124322}
+.jv-catalog-thumb-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#73458b;text-align:center;padding:8px}
+.jv-catalog-thumb-fallback small{font-size:11px}
+@media(max-width:720px){.jv-catalog-thumb{height:160px!important;min-height:160px!important}.jv-catalog-thumb::after{content:none!important}.jv-catalog-thumb canvas{max-height:160px}}
+
     *{box-sizing:border-box}body{margin:0;background:#f7f4fb;color:#281b36;font-family:Inter,system-ui,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}.layout{display:flex;min-height:100vh}.sidebar{width:245px;background:#4e1978;color:white;padding:24px 14px;flex-shrink:0}.logo{font-size:29px;font-weight:900;padding:5px 12px 25px}.logo span{color:#cda3f1}.logo small{display:block;font-size:12px;font-weight:400;color:#ddc5ee}.nav{display:grid;gap:5px}.nav button{display:block;text-align:left;width:100%;background:none;border:0;color:#ebdbf5;border-radius:10px;padding:12px 14px}.nav button.on,.nav button:hover{background:#7836a5;color:white}.sidebottom{font-size:13px;margin:35px 12px;color:#ddc7ee}.main{width:100%;min-width:0;padding:28px;max-width:1400px;margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:25px}.top h1{margin:3px 0;font-size:29px}.hint{font-size:12px;color:#8d76a0;letter-spacing:1px;font-weight:700}.pill{background:white;border:1px solid #e6d9ee;border-radius:24px;padding:9px 14px;font-size:12px}.hero{background:linear-gradient(115deg,#552085,#8b44b6);border-radius:18px;color:white;padding:30px;display:flex;justify-content:space-between;align-items:center}.hero h2{font-size:28px;margin:0}.hero p{color:#f0dff9}.isa{font-size:66px;text-align:center}.isa small{display:block;font-size:12px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}.card,.panel{background:white;border:1px solid #eae1f0;border-radius:15px;padding:22px;margin-bottom:18px}.card b{display:block;font-size:30px;color:#61258b}.card small{color:#7c6a89}.panel h3{margin:0 0 16px}.muted{color:#756981;font-size:13px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end}.field{display:grid;gap:6px;font-size:12px;font-weight:700;color:#594666}.field input,.field select,.wideSelect{width:100%;padding:11px;border:1px solid #ded1e9;border-radius:9px;background:white;color:#281b36}.primary{border:0;border-radius:9px;padding:12px 16px;background:#62258f;color:white;font-weight:700}.secondary{border:1px solid #ddcce9;background:#f7f0fb;color:#572084;border-radius:9px;padding:9px 12px}.danger{color:#b52e50!important}.table{overflow:auto}.table table{width:100%;border-collapse:collapse;min-width:650px;text-align:left}.table th,.table td{border-bottom:1px solid #eee7f3;padding:12px 9px;font-size:13px}.table th{color:#7e6d8b;background:#faf8fc}.table input{max-width:115px;padding:7px;border:1px solid #ddd;border-radius:7px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee7f3}.row small{display:block;color:#897990;margin-top:4px}.actions{display:flex;gap:6px;flex-wrap:wrap}.check{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eee7f3}.check input{width:20px;height:20px;accent-color:#64258e}.catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:13px}.item{border:1px solid #eee2f3;border-radius:12px;padding:15px;display:grid;gap:9px}.item .photo{background:#f5eff9;text-align:center;padding:18px;border-radius:10px;font-size:32px}.item small{color:#897a94}.total{display:grid;gap:8px;margin:20px 0 20px auto;max-width:330px}.total div{display:flex;justify-content:space-between}.total .big{font-size:22px;font-weight:800;border-top:1px solid #ddd;padding-top:12px;color:#5a2188}.notice{background:#f6edfc;border-radius:10px;padding:14px;font-size:13px;color:#684581;margin-top:16px}.badge{display:inline-block;background:#f1e7fa;border-radius:30px;padding:5px 10px;font-size:11px;color:#5c2187}.footer{font-size:12px;color:#9a8ba3;text-align:center;margin:28px}.labelPreview{border:1px dashed #b4a6bf;border-radius:10px;padding:20px;background:white;max-width:380px}.labelPreview h3{color:#572085}.labelPreview p{margin:7px 0;font-size:13px}.catalogHeading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}.catalogHeading h2{font-size:30px;letter-spacing:-.6px;margin:6px 0}.catalogSearch{width:100%;padding:16px;border-radius:12px;border:1px solid #e5dbea;background:#fbf9fc;font:inherit;margin-bottom:20px}.categoryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.categoryCard{border:1px solid #e8e0ed;background:white;border-radius:18px;padding:0;overflow:hidden;text-align:left;box-shadow:0 8px 20px #3c20510a;transition:transform .18s,box-shadow .18s}.categoryCard:hover{transform:translateY(-4px);box-shadow:0 12px 30px #3c205122}.categoryArt{height:155px;display:flex;align-items:center;justify-content:center;position:relative}.categoryArt>span{font-size:67px;filter:drop-shadow(0 8px 10px #42224c22)}.categoryArt small{position:absolute;bottom:12px;left:15px;color:#6c5d75;font-size:9px;font-weight:800;letter-spacing:1.2px}.categoryInfo{display:grid;gap:6px;padding:17px}.categoryInfo strong{font-size:18px;color:#2c1b39}.categoryInfo span{font-size:12px;color:#84778d}.categoryInfo small{font-size:12px;color:#6d278f;font-weight:700;margin-top:8px}.catalogProducts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}.catalogProduct{border:1px solid #eae1ee;border-radius:14px;overflow:hidden;background:white}.catalogPhoto{height:150px;background:#f6f1f8;display:grid;place-items:center}.catalogPhoto span{font-size:60px}.catalogPhoto img{height:100%;width:100%;object-fit:contain}.catalogDetails{display:grid;gap:8px;padding:16px}.catalogDetails small{font-size:11px;color:#85748e}.catalogDetails strong{min-height:36px}.catalogDetails b{color:#5d2185;font-size:20px}.backCat{display:block;border:0;background:none;color:#64258e;padding:0 0 20px;font-weight:700}.cartDock{position:sticky;bottom:12px;background:#4d1976;color:white;border-radius:15px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 10px 25px #2a104744;gap:12px}.cartDock div{display:grid;gap:4px}.cartDock span{font-size:13px;color:#e9d9f3}.cartDock button{background:white;border:0;color:#522078;padding:12px 17px;border-radius:9px;font-weight:800}@media(max-width:950px){.categoryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:530px){.categoryGrid{grid-template-columns:1fr 1fr;gap:9px}.categoryArt{height:105px}.categoryArt>span{font-size:44px}.categoryInfo{padding:11px}.categoryInfo strong{font-size:14px}.categoryInfo span{font-size:11px}.catalogHeading{align-items:flex-start;flex-direction:column}.catalogHeading h2{font-size:24px}}
 @media(max-width:800px){.layout{display:block}.sidebar{width:100%;padding:12px}.logo{padding:5px 10px 12px}.nav{display:flex;overflow:auto}.nav button{width:auto;white-space:nowrap}.sidebottom{display:none}.main{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:22px}.isa{font-size:40px}}@media(max-width:530px){.grid{grid-template-columns:1fr}.cards{gap:7px}.card{padding:12px}.card b{font-size:22px}.hero h2{font-size:21px}.isa{display:none}.top h1{font-size:24px}.pill{font-size:10px}.row{align-items:flex-start;flex-direction:column}}
 
@@ -840,6 +928,20 @@ const boton: React.CSSProperties = {padding:'13px 16px',border:0,borderRadius:11
 const enlace: React.CSSProperties = {background:'none',border:0,color:'#652985',fontWeight:700,cursor:'pointer',padding:6};
 const etiqueta: React.CSSProperties = {display:'grid',gap:5,color:'#442450',fontWeight:600,fontSize:13};
 
+// Presentación del nombre: conserva el valor original en Supabase.
+function nombreClienteElegante(nombre?:string|null):string {
+  const valor=(nombre||'Cliente').trim();
+  if(!valor)return 'Cliente';
+  return valor.toLocaleLowerCase('es-CO').replace(/(^|[\s'-])([\p{L}])/gu,(_todo,separador,letra)=>separador+letra.toLocaleUpperCase('es-CO'));
+}
+// Iconos SVG exclusivos para la navegación del cliente (sin emojis).
+function IconoClienteNext({tipo}:{tipo:'catalogos'|'productos'|'inicio'|'cuenta'}) {
+ const comun={width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true as const};
+ if(tipo==='catalogos')return <svg {...comun}><rect x="3" y="4" width="14" height="16" rx="2"/><path d="M7 8h6M7 12h6M7 16h4M17 7h4v13a2 2 0 0 1-2 2H7"/></svg>;
+ if(tipo==='productos')return <svg {...comun}><path d="m3 7 9-4 9 4-9 4-9-4ZM3 7v10l9 4 9-4V7M12 11v10"/></svg>;
+ if(tipo==='inicio')return <svg {...comun}><path d="m3 11 9-8 9 8v9H3v-9ZM9 20v-6h6v6"/></svg>;
+ return <svg {...comun}><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>;
+}
 function ClientesMayoristas({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<void>}) {
   const [productos,setProductos]=useState<Product[]>([]);
   const [catalogos,setCatalogos]=useState<CatalogoPDF[]>([]);
@@ -913,29 +1015,55 @@ function ClientesMayoristas({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promis
  .jv-catalog-open{font-size:10px;min-height:33px}
  .jv-client-shell main section>h2{font-size:19px!important}
 }
-/* Corrección reforzada para teléfonos: tres tarjetas por fila, sin ancho mínimo heredado */
+/* JAIVISA NEXT: catálogo móvil legible y táctil, sin desplazamiento horizontal */
 @media screen and (max-width:767px){
- .jv-client-shell .jv-catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;width:100%!important;max-width:100%!important;align-items:stretch!important}
+ .jv-client-shell .jv-catalog-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;width:100%!important;max-width:100%!important;align-items:stretch!important}
  .jv-client-shell .jv-catalog-card{width:auto!important;min-width:0!important;max-width:100%!important;overflow:hidden!important}
  .jv-client-shell .jv-catalog-card>div:last-child{min-width:0!important;padding:6px!important}
- .jv-client-shell .jv-catalog-card strong{font-size:10px!important;overflow-wrap:anywhere!important;word-break:break-word!important}
- .jv-client-shell .jv-catalog-open{min-width:0!important;width:100%!important;font-size:10px!important;padding:7px 2px!important;white-space:normal!important}
- .jv-client-shell .jv-catalog-cover{height:75px!important;min-height:75px!important}
+ .jv-client-shell .jv-catalog-card strong{font-size:14px!important;overflow-wrap:anywhere!important;word-break:normal!important}
+ .jv-client-shell .jv-catalog-open{min-width:0!important;width:100%!important;font-size:13px!important;padding:12px 10px!important;min-height:44px!important;white-space:normal!important}
+ .jv-client-shell .jv-catalog-cover{height:170px!important;min-height:170px!important}
 }
 @media(max-width:350px){.jv-catalog-grid{gap:5px}.jv-catalog-cover{height:85px;min-height:85px}.jv-catalog-card>div:last-child{padding:5px!important}.jv-catalog-open{font-size:9px}.jv-client-header>button{padding:9px!important}}
+
+/* JAIVISA NEXT · Tipografía geométrica y navegación accesible del cliente. */
+.jv-client-shell{font-family:"Avenir Next","Montserrat","Century Gothic",system-ui,-apple-system,"Segoe UI",sans-serif!important;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.jv-client-shell .jv-client-greeting{font-family:inherit!important;font-size:clamp(27px,3.2vw,43px)!important;font-weight:800!important;line-height:1.16!important;letter-spacing:-.045em!important;text-wrap:balance;text-align:center;margin:0 0 14px!important;color:#261238}
+.jv-client-shell .jv-client-greeting>span:first-child{background:linear-gradient(105deg,#521777,#8d2cbd 75%,#a759d0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:850!important}
+.jv-client-shell .jv-greeting-dot{color:#a43bcf}
+.jv-client-shell .jv-client-tab{font-family:inherit!important;font-weight:750!important;letter-spacing:-.018em!important;display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:15px;padding:12px 20px;min-height:48px;box-shadow:0 6px 20px rgba(51,19,79,.06);transition:transform .18s ease,box-shadow .18s ease}
+.jv-client-shell .jv-client-tab svg{width:21px;height:21px;flex:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.jv-client-shell .jv-client-tab.active{background:linear-gradient(115deg,#8424b9,#4d1b73);box-shadow:0 10px 24px rgba(97,29,148,.2)}
+@media(hover:hover){.jv-client-shell .jv-client-tab:hover{transform:translateY(-2px)}}
+.jv-client-shell :is(button,a,input):focus-visible{outline:3px solid #ad69e2!important;outline-offset:3px}
+.jv-client-shell .jv-mobile-bottom button span{display:flex;align-items:center;justify-content:center}
+.jv-client-shell .jv-mobile-bottom button svg{width:23px;height:23px}
+.jv-client-shell .jv-mobile-search{font-size:16px!important;min-height:48px}
+@media(max-width:720px){.jv-client-shell .jv-client-greeting{font-size:clamp(25px,6vw,34px)!important;letter-spacing:-.035em!important}.jv-client-shell .jv-mobile-welcome{background:linear-gradient(120deg,#251139,#7133a0);box-shadow:0 12px 30px #4214652a}.jv-client-shell .jv-mobile-welcome strong{font-size:18px;letter-spacing:-.025em}}
+@media(prefers-reduced-motion:reduce){.jv-client-shell .jv-client-tab{transition:none}}
+/* JAIVISA NEXT · Tipografía angular: trazos rectos y menos redondeados. */
+.jv-client-shell{font-family:Inter,system-ui,"Segoe UI",sans-serif!important;letter-spacing:.005em}
+.jv-client-shell .jv-client-greeting{font-family:Inter,system-ui,"Segoe UI",sans-serif!important;font-weight:700!important;letter-spacing:-.025em!important}
+.jv-client-shell .jv-client-greeting>span:first-child{font-weight:700!important}
+.jv-client-shell :is(h1,h2,h3,h4,strong,.jv-client-tab){font-family:Inter,system-ui,"Segoe UI",sans-serif!important}
+.jv-client-shell .jv-client-tab{font-weight:700!important;letter-spacing:.015em!important;border-radius:9px!important}
+.jv-client-shell .jv-client-tab svg{stroke-linecap:square;stroke-linejoin:miter}
+.jv-client-shell :is(input,select,textarea){border-radius:9px!important}
+.jv-client-shell .jv-catalog-card{border-radius:12px!important}
+.jv-client-shell .jv-catalog-open{border-radius:8px!important}
 `}</style><div className="jv-client-shell" style={{minHeight:'100vh',fontFamily:'Inter,system-ui,sans-serif',color:'#31183f'}}>
     <header className="jv-client-header"><div><img src={JAIVISA_LOGO} alt="Jaivisa.com · Logo oficial" style={{width:190,maxWidth:"55vw",height:72,objectFit:"contain",objectPosition:"left center",display:"block"}}/><div style={{fontSize:12,opacity:.85,letterSpacing:1}}>PORTAL MAYORISTA · CLIENTES</div></div><button style={{...boton,background:'#fff',color:'#4c1d69'}} onClick={salir}>Cerrar sesión</button></header>
     <main style={{maxWidth:1200,margin:'auto',padding:'32px 22px 65px'}}>
-      <h1 style={{fontSize:30,marginBottom:8}}>¡Bienvenido{perfil.nombre?', '+perfil.nombre:''}!</h1>
+      <h1 className="jv-client-greeting">Bienvenido, <span>{nombreClienteElegante(perfil.nombre)}</span><span className="jv-greeting-dot">.</span></h1>
       <p style={{color:'#746080',marginBottom:20}}>Descubre primero nuestros catálogos mayoristas y encuentra los productos para tu negocio.</p>
       <nav style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:24}} aria-label="Secciones del portal">
-        <button type="button" className={'jv-client-tab '+(seccion==='catalogos'?'active':'')} onClick={()=>setSeccion('catalogos')}>📚 Catálogos</button>
-        <button type="button" className={'jv-client-tab '+(seccion==='productos'?'active':'')} onClick={()=>setSeccion('productos')}>🛍️ Productos</button>
+        <button type="button" className={'jv-client-tab '+(seccion==='catalogos'?'active':'')} onClick={()=>setSeccion('catalogos')}><IconoClienteNext tipo="catalogos"/> Catálogos</button>
+        <button type="button" className={'jv-client-tab '+(seccion==='productos'?'active':'')} onClick={()=>setSeccion('productos')}><IconoClienteNext tipo="productos"/> Productos</button>
       </nav>
-      <div className="jv-mobile-welcome"><strong>¡Hola{perfil.nombre?', '+perfil.nombre.split(' ')[0]:''}! 👋</strong><small>Tu portal mayorista, siempre a mano.</small></div>
-      {seccion==='inicio'&&<section><h2>¿Qué quieres consultar?</h2><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:12,marginTop:16}}><button className="jv-client-tab" onClick={()=>setSeccion('catalogos')} style={{minHeight:110}}>📚<br/>Ver catálogos</button><button className="jv-client-tab" onClick={()=>setSeccion('productos')} style={{minHeight:110}}>🛍️<br/>Ver productos</button></div></section>}
+      <div className="jv-mobile-welcome"><strong>¡Hola{perfil.nombre?', '+nombreClienteElegante(perfil.nombre).split(' ')[0]:''}!</strong><small>Tu portal mayorista, siempre a mano.</small></div>
+      {seccion==='inicio'&&<section><h2>¿Qué quieres consultar?</h2><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:12,marginTop:16}}><button className="jv-client-tab" onClick={()=>setSeccion('catalogos')} style={{minHeight:110}}><IconoClienteNext tipo="catalogos"/> Ver catálogos</button><button className="jv-client-tab" onClick={()=>setSeccion('productos')} style={{minHeight:110}}><IconoClienteNext tipo="productos"/> Ver productos</button></div></section>}
       {seccion==='catalogos'&&<section><h2 style={{marginBottom:16}}>Nuestros catálogos</h2>
-        <input className="jv-mobile-search" aria-label="Buscar catálogos" placeholder="🔎 Buscar catálogo..." value={buscarCatalogo} onChange={e=>setBuscarCatalogo(e.target.value)}/>
+        <input className="jv-mobile-search" aria-label="Buscar catálogos" placeholder="Buscar catálogo por nombre..." value={buscarCatalogo} onChange={e=>setBuscarCatalogo(e.target.value)}/>
         {cargando?<p>Cargando catálogos…</p>:<>{errorCatalogos&&<p role="alert" style={{color:'#9c2855'}}>{errorCatalogos}</p>}<GaleriaCatalogos catalogos={catalogosVisibles}/>{!errorCatalogos&&catalogos.length>0&&catalogosVisibles.length===0&&<p>No encontramos catálogos con ese nombre.</p>}</>}
       </section>}
       {seccion==='productos'&&<section><h2>Productos disponibles</h2>{error&&<p role="alert" style={{color:'#a3294b'}}>{error}</p>}
@@ -944,7 +1072,7 @@ function ClientesMayoristas({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promis
       </section>}
       {seccion==='cuenta'&&<section style={{background:'#fff',border:'1px solid #e9d9f2',borderRadius:18,padding:20}}><h2>Mi cuenta</h2><p><strong>Nombre:</strong> {perfil.nombre||'Cliente JAIVISA'}</p><p style={{fontSize:13,color:'#746080'}}>Para modificar tus datos de acceso, comunícate con JAIVISA.</p><button type="button" className="jv-client-tab" onClick={()=>void salir()}>Cerrar sesión</button></section>}
     </main><nav className="jv-mobile-bottom" aria-label="Navegación móvil">
-      {([['inicio','⌂','Inicio'],['catalogos','▤','Catálogos'],['productos','▣','Productos'],['cuenta','♙','Mi cuenta']] as const).map(([id,icono,texto])=><button key={id} type="button" aria-current={seccion===id?'page':undefined} onClick={()=>{setSeccion(id);window.scrollTo({top:0,behavior:'smooth'});}}><span aria-hidden="true">{icono}</span>{texto}</button>)}
+      {([['inicio','Inicio'],['catalogos','Catálogos'],['productos','Productos'],['cuenta','Mi cuenta']] as const).map(([id,texto])=><button key={id} type="button" aria-current={seccion===id?'page':undefined} onClick={()=>{setSeccion(id);window.scrollTo({top:0,behavior:'smooth'});}}><span aria-hidden="true"><IconoClienteNext tipo={id}/></span>{texto}</button>)}
     </nav></div></>;
 }
 
@@ -956,6 +1084,418 @@ export function AprobacionesClientes() {
   useEffect(()=>{void actualizar()},[]);
   const aprobar=async(id:string)=>{const {error}=await supabase.from('perfiles').update({aprobado:true}).eq('id',id).eq('rol','cliente');if(error){setMensaje('No se pudo aprobar el cliente: '+error.message);return;}setMensaje('Cliente aprobado.');void actualizar();};
   return <section style={{margin:'16px 0',padding:18,border:'1px solid #e7d8f0',background:'#fff',borderRadius:16,fontFamily:'Inter,system-ui,sans-serif',color:'#3b1a4d'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><strong>Solicitudes de clientes mayoristas</strong><div style={{fontSize:13,color:'#806a8d'}}>Aprueba las cuentas registradas desde JAIVISA.</div></div><button style={boton} onClick={()=>void actualizar()} disabled={cargando}>{cargando?'Consultando…':'Actualizar solicitudes'}</button></div>{mensaje&&<p role="status">{mensaje}</p>}{pendientes.length===0&&<p style={{fontSize:13,color:'#75667f'}}>No hay solicitudes pendientes.</p>}{pendientes.map(p=><div key={p.id} style={{borderTop:'1px solid #eee5f3',padding:'14px 0',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}><div><strong>{p.nombre||'Cliente'}</strong><div style={{fontSize:13}}>{p.correo||'Sin correo'} · {p.documento||'Sin documento'} · {p.ciudad||''}</div></div><button style={boton} onClick={()=>void aprobar(p.id)}>Aprobar cliente</button></div>)}</section>;
+}
+
+// JAIVISA · Panel vendedor v2. Catálogo real de solo lectura y pedidos en borrador.
+// Los borradores NO son ventas registradas: requieren backend y RLS para confirmarse.
+
+
+const jaivisaNextCSS = `
+/* JAIVISA NEXT · interfaz táctil del equipo y biblioteca PDF */
+.jv-vendedor,.jv-bodega{overflow-x:clip}
+.jv-vendedor .jv-catalog-grid,.jv-bodega .jv-catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important;align-items:stretch!important;margin-top:20px!important}
+.jv-vendedor .jv-catalog-card,.jv-bodega .jv-catalog-card{display:flex!important;flex-direction:column!important;min-width:0!important;border-radius:20px!important;box-shadow:0 14px 36px #3b15541a!important;overflow:hidden!important}
+.jv-vendedor .jv-catalog-cover,.jv-bodega .jv-catalog-cover{height:220px!important;min-height:220px!important;background:linear-gradient(145deg,#f5eefa,#e9ddf3)!important}
+.jv-vendedor .jv-catalog-cover iframe,.jv-bodega .jv-catalog-cover iframe{display:block!important;width:100%!important;height:100%!important;border:0!important;pointer-events:none!important}
+.jv-vendedor .jv-catalog-cover::after,.jv-bodega .jv-catalog-cover::after{display:none!important}
+.jv-vendedor .jv-catalog-card>div:last-child,.jv-bodega .jv-catalog-card>div:last-child{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important;padding:17px!important;flex:1!important}
+.jv-vendedor .jv-catalog-card strong,.jv-bodega .jv-catalog-card strong{font-size:15px!important;line-height:1.35!important;min-height:40px!important}
+.jv-vendedor .jv-catalog-open,.jv-bodega .jv-catalog-open{margin-top:auto!important;min-height:48px!important;text-decoration:none!important;border-radius:12px!important;font-size:14px!important}
+.jv-vendedor .jv-mobile-nav{display:none}
+.jv-vendedor input,.jv-vendedor textarea,.jv-bodega input{font-size:16px!important;max-width:100%;box-sizing:border-box}
+.jv-vendedor .jv-product button{min-height:44px;min-width:44px}
+@media(max-width:1000px){.jv-vendedor .jv-catalog-grid,.jv-bodega .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:680px){
+ .jv-vendedor,.jv-bodega{padding:12px 12px 95px!important}
+ .jv-vendedor .jv-catalog-grid,.jv-bodega .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
+ .jv-vendedor .jv-catalog-cover,.jv-bodega .jv-catalog-cover{height:220px!important;min-height:220px!important}
+ .jv-vendedor .jv-mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;z-index:100;padding:8px 6px max(9px,env(safe-area-inset-bottom));background:#ffffffed;backdrop-filter:blur(18px);border-top:1px solid #e7d9ef;box-shadow:0 -8px 28px #2f0c3d19;gap:3px}
+ .jv-vendedor .jv-mobile-nav button{background:transparent;border:0;border-radius:12px;color:#665474;min-height:53px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;font-size:10px;font-weight:750;padding:5px 1px}
+ .jv-vendedor .jv-mobile-nav button[aria-current=page]{background:#f1e4fa;color:#68268d}
+ .jv-vendedor .jv-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+ .jv-vendedor .jv-card{padding:14px!important;min-height:150px!important}
+ .jv-vendedor .jv-card strong{font-size:15px!important}
+ .jv-vendedor header,.jv-bodega header{padding:12px!important}
+ .jv-vendedor header img,.jv-bodega header img{max-width:80px!important}
+ .jv-vendedor .jv-row>button{min-height:44px}
+}
+@media(max-width:370px){.jv-vendedor .jv-grid{grid-template-columns:minmax(0,1fr)!important}}
+@media(prefers-reduced-motion:reduce){.jv-vendedor *,.jv-bodega *{transition:none!important;animation:none!important}}
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+.jv-vendedor,.jv-bodega{font-family:'DM Sans',Inter,system-ui,sans-serif!important;background:radial-gradient(ellipse at 83% -12%,#d4c0f2 0,transparent 40%),linear-gradient(135deg,#f4f0fa,#faf9fd 54%,#f1edfa)!important;color:#26133d!important;min-height:100vh}
+.jv-vendedor>div,.jv-bodega>div{max-width:1260px!important}
+.jv-vendedor header,.jv-bodega header{background:linear-gradient(120deg,#170c2b 0%,#341451 57%,#682d9b 100%)!important;border:1px solid #a57ad455!important;border-radius:23px!important;box-shadow:0 18px 50px #37144d30!important;position:relative;overflow:hidden}
+.jv-vendedor header:after,.jv-bodega header:after{content:'';position:absolute;right:15%;top:-90px;width:240px;height:240px;border:1px solid #ffffff1e;border-radius:50%;pointer-events:none;box-shadow:0 0 0 55px #ffffff08,0 0 0 110px #ffffff06}
+.jv-vendedor h1,.jv-bodega h1{letter-spacing:-1.3px!important;font-weight:800!important}
+.jv-vendedor .jv-card,.jv-bodega .jv-next-card{background:linear-gradient(155deg,#fff 15%,#f9f5ff)!important;border:1px solid #e7dcf0!important;border-radius:22px!important;min-height:180px!important;box-shadow:0 12px 30px #3d1c5910!important;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s!important}
+.jv-vendedor .jv-card:hover,.jv-bodega .jv-next-card:hover{transform:translateY(-5px)!important;border-color:#b690d3!important;box-shadow:0 18px 35px #3d1c5925!important}
+.jv-vendedor .jv-card>span:first-child,.jv-bodega .jv-next-card>span:first-child{display:inline-flex!important;align-items:center;justify-content:center;width:53px;height:53px;background:linear-gradient(135deg,#efe2ff,#e4d6f8);border-radius:16px;color:#693097;font-size:0!important;margin-bottom:14px!important}
+.jv-vendedor .jv-card strong,.jv-bodega .jv-next-card h3{font-size:17px!important;letter-spacing:-.35px;color:#251337!important}
+.jv-vendedor .jv-card>span:last-child{color:#7030a0!important}
+.jv-vendedor .jv-grid>div{border-radius:22px!important;border:1px solid #e7dcf0!important;box-shadow:0 10px 30px #3d1c5910!important}
+.jv-vendedor .jv-grid>div>div:first-child{color:#7932aa}
+.jv-vendedor button,.jv-bodega button{transition:filter .2s,transform .2s}
+.jv-vendedor button:hover,.jv-bodega button:hover{filter:brightness(1.06)}
+.jv-vendedor button:focus-visible,.jv-bodega button:focus-visible{outline:3px solid #b27bdd;outline-offset:3px}
+.jv-vendedor input,.jv-vendedor textarea,.jv-bodega input{font-family:inherit!important}
+@media(max-width:650px){.jv-vendedor header,.jv-bodega header{border-radius:17px!important}.jv-vendedor .jv-card,.jv-bodega .jv-next-card{min-height:150px!important}.jv-vendedor h1,.jv-bodega h1{font-size:27px!important}}
+`;
+
+const jaivisaNextPremiumCSS = "\n/* JAIVISA NEXT / Visual system 2026 — vendedor mobile-first */\n.jv-vendedor{background:radial-gradient(ellipse 85% 46% at 83% -15%,#d6c0ed 0%,transparent 80%),#f7f4fa!important}\n.jv-vendedor .jv-next-welcome{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;overflow:hidden;min-height:190px;margin:19px 0 15px;padding:30px clamp(22px,4vw,42px);border-radius:26px;background:linear-gradient(113deg,#1a0e2c 0%,#32134e 54%,#682c99 100%);border:1px solid #ac83d440;box-shadow:0 18px 48px #35134a24;color:#fff}\n.jv-vendedor .jv-next-welcome:before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 82% 55%,#b777e03a,transparent 38%),linear-gradient(110deg,transparent 70%,#ffffff09 70.2%,transparent 70.5%)}\n.jv-vendedor .jv-next-welcome-copy{position:relative;z-index:2;min-width:0}\n.jv-vendedor .jv-next-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;letter-spacing:2.2px;font-weight:800;color:#d7b6f5}\n.jv-vendedor .jv-next-eyebrow-divider{opacity:.4}.jv-vendedor .jv-next-pulse{width:8px;height:8px;border-radius:50%;background:#b4f2d1;box-shadow:0 0 0 4px #b4f2d121,0 0 15px #b4f2d17a}\n.jv-vendedor .jv-next-welcome h1{font-size:clamp(28px,4.2vw,52px)!important;line-height:1.08;margin:17px 0 12px;letter-spacing:-2px!important;color:#fff!important}\n.jv-vendedor .jv-next-welcome h1>span:first-child{color:#e2b8ff}.jv-vendedor .jv-next-period{color:#b982ed}\n.jv-vendedor .jv-next-welcome p{color:#d6c7e5;font-size:clamp(13px,1.6vw,16px);margin:0;line-height:1.55}\n.jv-vendedor .jv-next-hero-graphic{width:170px;height:170px;flex:0 0 170px;position:relative;display:grid;place-items:center;margin-right:35px}\n.jv-vendedor .jv-next-ring{position:absolute;border-radius:50%;border:1px solid #e5c3ff55;transform:rotate(-25deg)}.jv-vendedor .jv-next-ring-one{width:145px;height:145px;box-shadow:0 0 45px #ae68e52e}.jv-vendedor .jv-next-ring-two{width:185px;height:100px;border-color:#ffffff45}\n.jv-vendedor .jv-next-hero-core{display:grid;place-items:center;width:91px;height:91px;border-radius:28px;transform:rotate(-12deg);background:linear-gradient(145deg,#a35ae1,#612494);box-shadow:0 20px 60px #1d082b80,inset 0 1px #ffffff66;color:white}\n.jv-vendedor .jv-next-hero-core svg{transform:rotate(12deg)}\n.jv-vendedor .jv-next-status{display:flex;align-items:flex-start;gap:15px;margin-bottom:21px;padding:18px 21px;border-radius:19px;background:linear-gradient(110deg,#211331,#332044 75%,#3b2454);color:#fff;border:1px solid #a37bc944;box-shadow:0 12px 32px #2b14351a}\n.jv-vendedor .jv-next-status-icon{display:grid;place-items:center;flex:0 0 43px;width:43px;height:43px;border-radius:13px;background:#ffffff13;color:#e0b8ff;border:1px solid #ffffff18}\n.jv-vendedor .jv-next-status-copy{flex:1;min-width:0}.jv-vendedor .jv-next-status-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.jv-vendedor .jv-next-status-heading strong{font-size:15px;letter-spacing:-.2px}\n.jv-vendedor .jv-next-status-label{font-size:9px;font-weight:800;letter-spacing:1.2px;color:#e5c9ff;border:1px solid #b08bd05c;border-radius:100px;padding:5px 9px;background:#ffffff0a}\n.jv-vendedor .jv-next-status p{font-size:12px;line-height:1.65;color:#cbbbd9;margin:8px 0 11px}.jv-vendedor .jv-next-status p b{font-weight:700;color:#fff}\n.jv-vendedor .jv-next-status-tags{display:flex;flex-wrap:wrap;gap:8px}.jv-vendedor .jv-next-status-tags>span{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;background:#ffffff0d;border:1px solid #ffffff16;border-radius:100px;color:#e1d0ec;font-size:10px;font-weight:650}\n.jv-vendedor .jv-next-tag-dot{width:6px;height:6px;border-radius:50%;background:#a6e8c4}\n.jv-vendedor .jv-card{border-radius:20px!important}.jv-vendedor .jv-card:active{transform:scale(.985)}\n@media(max-width:760px){.jv-vendedor .jv-next-hero-graphic{margin-right:0;flex-basis:110px;width:110px;height:110px}.jv-vendedor .jv-next-ring-one{width:95px;height:95px}.jv-vendedor .jv-next-ring-two{width:125px;height:70px}.jv-vendedor .jv-next-hero-core{width:65px;height:65px;border-radius:21px}.jv-vendedor .jv-next-welcome{min-height:160px}}\n@media(max-width:520px){.jv-vendedor .jv-next-welcome{padding:23px 19px;min-height:158px;border-radius:21px;margin:14px 0}.jv-vendedor .jv-next-welcome h1{font-size:clamp(27px,7vw,37px)!important;letter-spacing:-1.2px!important;margin:13px 0 9px}.jv-vendedor .jv-next-eyebrow{font-size:9px;letter-spacing:1.3px;gap:7px}.jv-vendedor .jv-next-welcome p{max-width:260px;font-size:12px}.jv-vendedor .jv-next-hero-graphic{position:absolute;right:-34px;top:19px;opacity:.28}.jv-vendedor .jv-next-status{padding:14px;gap:11px;border-radius:17px}.jv-vendedor .jv-next-status-icon{width:35px;height:35px;flex-basis:35px}.jv-vendedor .jv-next-status-heading strong{font-size:13px}.jv-vendedor .jv-next-status-label{font-size:8px}.jv-vendedor .jv-next-status p{font-size:11px}.jv-vendedor .jv-next-status-tags>span{font-size:9px;padding:5px 8px}}\n@media(prefers-reduced-motion:reduce){.jv-vendedor .jv-next-pulse{box-shadow:none}}\n";
+
+function IconoNext({nombre,tamano=24}:{nombre:string;tamano?:number}) {
+ const rutas:Record<string,string>={
+  libros:'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z',
+  caja:'m12 2 9 5-9 5-9-5 9-5ZM3 7v10l9 5 9-5V7M12 12v10',
+  carrito:'M3 3h2l2.5 12h12l2-9H6 M10 20h.01 M18 20h.01',
+  usuarios:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+  pedidos:'M8 4h-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2 M9 2h6v4H9z M8 12h8 M8 16h6',
+  agenda:'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M8 15h3',
+  grafico:'M3 3v18h18 M7 16l4-5 4 3 5-8',
+  escudo:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+  campana:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4',
+  camion:'M3 5h12v12H3z M15 9h4l3 4v4h-7 M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4 M19 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+  etiqueta:'M2 12V4a2 2 0 0 1 2-2h8l10 10-10 10L2 12z M7 7h.01',
+  salir:'M10 17l5-5-5-5 M15 12H3 M12 3h6a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-6',
+  chispa:'m12 2 2.3 7.7L22 12l-7.7 2.3L12 22l-2.3-7.7L2 12l7.7-2.3L12 2z'
+ };
+ return <svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={rutas[nombre]||rutas.chispa}/></svg>;
+}
+function PanelVendedor({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<void>}) {
+  type Vista='inicio'|'catalogosPDF'|'catalogo'|'pedido'|'clientes'|'historial'|'agenda'|'reportes';
+  type ProductoV={id:string;codigo:string;nombre:string;categoria:string;descripcion:string;precio:number|null;iva:number|null;stock:number|null};
+  type Renglon={producto:ProductoV;cantidad:number};
+  const [vista,setVista]=useState<Vista>('catalogosPDF');
+  const [productos,setProductos]=useState<ProductoV[]>([]);
+  const [catalogosPDF,setCatalogosPDF]=useState<CatalogoPDF[]>([]);
+  const [cargandoPDF,setCargandoPDF]=useState(false);
+  const [errorPDF,setErrorPDF]=useState('');
+  const [buscarPDF,setBuscarPDF]=useState('');
+  const [cargando,setCargando]=useState(false);
+  const [error,setError]=useState('');
+  const [busqueda,setBusqueda]=useState('');
+  const [carrito,setCarrito]=useState<Renglon[]>([]);
+  const [cliente,setCliente]=useState({nombre:'',telefono:'',direccion:'',ciudad:'',observaciones:''});
+  const [notificaciones,setNotificaciones]=useState<string[]>([]);
+  const [campana,setCampana]=useState(false);
+  const [aviso,setAviso]=useState('');
+  const [sonido,setSonido]=useState(false);
+  const [numeroBorrador]=useState(()=>`BORRADOR-${Date.now().toString(36).toUpperCase()}`);
+  const opciones:{id:Vista;titulo:string;descripcion:string;icono:string}[]=[
+    {id:'catalogosPDF',titulo:'Catálogos PDF',descripcion:'Consultar los catálogos publicados por JAIVISA',icono:'libros'},
+    {id:'catalogo',titulo:'Catálogo',descripcion:'Productos autorizados en Supabase',icono:'caja'},
+    {id:'pedido',titulo:'Nuevo pedido',descripcion:'Preparar y compartir un borrador',icono:'carrito'},
+    {id:'clientes',titulo:'Mis clientes',descripcion:'Cartera comercial asignada',icono:'usuarios'},
+    {id:'historial',titulo:'Mis pedidos',descripcion:'Historial y seguimiento',icono:'pedidos'},
+    {id:'agenda',titulo:'Mi agenda',descripcion:'Visitas y recordatorios',icono:'agenda'},
+    {id:'reportes',titulo:'Mis resultados',descripcion:'Metas, ventas y comisiones',icono:'grafico'}
+  ];
+  const cargarProductos=async()=>{
+    setCargando(true);setError('');
+    try{
+      const {data,error:fallo}=await supabase.from('productos').select('*').limit(500);
+      if(fallo)throw fallo;
+      const normalizados:ProductoV[]=(data||[]).map((p:any)=>({
+        id:String(p.id),codigo:String(p.codigo??p.sku??''),nombre:String(p.nombre??p.name??'Sin nombre'),
+        categoria:String(p.categoria??p.category??''),descripcion:String(p.descripcion??''),
+        precio:typeof (p.precio??p.price)==='number'?Number(p.precio??p.price):null,
+        iva:typeof p.iva==='number'?Number(p.iva):null,
+        stock:typeof (p.stock??p.existencia)==='number'?Number(p.stock??p.existencia):null
+      }));
+      setProductos(normalizados);
+    }catch(e:any){setError('No fue posible consultar productos: '+(e?.message||'Revisa los permisos de Supabase.'));}
+    finally{setCargando(false);}
+  };
+  const cargarCatalogosPDF=async()=>{
+    setCargandoPDF(true);setErrorPDF('');
+    try{setCatalogosPDF(await listarCatalogosJAIVISA());}
+    catch(e:any){setErrorPDF('No se pudieron consultar los catálogos: '+(e?.message||'Revisa los permisos de Supabase Storage.'));}
+    finally{setCargandoPDF(false);}
+  };
+  useEffect(()=>{void cargarProductos();void cargarCatalogosPDF();},[]);
+  const encontrados=productos.filter(p=>(p.nombre+' '+p.codigo+' '+p.categoria).toLocaleLowerCase('es').includes(busqueda.toLocaleLowerCase('es')));
+  const agregar=(p:ProductoV)=>{
+    if(p.precio===null){setAviso('Este producto no tiene un precio confirmado. No puede agregarse al borrador.');return;}
+    setCarrito(actual=>{const existe=actual.find(x=>x.producto.id===p.id);return existe?actual.map(x=>x.producto.id===p.id?{...x,cantidad:x.cantidad+1}:x):[...actual,{producto:p,cantidad:1}];});
+    setAviso('Producto agregado al borrador.');
+  };
+  const subtotal=carrito.reduce((a,x)=>a+(x.producto.precio||0)*x.cantidad,0);
+  const formato=(n:number)=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n);
+  const mensajeWhatsApp=()=>[
+    'JAIVISA · BORRADOR DE PEDIDO (NO CONFIRMADO)',
+    'Referencia: '+numeroBorrador,
+    'Vendedor: '+(perfil.nombre||'Vendedor JAIVISA'),
+    'Cliente: '+cliente.nombre.trim(),
+    'Teléfono: '+cliente.telefono.trim(),
+    'Ciudad: '+cliente.ciudad.trim(),
+    'Dirección: '+cliente.direccion.trim(),
+    '',...carrito.map(x=>`• ${x.producto.nombre} (${x.producto.codigo||'S/R'}) × ${x.cantidad} = ${formato((x.producto.precio||0)*x.cantidad)}`),
+    '', 'Subtotal de referencia: '+formato(subtotal),
+    'IVA, descuentos y total definitivo: pendientes de validación.',
+    cliente.observaciones.trim()?'Observaciones: '+cliente.observaciones.trim():'',
+    'IMPORTANTE: Este mensaje no confirma una venta, reserva de inventario ni despacho.'
+  ].filter(Boolean).join('\n');
+  const compartir=()=>{
+    if(!cliente.nombre.trim()||carrito.length===0){setAviso('Escribe el nombre del cliente y agrega al menos un producto.');return;}
+    const url='https://wa.me/?text='+encodeURIComponent(mensajeWhatsApp());
+    const ventana=window.open(url,'_blank','noopener,noreferrer');
+    if(!ventana)setAviso('El navegador bloqueó la ventana. Permite ventanas emergentes para compartir el borrador.');
+  };
+  const tocarCampana=()=>{
+    setCampana(v=>!v);
+    if(!sonido){setSonido(true);setAviso('Avisos sonoros habilitados para cuando conectemos las notificaciones reales de pedidos.');}
+  };
+  const campo:React.CSSProperties={width:'100%',padding:'12px 13px',border:'1px solid #dfd1e7',borderRadius:12,font:'inherit',background:'#fff',color:'#321746'};
+  const btn:React.CSSProperties={border:0,borderRadius:12,padding:'12px 17px',background:'#622582',color:'#fff',fontWeight:750,cursor:'pointer'};
+  const panel:React.CSSProperties={background:'#fff',border:'1px solid #e9ddef',borderRadius:18,padding:'clamp(16px,3vw,25px)',boxShadow:'0 8px 24px #431c5909'};
+  const etiqueta=(t:string)=><span style={{display:'block',fontSize:13,fontWeight:700,marginBottom:6,color:'#5a3970'}}>{t}</span>;
+  return <main className="jv-vendedor jv-unified" style={{minHeight:'100vh',background:'linear-gradient(160deg,#f6effb,#fff 55%,#f8f5fb)',fontFamily:'Inter,system-ui,sans-serif',color:'#341943',padding:'clamp(12px,3vw,30px)'}}>
+    <style>{jaivisaNextCSS}</style><style>{jaivisaNextPremiumCSS}</style><style>{`.jv-vendedor *{box-sizing:border-box}.jv-vendedor button{font:inherit;cursor:pointer}.jv-vendedor button:disabled{opacity:.5;cursor:not-allowed}.jv-vendedor button:focus-visible,.jv-vendedor input:focus-visible{outline:3px solid #bd77ea;outline-offset:2px}.jv-vendedor .jv-card{background:#fff;border:1px solid #e9ddef;border-radius:18px;padding:20px;text-align:left;min-height:145px;box-shadow:0 8px 22px #431c590d;transition:transform .15s}.jv-vendedor .jv-card:hover{transform:translateY(-2px)}.jv-vendedor .jv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}.jv-vendedor .jv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.jv-vendedor .jv-muted{color:#75667f;line-height:1.55}.jv-vendedor .jv-field{display:block;margin-bottom:13px}.jv-vendedor .jv-product{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #f0e8f4;padding:15px 0}@media(max-width:520px){.jv-vendedor .jv-card{padding:16px;min-height:130px}}`}</style>
+    <div style={{maxWidth:1130,margin:'0 auto'}}>
+      <header className="jv-row" style={{background:'linear-gradient(110deg,#321047,#632a86)',color:'#fff',borderRadius:20,padding:'15px 20px',boxShadow:'0 12px 30px #4c1d6930'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}><img src={JAIVISA_LOGO} alt="JAIVISA" style={{width:100,height:62,objectFit:'contain'}}/><div><strong style={{fontSize:12,letterSpacing:1}}>JAIVISA · PORTAL MAYORISTA</strong><div style={{fontSize:14}}>Centro comercial del vendedor</div></div></div>
+        <div style={{display:'flex',alignItems:'center',gap:9}}><button aria-label="Abrir notificaciones" title="Notificaciones" onClick={tocarCampana} style={{...btn,background:'#fff',color:'#572077'}}><IconoNext nombre="campana" tamano={19}/> {notificaciones.length||''}</button><button onClick={()=>void salir()} style={{...btn,background:'#fff',color:'#572077'}}>Salir</button></div>
+      </header>
+      {campana&&<aside style={{...panel,marginTop:12}}><strong>Centro de notificaciones</strong><p className="jv-muted" style={{fontSize:14}}>Las alertas reales y su sonido se activarán cuando configuremos los pedidos persistentes, las políticas de acceso y Supabase Realtime. Esta pantalla no inventa pedidos.</p>{notificaciones.length===0&&<p>No hay notificaciones registradas.</p>}<p style={{fontSize:12,color:'#786389'}}>El navegador puede requerir una interacción para permitir audio.</p></aside>}
+      <section className="jv-next-welcome" aria-label="Bienvenida al espacio comercial">
+        <div className="jv-next-welcome-copy"><span className="jv-next-eyebrow"><span className="jv-next-pulse"/> JAIVISA NEXT <span className="jv-next-eyebrow-divider">/</span> SALES WORKSPACE</span>
+          <h1>Bienvenido, <span>{perfil.nombre?perfil.nombre.split(' ')[0].toLocaleUpperCase('es'):'EQUIPO'}</span><span className="jv-next-period">.</span></h1>
+          <p>Tu espacio comercial, conectado a cada oportunidad.</p>
+        </div>
+        <div className="jv-next-hero-graphic" aria-hidden="true"><div className="jv-next-ring jv-next-ring-one"/><div className="jv-next-ring jv-next-ring-two"/><div className="jv-next-hero-core"><IconoNext nombre="grafico" tamano={33}/></div></div>
+      </section>
+      <aside className="jv-next-status" aria-label="Estado de la plataforma">
+        <div className="jv-next-status-icon"><IconoNext nombre="escudo" tamano={21}/></div>
+        <div className="jv-next-status-copy"><div className="jv-next-status-heading"><strong>Entorno de preparación</strong><span className="jv-next-status-label">VISTA DE PRUEBA</span></div><p>Consulta productos y prepara pedidos para compartir por WhatsApp. <b>Los borradores todavía no se registran como ventas.</b></p>
+          <div className="jv-next-status-tags"><span><span className="jv-next-tag-dot"/> Catálogo conectado</span><span><IconoNext nombre="carrito" tamano={13}/> Pedidos en borrador</span></div>
+        </div>
+      </aside>
+      {aviso&&<div role="status" style={{background:'#f3e7fb',borderRadius:12,padding:13,marginBottom:14}}>{aviso} <button onClick={()=>setAviso('')} style={{border:0,background:'transparent',color:'#6a2b8b',fontWeight:800}}>Cerrar</button></div>}
+      {vista==='inicio'?<>
+        <section className="jv-grid" style={{marginBottom:17}}>{[{t:'Productos consultables',n:String(productos.length),i:'caja'},{t:'Artículos en borrador',n:String(carrito.reduce((s,x)=>s+x.cantidad,0)),i:'carrito'},{t:'Subtotal del borrador',n:formato(subtotal),i:'grafico'}].map(x=><div key={x.t} style={panel}><div style={{fontSize:25}}><IconoNext nombre={x.i} tamano={25}/></div><strong style={{display:'block',fontSize:22,margin:'8px 0'}}>{x.n}</strong><span className="jv-muted" style={{fontSize:13}}>{x.t}</span></div>)}</section>
+        <section className="jv-grid" aria-label="Herramientas del vendedor">{opciones.map(o=><button className="jv-card" key={o.id} onClick={()=>setVista(o.id)}><span style={{fontSize:30,display:'block',marginBottom:10}}><IconoNext nombre={o.icono} tamano={28}/></span><strong style={{fontSize:17,display:'block'}}>{o.titulo}</strong><span className="jv-muted" style={{display:'block',fontSize:13,marginTop:5}}>{o.descripcion}</span><span style={{display:'block',color:'#753b93',fontSize:12,fontWeight:800,marginTop:12}}>Abrir sección →</span></button>)}</section>
+      </>:<section style={panel}>
+        <div className="jv-row"><button style={btn} onClick={()=>{setVista('inicio');setAviso('');}}>← Inicio</button><strong style={{fontSize:20}}><IconoNext nombre={opciones.find(o=>o.id===vista)?.icono||"chispa"}/> {opciones.find(o=>o.id===vista)?.titulo}</strong></div>
+        {vista==='catalogosPDF'&&<div style={{marginTop:20}}>
+          <p className="jv-muted">Bienvenido a tus catálogos JAIVISA. Selecciona «Abrir catálogo» para consultar cada PDF. Solo Administración puede publicar o eliminar archivos.</p>
+          <label className="jv-field">{etiqueta('Buscar catálogo')}<input style={campo} value={buscarPDF} onChange={e=>setBuscarPDF(e.target.value)} placeholder="Nombre del catálogo"/></label>
+          <button style={{...btn,marginBottom:16}} onClick={()=>void cargarCatalogosPDF()} disabled={cargandoPDF}>{cargandoPDF?'Consultando…':'↻ Actualizar catálogos'}</button>
+          {errorPDF&&<p role="alert" style={{color:'#a32645'}}>{errorPDF}</p>}
+          {cargandoPDF?<p className="jv-muted">Cargando catálogos…</p>:!errorPDF&&<GaleriaCatalogos catalogos={catalogosPDF.filter(c=>c.nombre.toLocaleLowerCase('es').includes(buscarPDF.toLocaleLowerCase('es')))}/>}
+          {!cargandoPDF&&!errorPDF&&catalogosPDF.length>0&&catalogosPDF.every(c=>!c.nombre.toLocaleLowerCase('es').includes(buscarPDF.toLocaleLowerCase('es')))&&<p>No se encontraron catálogos con ese nombre.</p>}
+        </div>}
+        {(vista==='catalogo'||vista==='pedido')&&<>
+          {vista==='catalogo'&&<div style={{marginTop:20}}><label className="jv-field">{etiqueta('Buscar productos')}<input style={campo} value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Nombre, código o categoría"/></label><button style={{...btn,marginBottom:14}} onClick={()=>void cargarProductos()} disabled={cargando}>{cargando?'Consultando…':'↻ Actualizar catálogo'}</button>{error&&<p role="alert" style={{color:'#a32645'}}>{error}</p>}{!cargando&&!error&&productos.length===0&&<p className="jv-muted">No hay productos visibles para tu cuenta. Comprueba los permisos de lectura en Supabase.</p>}{encontrados.map(p=><div key={p.id} className="jv-product"><div style={{flex:'1 1 240px'}}><strong>{p.nombre}</strong><div className="jv-muted" style={{fontSize:13}}>{p.codigo||'Sin código'} · {p.categoria||'Sin categoría'}</div><div style={{fontSize:14,marginTop:4}}>{p.precio===null?'Precio no disponible':formato(p.precio)} · {p.stock===null?'Inventario por verificar':'Existencias: '+p.stock}</div></div><button style={btn} disabled={p.precio===null} onClick={()=>agregar(p)}>+ Agregar</button></div>)}</div>}
+          {vista==='pedido'&&<div style={{marginTop:20}}><p className="jv-muted">Referencia {numeroBorrador}. El pedido todavía no se guarda en Supabase.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e=>setCliente(v=>({...v,nombre:e.target.value}))}/></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e=>setCliente(v=>({...v,telefono:e.target.value}))}/></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e=>setCliente(v=>({...v,ciudad:e.target.value}))}/></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e=>setCliente(v=>({...v,direccion:e.target.value}))}/></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{...campo,minHeight:70}} value={cliente.observaciones} onChange={e=>setCliente(v=>({...v,observaciones:e.target.value}))}/></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={()=>setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length===0?<p className="jv-muted">Todavía no has agregado productos.</p>:carrito.map(x=><div key={x.producto.id} className="jv-product"><div style={{flex:'1 1 200px'}}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio||0)} por unidad</div></div><div style={{display:'flex',alignItems:'center',gap:9}}><button style={btn} aria-label="Restar unidad" onClick={()=>setCarrito(v=>v.map(z=>z.producto.id===x.producto.id?{...z,cantidad:Math.max(0,z.cantidad-1)}:z).filter(z=>z.cantidad>0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={()=>agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio||0)*x.cantidad)}</strong></div>)}<div style={{textAlign:'right',margin:'18px 0'}}><strong style={{fontSize:20}}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{fontSize:12}}>IVA y total definitivo requieren validación comercial.</p></div><button style={{...btn,background:'#128C51',width:'100%',fontSize:16}} onClick={compartir} disabled={!carrito.length||!cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{fontSize:12}}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
+        </>}
+        {['clientes','historial','agenda','reportes'].includes(vista)&&<div style={{marginTop:25,padding:20,borderRadius:14,background:'#f8f3fb'}}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo se conectará a las tablas y políticas de Supabase correspondientes. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
+      </section>}
+      <nav className="jv-mobile-nav" aria-label="Navegación del vendedor">
+        {([{id:'inicio',titulo:'Inicio',icono:'caja'},{id:'clientes',titulo:'Clientes',icono:'usuarios'},{id:'catalogosPDF',titulo:'Catálogos',icono:'libros'},{id:'catalogo',titulo:'Productos',icono:'caja'},{id:'pedido',titulo:'Pedido',icono:'carrito'}] as const).map(item=><button key={item.id} type="button" aria-current={vista===item.id?'page':undefined} onClick={()=>{setVista(item.id);setAviso('');window.scrollTo({top:0,behavior:'smooth'});}}><IconoNext nombre={item.icono} tamano={21}/><span>{item.titulo}</span></button>)}
+      </nav>
+      <footer style={{textAlign:'center',padding:25,fontSize:12,color:'#887293'}}>JAIVISA · Portal Mayorista · Panel comercial</footer>
+    </div>
+  </main>;
+}
+
+
+// JAIVISA · Centro de trabajo de Bodega.
+// Interfaz de preparación: no simula pedidos reales ni permite cambiar estados sin backend.
+function PanelBodega({perfil,salir}:{perfil:PerfilAcceso;salir:()=>Promise<void>}) {
+  type Seccion = 'inicio'|'pedidos'|'inventario'|'catalogos'|'despachos'|'etiquetas'|'notificaciones';
+  const [seccion,setSeccion]=useState<Seccion>('inicio');
+  const [productos,setProductos]=useState<{id:string;nombre:string;codigo:string;stock:number|null}[]>([]);
+  const [catalogos,setCatalogos]=useState<CatalogoPDF[]>([]);
+  const [cargando,setCargando]=useState(true);
+  const [error,setError]=useState('');
+  const [sonidoHabilitado,setSonidoHabilitado]=useState(false);
+  const [notificaciones,setNotificaciones]=useState<{id:string;titulo:string;fecha:string}[]>([]);
+  const [busqueda,setBusqueda]=useState('');
+  const [mensaje,setMensaje]=useState('');
+  const cargar=async()=>{
+    setCargando(true);setError('');
+    const resultado=await supabase.from('productos').select('*').limit(500);
+    if(resultado.error)setError('No se pudo consultar inventario: '+resultado.error.message);
+    else setProductos((resultado.data||[]).map((p:any)=>({
+      id:String(p.id),nombre:String(p.nombre??'Sin nombre'),codigo:String(p.codigo??''),
+      stock:typeof(p.stock??p.existencia)==='number'?Number(p.stock??p.existencia):null
+    })));
+    try{setCatalogos(await listarCatalogosJAIVISA());}
+    catch(e:any){setMensaje('Los PDF no están disponibles: '+(e?.message||'Verifica los permisos.'));}
+    setCargando(false);
+  };
+  useEffect(()=>{void cargar()},[]);
+  const probarSonido=()=>{
+    try{
+      const Ctx=window.AudioContext;
+      const ctx=new Ctx();
+      [0,.23].forEach((t,i)=>{
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type='sine';osc.frequency.value=i?880:660;
+        gain.gain.setValueAtTime(.0001,ctx.currentTime+t);
+        gain.gain.exponentialRampToValueAtTime(.12,ctx.currentTime+t+.025);
+        gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+t+.18);
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.start(ctx.currentTime+t);osc.stop(ctx.currentTime+t+.19);
+      });
+      void ctx.resume();
+      setTimeout(()=>void ctx.close(),800);
+      setSonidoHabilitado(true);setMensaje('Prueba de sonido ejecutada. Las alertas reales se conectarán a pedidos guardados en Supabase.');
+    }catch{setMensaje('Este navegador no permitió reproducir el sonido.');}
+  };
+  const cards:{id:Seccion;icono:string;titulo:string;detalle:string}[]=[
+    {id:'pedidos',icono:'pedidos',titulo:'Pedidos recibidos',detalle:'Pendientes de preparación'},
+    {id:'inventario',icono:'caja',titulo:'Inventario',detalle:'Productos y existencias'},
+    {id:'despachos',icono:'camion',titulo:'Despachos',detalle:'Seguimiento de entregas'},
+    {id:'etiquetas',icono:'etiqueta',titulo:'Etiquetas',detalle:'Impresión y empaque'},
+    {id:'catalogos',icono:'libros',titulo:'Catálogos PDF',detalle:'Documentos publicados'},
+    {id:'notificaciones',icono:'campana',titulo:'Notificaciones',detalle:'Avisos de nuevos pedidos'}
+  ];
+  const boton:React.CSSProperties={border:0,borderRadius:11,padding:'11px 15px',background:'#64258e',color:'#fff',fontWeight:750,cursor:'pointer'};
+  return <main className="jv-bodega jv-unified" style={{minHeight:'100vh',background:'#faf7fc',padding:'18px clamp(12px,3vw,35px)',fontFamily:'Inter,system-ui,sans-serif',color:'#351448'}}>
+    <style>{jaivisaNextCSS}</style><div style={{maxWidth:1160,margin:'auto'}}>
+      <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',background:'linear-gradient(110deg,#321047,#67278b)',padding:18,borderRadius:20,color:'white'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}><img src={JAIVISA_LOGO} alt="JAIVISA" style={{width:105,height:65,objectFit:'contain'}}/><div><strong>JAIVISA · BODEGA</strong><div style={{fontSize:13}}>Centro operativo del equipo</div></div></div>
+        <div style={{display:'flex',gap:9}}><button style={{...boton,background:'white',color:'#5d247f'}} onClick={()=>setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={19}/> {notificaciones.length||''}</button><button style={{...boton,background:'white',color:'#5d247f'}} onClick={()=>void salir()}>Salir</button></div>
+      </header>
+      <h1 style={{fontSize:'clamp(24px,4vw,34px)',marginBottom:5}}>¡Hola{perfil.nombre?', '+perfil.nombre.split(' ')[0]:''}! 👋</h1>
+      <p style={{color:'#766384'}}>Consulta productos, catálogos y prepara tu centro de trabajo.</p>
+      <section role="status" aria-label="Estado de Bodega" className="jv-warehouse-status">
+        <div className="jv-warehouse-status-icon"><IconoNext nombre="campana" tamano={22}/></div>
+        <div className="jv-warehouse-status-copy">
+          <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · WAREHOUSE HUB</div>
+          <div className="jv-warehouse-status-title">Centro operativo en preparación <span className="jv-warehouse-status-badge">MODO PRUEBA</span></div>
+          <p>Inventario y catálogos en consulta. Los pedidos reales y las alertas automáticas se activarán cuando finalicemos su conexión segura.</p>
+        </div>
+      </section>
+      {mensaje&&<p role="status" style={{padding:12,background:'#f1e7f9',borderRadius:12}}>{mensaje}</p>}
+      {seccion==='inicio'?<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginBottom:16}}>
+          {[['caja',String(productos.length),'Productos consultables'],['libros',String(catalogos.length),'Catálogos PDF'],['campana',String(notificaciones.length),'Avisos recibidos']].map(([ico,nombre,detalle])=><div key={detalle} style={{background:'white',padding:20,border:'1px solid #e7dced',borderRadius:17,textAlign:'center'}}><div style={{fontSize:28}}><IconoNext nombre={ico} tamano={25}/></div><strong style={{fontSize:24}}>{nombre}</strong><p style={{color:'#766384',fontSize:13}}>{detalle}</p></div>)}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14}}>{cards.map(c=><button className="jv-next-card" key={c.id} onClick={()=>setSeccion(c.id)} style={{textAlign:'left',background:'white',border:'1px solid #e8deef',borderRadius:18,padding:22,minHeight:145,cursor:'pointer'}}><span style={{fontSize:30}}><IconoNext nombre={c.icono} tamano={28}/></span><h3 style={{margin:'10px 0 6px',color:'#351448'}}>{c.titulo}</h3><div style={{color:'#756682',fontSize:13}}>{c.detalle}</div><strong style={{color:'#64258e',display:'block',marginTop:12}}>Abrir sección →</strong></button>)}</div>
+      </>:<section style={{background:'white',border:'1px solid #e8deef',borderRadius:18,padding:22}}>
+        <button style={boton} onClick={()=>setSeccion('inicio')}>← Inicio</button>
+        <h2><IconoNext nombre={cards.find(c=>c.id===seccion)?.icono||"chispa"}/> {cards.find(c=>c.id===seccion)?.titulo}</h2>
+        {seccion==='inventario'&&<><input aria-label="Buscar producto" value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar por producto o referencia" style={{width:'100%',padding:13,border:'1px solid #d8c8e4',borderRadius:10,marginBottom:15}}/><button style={boton} onClick={()=>void cargar()}>Actualizar</button>{error&&<p role="alert">{error}</p>}{cargando?<p>Cargando…</p>:productos.filter(p=>(p.nombre+' '+p.codigo).toLowerCase().includes(busqueda.toLowerCase())).map(p=><div key={p.id} style={{padding:'13px 0',borderBottom:'1px solid #eee5f4'}}><strong>{p.nombre}</strong><div style={{fontSize:13,color:'#746080'}}>Ref. {p.codigo||'Sin referencia'} · {p.stock===null?'Existencias no disponibles':'Existencias: '+p.stock}</div></div>)}</>}
+        {seccion==='catalogos'&&<><button style={boton} onClick={()=>void cargar()}>Actualizar catálogos</button><GaleriaCatalogos catalogos={catalogos}/></>}
+        {seccion==='notificaciones'&&<><p>🔔 {notificaciones.length===0?'No hay notificaciones reales recibidas.':'Notificaciones recibidas:'}</p><button style={boton} onClick={probarSonido}>🔊 Probar sonido de campana</button><p style={{color:'#756682',fontSize:13}}>Prueba manual de audio. {sonidoHabilitado?'Sonido probado en esta sesión.':'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n=><p key={n.id}>{n.titulo} · {n.fecha}</p>)}</>}
+        {['pedidos','despachos','etiquetas'].includes(seccion)&&<p style={{padding:18,background:'#f8f3fb',borderRadius:12}}>Sección organizada y pendiente de conectar a los pedidos reales de Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
+      </section>}
+      <footer style={{textAlign:'center',padding:25,fontSize:12,color:'#8a7894'}}>JAIVISA · Portal Mayorista · Bodega</footer>
+    </div>
+  </main>;
+}
+
+
+// JAIVISA NEXT · Sistema de diseño compartido para TODOS los roles.
+// No modifica permisos, pedidos, precios ni las consultas a Supabase.
+const JAIVISA_SHARED_CSS = `
+/* Estado operativo compartido: sin advertencias amarillas, legible en móvil */
+.jv-warehouse-status{display:flex;align-items:flex-start;gap:14px;margin:16px 0 22px;padding:18px 20px;border:1px solid #8e5dc54f;border-radius:19px;background:radial-gradient(circle at 92% 5%,#7d38a94d,transparent 45%),linear-gradient(112deg,#1a0c2b,#35204f 67%,#482365);color:#f7efff;box-shadow:0 12px 34px #34104924}
+.jv-warehouse-status-icon{display:flex;flex:0 0 44px;height:44px;align-items:center;justify-content:center;background:#ffffff18;border:1px solid #ffffff2b;border-radius:13px;color:#e5c4ff}
+.jv-warehouse-status-copy{min-width:0;flex:1}
+.jv-warehouse-status-eyebrow{color:#d8b9f5;font-size:10px;font-weight:800;letter-spacing:1.6px;margin-bottom:5px}
+.jv-warehouse-status-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:17px;font-weight:800;line-height:1.35}
+.jv-warehouse-status-badge{font-size:10px;letter-spacing:.8px;color:#f2e5ff;background:#ffffff1a;border:1px solid #ffffff40;padding:5px 9px;border-radius:100px;white-space:nowrap}
+.jv-warehouse-status p{margin:7px 0 0;color:#dfd0e9;font-size:13px;line-height:1.6}
+@media(max-width:580px){.jv-warehouse-status{padding:14px;gap:10px;margin:12px 0 16px}.jv-warehouse-status-icon{flex-basis:38px;height:38px}.jv-warehouse-status-title{font-size:15px}.jv-warehouse-status p{font-size:12px}}
+
+:root{--jv-ink:#261434;--jv-violet:#6724a0;--jv-border:#e8def0;--jv-surface:#fff;--jv-shadow:0 12px 34px rgba(51,20,80,.09)}
+.jv-unified{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--jv-ink);min-width:0;overflow-x:clip}
+.jv-unified *, .jv-unified *::before,.jv-unified *::after{box-sizing:border-box}
+.jv-unified button,.jv-unified a,.jv-unified input,.jv-unified select,.jv-unified textarea{font-family:inherit}
+.jv-unified button,.jv-unified a{touch-action:manipulation}
+.jv-unified button:not(:disabled){cursor:pointer}
+.jv-unified :is(button,a,input,select,textarea):focus-visible{outline:3px solid #b46af2!important;outline-offset:3px}
+.jv-unified :is(input,select,textarea){max-width:100%;font-size:16px}
+.jv-unified :is(.panel,.jv-card,.jv-catalog-card){border-radius:20px;box-shadow:var(--jv-shadow)}
+.jv-unified :is(.primary,.secondary,.jv-catalog-open){border-radius:13px;min-height:44px}
+.jv-unified .jv-catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important;align-items:stretch}
+.jv-unified .jv-catalog-card{min-width:0;overflow:hidden}
+.jv-unified .jv-catalog-card strong{overflow-wrap:anywhere}
+.jv-unified .jv-catalog-open{display:flex;align-items:center;justify-content:center}
+.jv-global-header{background:linear-gradient(115deg,#1c0e30 0%,#3c175a 58%,#682c91 100%);color:#fff;padding:13px clamp(14px,3vw,36px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 10px 34px #210a3a25;position:relative;isolation:isolate}
+.jv-global-header::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 0%,#bd7cff22,transparent 43%);pointer-events:none;z-index:-1}
+.jv-global-brand{display:flex;align-items:center;gap:12px;min-width:0}
+.jv-global-brand img{width:91px;height:52px;object-fit:contain;flex:none}
+.jv-global-brand small{display:block;color:#d6b6ef;font-size:10px;font-weight:800;letter-spacing:1.7px}
+.jv-global-brand strong{display:block;color:#fff;font-size:15px;font-weight:750}
+.jv-global-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jv-global-chip{font-size:12px;color:#f3e7ff;background:#ffffff18;border:1px solid #ffffff36;border-radius:100px;padding:9px 13px}
+.jv-global-exit{border:1px solid #ffffff48;background:#ffffff1d;color:#fff;border-radius:12px;padding:11px 15px;font-weight:750;min-height:44px}
+.jv-unified .jv-global-header + *{min-width:0}
+.jv-unified.jv-administracion{background:linear-gradient(150deg,#f7f2fb,#fff 50%,#f4effa)}
+.jv-unified.jv-clientes{background:linear-gradient(150deg,#f7f2fb,#fff 50%,#f4effa)}
+.jv-unified.jv-bodega .jv-catalog-grid,.jv-unified.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:900px){
+ .jv-unified .jv-catalog-grid,.jv-unified.jv-bodega .jv-catalog-grid,.jv-unified.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:580px){
+ .jv-unified .jv-catalog-grid,.jv-unified.jv-bodega .jv-catalog-grid,.jv-unified.jv-vendedor .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important}
+ .jv-global-header{padding:11px 14px}
+ .jv-global-brand img{width:73px;height:45px}
+ .jv-global-brand strong{font-size:13px}
+ .jv-global-chip{display:none}
+ .jv-unified :is(button,.primary,.secondary){min-height:44px}
+}
+
+/* Sistema visual de Administración: la misma tipografía y acabados en todos los perfiles. */
+:root{--jv-admin-primary:#4c1d69;--jv-admin-accent:#9d65d1;--jv-admin-surface:#faf8fd}
+.jv-unified,.jv-unified :is(button,input,select,textarea),.jv-client-shell,.jv-client-shell :is(button,input,select,textarea){font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
+.jv-unified :is(h1,h2,h3,h4,h5,strong),.jv-client-shell :is(h1,h2,h3,h4,h5,strong){font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:-.025em}
+.jv-unified :is(button,.primary,.secondary),.jv-client-shell :is(button,.primary,.secondary){font-weight:700}
+.jv-unified :is(input,select,textarea),.jv-client-shell :is(input,select,textarea){border-color:#e2d5ed}
+.jv-unified :is(button,a):focus-visible,.jv-client-shell :is(button,a):focus-visible{outline:3px solid #a66fd5;outline-offset:3px}
+.jv-unified :is(button,input,select,textarea),.jv-client-shell :is(button,input,select,textarea){touch-action:manipulation}
+.jv-unified .jv-catalog-grid,.jv-client-shell .jv-catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media(max-width:900px){.jv-unified .jv-catalog-grid,.jv-client-shell .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.jv-unified .jv-catalog-grid,.jv-client-shell .jv-catalog-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Misma presentación de miniaturas para Mayorista, Vendedor y Bodega. */
+.jv-client-shell .jv-catalog-thumb,.jv-vendedor .jv-catalog-thumb,.jv-bodega .jv-catalog-thumb{height:220px!important;min-height:220px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,#f6f0fa,#e8dcf1)!important;overflow:hidden!important}
+.jv-client-shell .jv-catalog-thumb::after,.jv-vendedor .jv-catalog-thumb::after,.jv-bodega .jv-catalog-thumb::after{content:none!important;display:none!important}
+.jv-client-shell .jv-catalog-thumb canvas,.jv-vendedor .jv-catalog-thumb canvas,.jv-bodega .jv-catalog-thumb canvas{max-height:100%!important;max-width:100%!important;object-fit:contain!important}
+.jv-vendedor .jv-catalog-grid,.jv-client-shell .jv-catalog-grid,.jv-bodega .jv-catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important}
+@media(max-width:900px){.jv-vendedor .jv-catalog-grid,.jv-client-shell .jv-catalog-grid,.jv-bodega .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:580px){.jv-vendedor .jv-catalog-grid,.jv-client-shell .jv-catalog-grid,.jv-bodega .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important}.jv-client-shell .jv-catalog-thumb,.jv-vendedor .jv-catalog-thumb,.jv-bodega .jv-catalog-thumb{height:220px!important;min-height:220px!important}}
+/* Tarjetas compactas e idénticas para clientes mayoristas y vendedores. */
+.jv-client-shell .jv-catalog-grid,.jv-vendedor .jv-catalog-grid{gap:16px!important;margin-top:16px!important;align-items:stretch!important}
+.jv-client-shell .jv-catalog-card,.jv-vendedor .jv-catalog-card{display:flex!important;flex-direction:column!important;background:#fff!important;border:1px solid #efe7f4!important;border-radius:17px!important;box-shadow:0 7px 20px rgba(69,37,91,.08)!important;overflow:hidden!important;min-width:0!important}
+.jv-client-shell .jv-catalog-card::before,.jv-vendedor .jv-catalog-card::before{content:"";display:block;height:7px;background:#f0e6f8}
+.jv-client-shell .jv-catalog-thumb,.jv-vendedor .jv-catalog-thumb{height:auto!important;min-height:0!important;aspect-ratio:1.85/1!important;background:#fff!important;border-bottom:7px solid #f0e6f8!important;padding:0!important}
+.jv-client-shell .jv-catalog-thumb canvas,.jv-vendedor .jv-catalog-thumb canvas{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;box-shadow:none!important}
+.jv-client-shell .jv-catalog-card>div:last-child,.jv-vendedor .jv-catalog-card>div:last-child{padding:13px 12px 16px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;min-height:112px!important;text-align:center!important;flex:1!important}
+.jv-client-shell .jv-catalog-card strong,.jv-vendedor .jv-catalog-card strong{color:#361047!important;font-size:14px!important;font-weight:700!important;line-height:1.3!important;text-transform:uppercase!important;letter-spacing:-.02em!important;min-height:36px!important}
+.jv-client-shell .jv-catalog-open,.jv-vendedor .jv-catalog-open{background:transparent!important;color:#243fe0!important;box-shadow:none!important;border:0!important;padding:7px 9px!important;min-height:35px!important;font-size:13px!important;font-weight:600!important;text-decoration:none!important;align-self:center!important}
+.jv-client-shell .jv-catalog-open:hover,.jv-vendedor .jv-catalog-open:hover{text-decoration:underline!important}
+@media(max-width:580px){.jv-client-shell .jv-catalog-grid,.jv-vendedor .jv-catalog-grid{gap:12px!important}.jv-client-shell .jv-catalog-card>div:last-child,.jv-vendedor .jv-catalog-card>div:last-child{padding:12px!important;min-height:100px!important;gap:8px!important}.jv-client-shell .jv-catalog-card strong,.jv-vendedor .jv-catalog-card strong{font-size:13px!important;min-height:0!important}}
+/* FINAL: exactamente las mismas medidas en Clientes y Vendedores. */
+.jv-client-shell .jv-catalog-grid,.jv-vendedor .jv-catalog-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;column-gap:14px!important;row-gap:14px!important;margin-top:14px!important}
+.jv-client-shell .jv-catalog-card,.jv-vendedor .jv-catalog-card{height:auto!important;min-height:0!important;align-self:stretch!important}
+.jv-client-shell .jv-catalog-thumb,.jv-vendedor .jv-catalog-thumb{width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:1.85 / 1!important;flex:none!important}
+.jv-client-shell .jv-catalog-card>div:last-child,.jv-vendedor .jv-catalog-card>div:last-child{height:auto!important;min-height:92px!important;padding:10px 12px 12px!important;gap:7px!important;justify-content:space-between!important}
+.jv-client-shell .jv-catalog-card strong,.jv-vendedor .jv-catalog-card strong{min-height:0!important;margin:0!important}
+.jv-client-shell .jv-catalog-open,.jv-vendedor .jv-catalog-open{margin:0!important}
+@media(max-width:900px){.jv-client-shell .jv-catalog-grid,.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:580px){.jv-client-shell .jv-catalog-grid,.jv-vendedor .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}.jv-client-shell .jv-catalog-thumb,.jv-vendedor .jv-catalog-thumb{height:auto!important;min-height:0!important;aspect-ratio:1.85 / 1!important}}
+/* JAIVISA: enlaces de catálogos en morado corporativo y hover lila. */
+.jv-client-shell .jv-catalog-open,.jv-vendedor .jv-catalog-open{color:#64258c!important;background:transparent!important;border-radius:9px!important;transition:color .2s ease,background-color .2s ease,box-shadow .2s ease,transform .2s ease!important;text-decoration:none!important}
+.jv-client-shell .jv-catalog-open:hover,.jv-vendedor .jv-catalog-open:hover{color:#8c43b3!important;background:#f3e8fb!important;box-shadow:0 3px 12px rgba(100,37,140,.12)!important;text-decoration:none!important;transform:translateY(-1px)}
+.jv-client-shell .jv-catalog-open:focus-visible,.jv-vendedor .jv-catalog-open:focus-visible{outline:2px solid #8c43b3!important;outline-offset:2px!important;background:#f3e8fb!important}
+.jv-client-shell .jv-catalog-open:active,.jv-vendedor .jv-catalog-open:active{color:#4b176c!important;background:#e9d5f5!important;transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){.jv-client-shell .jv-catalog-open,.jv-vendedor .jv-catalog-open{transition:none!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){.jv-unified *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+`;
+function MarcoJAIVISANext({rol,nombre,salir,children}:{rol:string;nombre?:string;salir?:()=>Promise<void>;children:React.ReactNode}){
+  return <div className={'jv-unified jv-'+(rol==='Administración'?'administracion':'clientes')}>
+    <header className="jv-global-header">
+      <div className="jv-global-brand"><img src={JAIVISA_LOGO} alt="JAIVISA"/><div><small>JAIVISA NEXT · PORTAL MAYORISTA</small><strong>{rol}</strong></div></div>
+      <div className="jv-global-meta">{nombre&&<span className="jv-global-chip">{nombre}</span>}{salir&&<button className="jv-global-exit" onClick={()=>void salir()}>Cerrar sesión</button>}</div>
+    </header>
+    {children}
+  </div>;
 }
 
 function App() {
@@ -997,8 +1537,10 @@ function App() {
   };
   const cambiarClave=async(e:React.FormEvent)=>{e.preventDefault();if(nuevaClave.length<8){setMensaje('Usa al menos 8 caracteres.');return;}setProcesando(true);const {error}=await supabase.auth.updateUser({password:nuevaClave});setProcesando(false);setNuevaClave('');if(error){setMensaje('No se pudo actualizar la contraseña: '+error.message);return;}setMensaje('Contraseña actualizada.');await salir();setMensaje('Contraseña actualizada. Ya puedes iniciar sesión.');};
   const recuperar=async(e:React.FormEvent)=>{e.preventDefault();setProcesando(true);setMensaje('');const {error}=await supabase.auth.resetPasswordForEmail(correo.trim(),{redirectTo:window.location.origin});setProcesando(false);setMensaje(error?'No se pudo enviar el enlace. Comprueba la configuración de correo de Supabase.':'Si el correo está registrado, recibirás instrucciones para recuperar la contraseña.');};
-  if(estado==='administrador')return <><div style={{display:'flex',justifyContent:'flex-end',gap:12,alignItems:'center',padding:'10px 24px',background:'#35124e'}}><span style={{color:'white',fontWeight:700}}>JAIVISA · Administración</span><button onClick={salir} style={{...boton,background:'#fff',color:'#4c1d69',border:'1px solid #e5d6ef'}}>Cerrar sesión</button></div><PortalAdministrador/></>;
-  if(estado==='cliente'&&perfil)return <ClientesMayoristas perfil={perfil} salir={salir}/>;
+  if(estado==='administrador')return <MarcoJAIVISANext rol="Administración" nombre={perfil?.nombre} salir={salir}><PortalAdministrador/></MarcoJAIVISANext>;
+  if(estado==='cliente'&&perfil)return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre}><ClientesMayoristas perfil={perfil} salir={salir}/></MarcoJAIVISANext>;
+  if(estado==='equipo'&&perfil?.rol==='vendedor')return <PanelVendedor perfil={perfil} salir={salir}/>;
+  if(estado==='equipo'&&perfil?.rol==='bodega')return <PanelBodega perfil={perfil} salir={salir}/>;
   return <div className="jaivisa-login-fondo" style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'radial-gradient(ellipse at 12% 18%,#52258c 0%,transparent 45%),radial-gradient(ellipse at 92% 85%,#203f99 0%,transparent 40%),linear-gradient(135deg,#1b0d29,#4c1d69)',padding:24,fontFamily:'Inter,system-ui,sans-serif',position:'relative',overflow:'hidden'}}><style>{`
     .jaivisa-login-fondo::before,.jaivisa-login-fondo::after{content:'';position:absolute;pointer-events:none;width:85vw;height:40vw;max-height:420px;border-radius:50%;border-top:3px solid #cb42ff;border-bottom:2px solid #35adff;transform:rotate(-23deg);filter:drop-shadow(0 0 12px #b83bff);opacity:.75}
     .jaivisa-login-fondo::before{left:-38vw;top:-12vw}
@@ -1058,4 +1600,5 @@ class JaivisaErrorBoundary extends React.Component<
 const JaivisaApp = App;
 export { JaivisaErrorBoundary, JaivisaApp };
 
-export default function AppProtegida() { return <JaivisaErrorBoundary><JaivisaApp /></JaivisaErrorBoundary>; }
+export default function AppProtegida() { return <JaivisaErrorBoundary><style>{JAIVISA_SHARED_CSS}</style><JaivisaApp /></JaivisaErrorBoundary>; }
+  
