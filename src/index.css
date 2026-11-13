@@ -109,3 +109,57 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* ==========================================
+   JAIVISA - CORRECCIÓN PARA CELULARES
+   Campos de texto visibles en Android,
+   iPhone, Chrome, Safari y WhatsApp
+   ========================================== */
+
+   input:not([type="checkbox"]):not([type="radio"]),
+   textarea,
+   select {
+     color: #241331 !important;
+     -webkit-text-fill-color: #241331 !important;
+     background-color: #ffffff !important;
+     caret-color: #592078 !important;
+     opacity: 1 !important;
+     color-scheme: light;
+   }
+   
+   /* Texto de ayuda dentro de los campos */
+   input::placeholder,
+   textarea::placeholder {
+     color: #797080 !important;
+     -webkit-text-fill-color: #797080 !important;
+     opacity: 1 !important;
+   }
+   
+   /* Campos seleccionados para escribir */
+   input:focus,
+   textarea:focus,
+   select:focus {
+     color: #241331 !important;
+     -webkit-text-fill-color: #241331 !important;
+     caret-color: #592078 !important;
+   }
+   
+   /* Corrección del autocompletado de Chrome */
+   input:-webkit-autofill,
+   input:-webkit-autofill:hover,
+   input:-webkit-autofill:focus {
+     -webkit-text-fill-color: #241331 !important;
+     -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+     box-shadow: 0 0 0 1000px #ffffff inset !important;
+     caret-color: #592078 !important;
+   }
+   
+   /* Evitar zoom automático en formularios de iPhone */
+   @media (max-width: 768px) {
+     input,
+     textarea,
+     select {
+       font-size: 16px !important;
+     }
+   }
+   
