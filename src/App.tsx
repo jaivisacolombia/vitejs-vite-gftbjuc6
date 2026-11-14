@@ -1774,7 +1774,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <div className="jv-future-actions"><button type="button" aria-label={'Abrir notificaciones, ' + notificaciones.length + ' avisos'} onClick={() => setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={21} />{notificaciones.length > 0 && <span className="jv-future-bubble">{notificaciones.length}</span>}</button><button type="button" onClick={() => void salir()}>Salir</button></div>
       </header>
       <section className="jv-future-hero" aria-label="Bienvenida al Centro Operativo de Bodega">
-        <img className="jv-future-isa" src="/isa-oficial-jaivisa.png" alt="Isa, asistente de JAIVISA" />
+        <img className="jv-future-isa" src="/isa-jaivisa-oficial-v8.png" alt="Isa, asistente de JAIVISA" />
         <div className="jv-future-hero-copy">
           <div className="jv-future-eyebrow">JAIVISA NEXT · CENTRO OPERATIVO</div>
           <h1>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! 👋</h1>
@@ -2299,6 +2299,56 @@ body:has(.jv-future-bodega) #root{
 }
 
 
+/* V7: pantalla inmersiva y mascota oficial en primer plano */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{
+  background:#180829!important;max-width:none!important;width:100%!important;
+  min-height:100%!important;margin:0!important;padding:0!important
+}
+body:has(.jv-future-bodega){overflow-x:hidden!important}
+.jv-future-bodega{box-sizing:border-box!important;min-height:100dvh!important;width:100%!important;
+  max-width:none!important;margin:0!important;padding:0 clamp(12px,3vw,52px) 45px!important;
+  background:radial-gradient(ellipse at 7% 25%,#5d2186 0%,transparent 53%),
+  radial-gradient(ellipse at 94% 80%,#3b1877 0%,transparent 50%),#170824!important
+}
+.jv-future-bodega>div{max-width:1560px!important;width:100%!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-hero{min-height:clamp(300px,28vw,410px)!important;
+  background:linear-gradient(90deg,#250a43,#3d0d62 56%,#150728)!important;
+  overflow:hidden!important;border-radius:0 0 22px 22px!important}
+.jv-future-bodega .jv-future-isa{left:1.5%!important;bottom:0!important;width:33%!important;
+  height:96%!important;max-width:none!important;object-fit:contain!important;
+  object-position:center bottom!important;filter:drop-shadow(0 9px 18px #0e031b88)!important}
+.jv-future-bodega .jv-future-hero-copy{width:56%!important;margin-left:29%!important;
+  max-width:760px!important;padding:24px 10px!important;text-align:center!important}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(32px,4.1vw,60px)!important;
+  font-weight:850!important;line-height:1.08!important;letter-spacing:-.03em!important}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(19px,1.8vw,27px)!important;line-height:1.2!important}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.1vw,17px)!important;line-height:1.5!important}
+.jv-future-bodega .jv-future-stats{gap:15px!important;margin:18px 0 20px!important}
+.jv-future-bodega .jv-future-stat{min-height:130px!important;display:flex!important;
+  flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;gap:4px!important}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(27px,2.6vw,38px)!important}
+.jv-future-bodega .jv-future-stat p{font-size:clamp(12px,1vw,15px)!important}
+.jv-future-bodega .jv-bodega-menu-grid{gap:16px!important}
+.jv-future-bodega .jv-bodega-menu-card{min-height:155px!important;padding:18px!important;
+  box-shadow:0 12px 24px #08031455,inset 0 1px #ffffff33!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(15px,1.15vw,19px)!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(12px,.9vw,14px)!important}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 8px 30px!important}
+ .jv-future-bodega .jv-future-hero{min-height:205px!important}
+ .jv-future-bodega .jv-future-isa{width:37%!important;height:95%!important;left:0!important}
+ .jv-future-bodega .jv-future-hero-copy{width:65%!important;margin-left:33%!important;padding:8px 3px!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(20px,5.5vw,29px)!important}
+ .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3vw,16px)!important}
+ .jv-future-bodega .jv-future-hero p{font-size:10px!important}
+ .jv-future-bodega .jv-future-stat{min-height:95px!important;padding:9px 3px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:96px!important;padding:7px 3px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.3vw,12px)!important}
+}
 /* V6: identidad visual consistente y legibilidad */
 .jv-future-bodega .jv-bodega-menu-card,
 .jv-future-bodega .jv-bodega-menu-card.jv-next-card{
@@ -2342,6 +2392,76 @@ body:has(.jv-future-bodega) #root{
   background:linear-gradient(90deg,#2c0c4a,#4c1770 55%,#1b0b34)!important
 }
 .jv-future-bodega .jv-future-activity{color:#fff!important}
+
+
+/* JAIVISA NEXT V8: diseño inmersivo y mascota oficial */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{
+  margin:0!important;padding:0!important;width:100%!important;max-width:none!important;
+  background:#160723!important;overflow-x:clip!important
+}
+.jv-future-bodega{
+  box-sizing:border-box!important;width:100%!important;max-width:none!important;
+  min-height:100dvh!important;margin:0!important;
+  padding:0 clamp(12px,3vw,42px) 48px!important;
+  background:radial-gradient(ellipse at 10% 32%,#57248b 0%,transparent 45%),
+             radial-gradient(ellipse at 92% 75%,#40217a 0%,transparent 48%),
+             linear-gradient(120deg,#1a082c,#260b43 62%,#12071f)!important;
+  color:#fff!important
+}
+.jv-future-bodega>div{max-width:1480px!important;width:100%!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-hero{min-height:clamp(300px,28vw,410px)!important}
+.jv-future-bodega .jv-future-isa{
+  width:clamp(220px,29%,430px)!important;height:99%!important;left:0!important;bottom:0!important;
+  object-fit:contain!important;object-position:left bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 9px 22px #09031499)!important
+}
+.jv-future-bodega .jv-future-hero-copy{
+  width:60%!important;margin-left:29%!important;max-width:780px!important;z-index:2!important
+}
+.jv-future-bodega .jv-future-hero h1{
+  font-size:clamp(30px,3.8vw,58px)!important;line-height:1.08!important;
+  letter-spacing:-.035em!important
+}
+.jv-future-bodega .jv-future-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.jv-future-bodega .jv-future-stat{
+  min-height:125px!important;display:flex!important;flex-direction:column!important;
+  align-items:flex-start!important;justify-content:center!important;
+  background:linear-gradient(125deg,#61259d,#2c104d)!important;
+  color:#fff!important;text-align:left!important;padding:20px!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(125deg,#2454ac,#24104b)!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(125deg,#9c286e,#2d104d)!important}
+.jv-future-bodega .jv-future-stat *{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.jv-future-bodega .jv-bodega-menu-card{
+  background:linear-gradient(135deg,#61249c,#2b104c)!important;
+  color:#fff!important;border:1px solid #ad5bf1!important;opacity:1!important;
+  min-width:0!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(135deg,#2552a5,#261150)!important;border-color:#6aa5ff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(135deg,#087e78,#261150)!important;border-color:#51e2c9!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(135deg,#9f5518,#30114c)!important;border-color:#ffb565!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(135deg,#a12686,#30104d)!important;border-color:#ff80d5!important}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,span,strong,svg){
+  color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(14px,1.2vw,19px)!important;line-height:1.25!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(11px,.95vw,14px)!important}
+.jv-future-bodega .jv-future-activity{color:#fff!important}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 8px 28px!important}
+ .jv-future-bodega .jv-future-hero{min-height:220px!important}
+ .jv-future-bodega .jv-future-isa{width:37%!important;height:94%!important}
+ .jv-future-bodega .jv-future-hero-copy{width:66%!important;margin-left:31%!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(20px,5vw,31px)!important}
+ .jv-future-bodega .jv-future-stats{gap:6px!important}
+ .jv-future-bodega .jv-future-stat{min-height:95px!important;align-items:center!important;text-align:center!important;padding:8px 4px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:99px!important;padding:8px 3px!important;flex-direction:column!important;align-items:center!important;justify-content:center!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.4vw,12px)!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+}
 
 `;
 function MarcoJAIVISANext({ rol, nombre, salir, children }: { rol: string; nombre?: string; salir?: () => Promise<void>; children: React.ReactNode }) {
