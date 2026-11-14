@@ -13,7 +13,7 @@ const { CentroPedidos, crearPedidoCentral } = (() => {
   const boton: React.CSSProperties = { background: '#572080', border: 0, borderRadius: 9, padding: '10px 13px', color: '#fff', cursor: 'pointer' };
   const input: React.CSSProperties = { width: '100%', padding: 10, border: '1px solid #d9cbe4', borderRadius: 9, boxSizing: 'border-box' };
   const panel: React.CSSProperties = { padding: 18, background: '#fff', border: '1px solid #e9dff0', borderRadius: 15, marginBottom: 16 };
-  function CentroPedidos({ rol }: { rol: Rol }) {
+  function CentroPedidos({ rol, pedidoInicialId }: { rol: Rol; pedidoInicialId?: string | null }) {
     const [pedidos, setPedidos] = useState<Pedido[]>([]), [borrador, setBorrador] = useState<Pedido | null>(null);
     const [alertas, setAlertas] = useState<{ id: number; pedido_id: string; mensaje: string }[]>([]);
     const [nombresVendedores, setNombresVendedores] = useState<Record<string, string>>({});
@@ -34,6 +34,14 @@ setCargando(true); const { data, error } = await supabase.from('jv_pedidos').sel
 }, []);
     useEffect(() => { void cargar(); const canal = supabase.channel('jv_pedidos_cambios').on('postgres_changes', { event: '*', schema: 'public', table: 'jv_pedidos' }, () => { void cargar() }).subscribe(); return () => { void supabase.removeChannel(canal) } }, [cargar]);
     const abrir = async (p: Pedido) => { setBorrador(structuredClone(p)); const { data } = await supabase.from('jv_pedidos_historial').select('id,created_at,accion,actor_id,antes,despues').eq('pedido_id', p.id).order('created_at', { ascending: false }).limit(30); setHistorial((data || []) as Historial[]); };
+    const pedidoAbiertoAutomaticamente = React.useRef<string | null>(null);
+    useEffect(() => {
+      if (!pedidoInicialId || pedidoAbiertoAutomaticamente.current === pedidoInicialId) return;
+      const encontrado = pedidos.find(p => p.id === pedidoInicialId);
+      if (!encontrado) return;
+      pedidoAbiertoAutomaticamente.current = pedidoInicialId;
+      void abrir(encontrado);
+    }, [pedidoInicialId, pedidos]);
     const editar = (cambios: Partial<Pedido>) => setBorrador(v => v ? { ...v, ...cambios } : v);
     const guardar = async (estado?: string) => { if (!borrador || guardando) return; setGuardando(true); setMensaje(''); const { data, error } = await supabase.rpc('jv_actualizar_pedido', { p_id: borrador.id, p_version: borrador.version, p_datos: estado === 'despachado' ? {} : { cliente_nombre: borrador.cliente_nombre, cliente_documento: borrador.cliente_documento, cliente_correo: borrador.cliente_correo, cliente_telefono: borrador.cliente_telefono, ciudad: borrador.ciudad, direccion: borrador.direccion, observaciones: borrador.observaciones, lineas: borrador.lineas }, p_estado: estado || null, p_factura_referencia: null }); setGuardando(false); if (error) { setMensaje('No se guardó: ' + error.message + ' Actualiza para comprobar si otro usuario modificó el pedido.'); return; } setMensaje('Pedido actualizado en Supabase.'); await cargar(); if (data) await abrir(data as Pedido); };
     const resolverAlertas = async () => { if (!borrador) return; const { error } = await supabase.rpc('jv_resolver_alertas', { p_pedido_id: borrador.id }); if (error) { setMensaje(error.message); return; } await cargar(); setMensaje('Alertas revisadas. Verifica físicamente el pedido antes de confirmar.'); };
@@ -1583,6 +1591,7 @@ function VistaPreviaFotoJAIVISA({ archivo }: { archivo: File }) {
 function PanelBodega({ perfil, salir }: { perfil: PerfilAcceso; salir: () => Promise<void> }) {
   type Seccion = 'inicio' | 'pedidos' | 'inventario' | 'catalogos' | 'despachos' | 'etiquetas' | 'notificaciones';
   const [seccion, setSeccion] = useState<Seccion>('inicio');
+  const [pedidoDestinoId, setPedidoDestinoId] = useState<string | null>(null);
   const [productos, setProductos] = useState<{ id: string; nombre: string; codigo: string; stock: number | null; precio: number | null; categoria: string; imagen_url: string; campos: string[] }[]>([]);
   const [productoEditando, setProductoEditando] = useState<(typeof productos)[number] | null>(null);
   const [fotoPendiente, setFotoPendiente] = useState<File | null>(null);
@@ -1768,22 +1777,22 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <div className="jv-warehouse-status-copy">
           <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · BODEGA</div>
           <div className="jv-warehouse-status-title">Centro Operativo de Bodega</div>
-          <p>Consulta pedidos recibidos, prepara productos, revisa el inventario y organiza despachos desde los módulos disponibles.</p>
-          <p>Activa la campana y la voz de Isa desde Notificaciones. Los indicadores dependen de los datos y permisos disponibles en Supabase.</p>
+          <p>Gestiona los pedidos recibidos, organiza la preparación de productos, consulta las existencias y coordina los despachos desde un solo lugar.</p>
+          <p>Isa te acompañará con avisos y notificaciones para facilitar el trabajo diario.</p>
         </div>
       </section>
       {mensaje && <p role="status" style={{ padding: 12, background: '#f1e7f9', borderRadius: 12 }}>{mensaje}</p>}
       {seccion === 'inicio' ? <>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 16 }}>
-          {[['caja', String(productos.length), 'Productos cargados (máx. 500)'], ['libros', String(catalogos.length), 'Catálogos PDF'], ['campana', String(notificaciones.length), 'Avisos recibidos']].map(([ico, nombre, detalle]) => <div key={detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p></div>)}
+          {([['caja', String(productos.length), 'Productos cargados (máx. 500)', 'inventario'], ['libros', String(catalogos.length), 'Catálogos PDF', 'catalogos'], ['campana', String(notificaciones.length), 'Avisos recibidos', 'notificaciones']] as const).map(([ico, nombre, detalle, destino]) => <button type="button" key={detalle} onClick={() => setSeccion(destino)} aria-label={'Abrir ' + detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center', cursor: 'pointer', color: '#351448', fontFamily: 'inherit', width: '100%' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p><span style={{ fontSize: 12, color: '#64258e', fontWeight: 700 }}>Ver sección →</span></button>)}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>{cards.map(c => <button className="jv-next-card" key={c.id} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22, minHeight: 145, cursor: 'pointer' }}><span style={{ fontSize: 30 }}><IconoNext nombre={c.icono} tamano={28} /></span><h3 style={{ margin: '10px 0 6px', color: '#351448' }}>{c.titulo}</h3><div style={{ color: '#756682', fontSize: 13 }}>{c.detalle}</div><strong style={{ color: '#64258e', display: 'block', marginTop: 12 }}>Abrir sección →</strong></button>)}</div>
+        <div className="jv-bodega-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>{cards.map(c => <button className="jv-next-card jv-bodega-menu-card" key={c.id} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22, minHeight: 145, cursor: 'pointer' }}><span style={{ fontSize: 30 }}><IconoNext nombre={c.icono} tamano={28} /></span><h3 style={{ margin: '10px 0 6px', color: '#351448' }}>{c.titulo}</h3><div style={{ color: '#756682', fontSize: 13 }}>{c.detalle}</div><strong style={{ color: '#64258e', display: 'block', marginTop: 12 }}>Abrir sección →</strong></button>)}</div>
       </> : <section style={{ background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22 }}>
         <button style={boton} onClick={() => setSeccion('inicio')}>← Inicio</button>
         <h2><IconoNext nombre={cards.find(c => c.id === seccion)?.icono || "chispa"} /> {cards.find(c => c.id === seccion)?.titulo}</h2>
         {seccion === 'inventario' && <>
           <input aria-label="Buscar producto" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, referencia o categoría" style={{ width: '100%', padding: 13, border: '1px solid #d8c8e4', borderRadius: 10, marginBottom: 15 }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) cargados (máximo 500) en Supabase · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) consultados (máximo 500) en JAIVISA · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
           <button type="button" style={{ ...boton, marginBottom: 12 }} onClick={() => { setCrearNuevo(true); setFotoPendiente(null); setProductoEditando({ id: '', nombre: '', codigo: '', stock: null, precio: 0, categoria: '', imagen_url: '', campos: columnasProductos.length ? columnasProductos : ['nombre', 'codigo', 'precio', 'categoria', 'imagen_url'] }); setAvisoProducto('') }}>＋ Agregar producto</button>
           {error && <p role="alert">{error}</p>}{avisoProducto && <p role="status" style={{ padding: 12, background: '#f4eafa', borderRadius: 10 }}>{avisoProducto}</p>}
           {productoEditando && <form onSubmit={e => void guardarProducto(e)} style={{ border: '1px solid #d8c8e4', background: '#faf6fd', padding: 16, borderRadius: 14, margin: '15px 0', display: 'grid', gap: 12 }}>
@@ -1801,17 +1810,36 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
           </form>}
           {cargando ? <p>Cargando…</p> : <>
             {productos.filter(p => (p.nombre + ' ' + p.codigo + ' ' + p.categoria).toLowerCase().includes(busqueda.trim().toLowerCase())).length === 0 && <p style={{ padding: 16, color: '#766384' }}>No se encontraron productos con esa búsqueda.</p>}
-            {productos.filter(p => (p.nombre + ' ' + p.codigo + ' ' + p.categoria).toLowerCase().includes(busqueda.trim().toLowerCase())).map(p => <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, padding: '16px 0', borderBottom: '1px solid #eee5f4', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '1 1 250px', minWidth: 0 }}>
+            <style>{`
+              .jv-bodega-inventario-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+              .jv-bodega-inventario-card{display:flex;flex-direction:column;justify-content:space-between;min-width:0;padding:14px;border:1px solid #eee5f4;border-radius:14px;background:#fff;gap:12px}
+              .jv-bodega-inventario-info{display:flex;align-items:flex-start;gap:12px;min-width:0}
+              .jv-bodega-inventario-info>div:last-child{min-width:0;overflow-wrap:anywhere}
+              .jv-bodega-inventario-info img,.jv-bodega-inventario-info>div[aria-label]{flex:0 0 78px}
+              .jv-bodega-inventario-card>button{align-self:flex-start}
+              @media(max-width:600px){
+                .jv-bodega-inventario-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+                .jv-bodega-inventario-card{padding:7px;gap:7px;border-radius:10px}
+                .jv-bodega-inventario-info{flex-direction:column;gap:6px;align-items:stretch}
+                .jv-bodega-inventario-info img,.jv-bodega-inventario-info>div[aria-label]{width:100%!important;height:75px!important;flex:none!important}
+                .jv-bodega-inventario-info strong{font-size:11px;line-height:1.25;display:block}
+                .jv-bodega-inventario-info div div{font-size:10px!important;line-height:1.3;overflow-wrap:anywhere}
+                .jv-bodega-inventario-card>button{width:100%;padding:7px 2px!important;font-size:11px!important;min-height:32px}
+              }
+            `}</style>
+            <div className="jv-bodega-inventario-grid">
+            {productos.filter(p => (p.nombre + ' ' + p.codigo + ' ' + p.categoria).toLowerCase().includes(busqueda.trim().toLowerCase())).map(p => <div key={p.id} className="jv-bodega-inventario-card">
+              <div className="jv-bodega-inventario-info">
                 {p.imagen_url ? <img src={p.imagen_url} alt={'Fotografía de ' + p.nombre} loading="lazy" style={{ width: 78, height: 78, objectFit: 'contain', border: '1px solid #e8deef', borderRadius: 12, background: '#fff' }} /> : <div aria-label="Producto sin fotografía" style={{ width: 78, height: 78, display: 'grid', placeItems: 'center', border: '1px dashed #d8c8e4', borderRadius: 12, color: '#766384', fontSize: 12, textAlign: 'center' }}>Sin foto</div>}
                 <div><strong>{p.nombre}</strong><div style={{ fontSize: 13, color: '#746080' }}>Ref. {p.codigo || 'Sin referencia'} · {p.categoria || 'Sin categoría'}</div><div style={{ fontSize: 13, color: '#746080' }}>{p.stock === null ? 'Existencias no disponibles' : 'Existencias: ' + p.stock}{p.precio !== null ? ' · ' + money(p.precio) : ''}</div></div>
               </div><button type="button" style={boton} onClick={() => { setCrearNuevo(false); setFotoPendiente(null); setProductoEditando({ ...p }); setAvisoProducto('') }}>✏️ Editar</button>
             </div>)}
+            </div>
           </>}
         </>}
         {seccion === 'catalogos' && <><button style={boton} onClick={() => void cargar()}>Actualizar catálogos</button><GaleriaCatalogos catalogos={catalogos} /></>}
-        {seccion === 'notificaciones' && <><p>🔔 {notificaciones.length === 0 ? 'No hay notificaciones reales recibidas.' : 'Notificaciones recibidas:'}</p><button style={boton} onClick={() => void probarSonido()}>🔊 Activar y probar campana + voz de Isa</button><label style={{ display: 'block', marginTop: 14 }}>Volumen de la alerta: {volumenAlerta}% <input type="range" min="10" max="100" step="5" value={volumenAlerta} onChange={e => setVolumenAlerta(Number(e.target.value))} style={{ display: 'block', width: 'min(340px,100%)', marginTop: 6 }} /></label><p style={{ color: '#756682', fontSize: 13 }}>Campana y mensaje grabado de Isa para pedidos nuevos mientras la aplicación esté abierta. {sonidoHabilitado ? 'Audio habilitado en esta sesión.' : 'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n => <p key={n.id}>{n.titulo} · {n.fecha}</p>)}</>}
-        {seccion === 'pedidos' && <><CentroPedidos rol="bodega" /><ModulosEmpresa rol="bodega" /></>}
+        {seccion === 'notificaciones' && <><p>🔔 {notificaciones.length === 0 ? 'No hay notificaciones reales recibidas.' : 'Notificaciones recibidas:'}</p><button style={boton} onClick={() => void probarSonido()}>🔊 Activar y probar campana + voz de Isa</button><label style={{ display: 'block', marginTop: 14 }}>Volumen de la alerta: {volumenAlerta}% <input type="range" min="10" max="100" step="5" value={volumenAlerta} onChange={e => setVolumenAlerta(Number(e.target.value))} style={{ display: 'block', width: 'min(340px,100%)', marginTop: 6 }} /></label><p style={{ color: '#756682', fontSize: 13 }}>Campana y mensaje grabado de Isa para pedidos nuevos mientras la aplicación esté abierta. {sonidoHabilitado ? 'Audio habilitado en esta sesión.' : 'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n => <button type="button" key={n.id} onClick={() => { setPedidoDestinoId(n.id); setSeccion('pedidos'); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: 13, marginTop: 9, background: '#faf6fd', border: '1px solid #e7dced', borderRadius: 10, cursor: 'pointer', color: '#351448' }}><strong>{n.titulo}</strong><span style={{ display: 'block', fontSize: 12, marginTop: 4 }}>{n.fecha}</span><span style={{ display: 'block', color: '#64258e', fontWeight: 700, marginTop: 5 }}>Ver pedido →</span></button>)}</>}
+        {seccion === 'pedidos' && <><CentroPedidos rol="bodega" pedidoInicialId={pedidoDestinoId} /><ModulosEmpresa rol="bodega" /></>}
         {['despachos', 'etiquetas'].includes(seccion) && <p style={{ padding: 18, background: '#f8f3fb', borderRadius: 12 }}>Esta sección se activará con pedidos reales sincronizados en Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
       </section>}
       <footer style={{ textAlign: 'center', padding: 25, fontSize: 12, color: '#8a7894' }}>JAIVISA · Portal Mayorista · Bodega</footer>
@@ -1922,6 +1950,17 @@ const JAIVISA_SHARED_CSS = `
 .jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-flow:row!important;align-items:stretch!important}
 @media(min-width:581px) and (max-width:900px){.jv-vendedor .jv-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:580px){.jv-vendedor .jv-catalog-grid{grid-template-columns:minmax(0,1fr)!important}}
+
+/* JAIVISA NEXT: menú operativo compacto, solo en Bodega y en celulares. */
+@media(max-width:680px){
+ .jv-bodega .jv-bodega-menu-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;align-items:stretch!important}
+ .jv-bodega .jv-bodega-menu-card{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:5px!important;min-height:88px!important;padding:10px 3px!important;border-radius:12px!important;overflow-wrap:anywhere!important;line-height:1.15!important}
+ .jv-bodega .jv-bodega-menu-card>span{font-size:19px!important;line-height:1!important}
+ .jv-bodega .jv-bodega-menu-card>span svg{width:23px!important;height:23px!important}
+ .jv-bodega .jv-bodega-menu-card h3{font-size:10px!important;line-height:1.2!important;margin:2px 0!important;overflow-wrap:anywhere!important}
+ .jv-bodega .jv-bodega-menu-card>div,.jv-bodega .jv-bodega-menu-card>strong{display:none!important}
+ .jv-bodega .jv-bodega-menu-card:focus-visible{outline:3px solid #8b46b6!important;outline-offset:2px!important}
+}
 /* Bodega: controles cómodos y sin desbordamientos en pantallas pequeñas. */
 .jv-bodega,.jv-bodega *{min-width:0}
 .jv-bodega .jv-catalog-card{max-width:100%}
