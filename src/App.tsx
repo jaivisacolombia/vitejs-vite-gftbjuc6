@@ -1352,7 +1352,7 @@ function IconoNext({ nombre, tamano = 24 }: { nombre: string; tamano?: number })
 }
 function PanelVendedor({ perfil, salir }: { perfil: PerfilAcceso; salir: () => Promise<void> }) {
   type Vista = 'inicio' | 'catalogosPDF' | 'catalogo' | 'pedido' | 'clientes' | 'historial' | 'agenda' | 'reportes';
-  type ProductoV = { id: string; codigo: string; nombre: string; categoria: string; descripcion: string; precio: number | null; iva: number | null; stock: number | null };
+  type ProductoV = { id: string; codigo: string; nombre: string; categoria: string; descripcion: string; imagen: string; precio: number | null; iva: number | null; stock: number | null };
   type Renglon = { producto: ProductoV; cantidad: number };
   const [vista, setVista] = useState<Vista>('inicio');
   const [productos, setProductos] = useState<ProductoV[]>([]);
@@ -1372,7 +1372,9 @@ function PanelVendedor({ perfil, salir }: { perfil: PerfilAcceso; salir: () => P
   const [campana, setCampana] = useState(false);
   const [aviso, setAviso] = useState('');
   const [sonido, setSonido] = useState(false);
-  const [numeroBorrador] = useState(() => `BORRADOR-${Date.now().toString(36).toUpperCase()}`);
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const enviandoPedidoRef = React.useRef(false);
+  const [numeroBorrador, setNumeroBorrador] = useState(() => `BORRADOR-${Date.now().toString(36).toUpperCase()}`);
   const opciones: { id: Vista; titulo: string; descripcion: string; icono: string }[] = [
     { id: 'catalogosPDF', titulo: 'Catálogos PDF', descripcion: 'Consultar los catálogos publicados por JAIVISA', icono: 'libros' },
     { id: 'catalogo', titulo: 'Catálogo', descripcion: 'Productos autorizados en Supabase', icono: 'caja' },
@@ -1389,7 +1391,7 @@ function PanelVendedor({ perfil, salir }: { perfil: PerfilAcceso; salir: () => P
       if (fallo) throw fallo;
       const normalizados: ProductoV[] = (data || []).map((p: any) => ({
         id: String(p.id), codigo: String(p.codigo ?? p.sku ?? ''), nombre: String(p.nombre ?? p.name ?? 'Sin nombre'),
-        categoria: String(p.categoria ?? p.category ?? ''), descripcion: String(p.descripcion ?? ''),
+        categoria: String(p.categoria ?? p.category ?? ''), descripcion: String(p.descripcion ?? ''), imagen: String(p.imagen_url ?? ''),
         precio: typeof (p.precio ?? p.price) === 'number' ? Number(p.precio ?? p.price) : null,
         iva: typeof p.iva === 'number' ? Number(p.iva) : null,
         stock: typeof (p.stock ?? p.existencia) === 'number' ? Number(p.stock ?? p.existencia) : null
@@ -1448,6 +1450,40 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
     const url = 'https://wa.me/?text=' + encodeURIComponent(mensajeWhatsApp());
     const ventana = window.open(url, '_blank', 'noopener,noreferrer');
     if (!ventana) setAviso('El navegador bloqueó la ventana. Permite ventanas emergentes para compartir el borrador.');
+  };
+  const confirmarPedido = async () => {
+    if (enviandoPedidoRef.current || !cliente.nombre.trim() || !carrito.length) return;
+    enviandoPedidoRef.current = true;
+    setEnviandoPedido(true);
+    setAviso('');
+    try {
+      const pedido = await crearPedidoCentral({
+        cliente_nombre: cliente.nombre.trim(),
+        cliente_telefono: cliente.telefono.trim(),
+        ciudad: cliente.ciudad.trim(),
+        direccion: cliente.direccion.trim(),
+        observaciones: cliente.observaciones.trim(),
+        lineas: carrito.map(({ producto, cantidad }) => ({
+          productId: producto.id,
+          sku: producto.codigo,
+          nombre: producto.nombre,
+          imagen: producto.imagen,
+          cantidad,
+          precio: producto.precio ?? 0,
+          iva: producto.iva ?? 0,
+        })),
+      });
+      setCarrito([]);
+      setCliente({ nombre: '', telefono: '', direccion: '', ciudad: '', observaciones: '' });
+      setNumeroBorrador(`BORRADOR-${Date.now().toString(36).toUpperCase()}`);
+      setAviso('Pedido #' + pedido.numero + ' guardado y visible para Bodega.');
+      setVista('historial');
+    } catch (error) {
+      setAviso('No se pudo guardar: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      enviandoPedidoRef.current = false;
+      setEnviandoPedido(false);
+    }
   };
   const tocarCampana = () => {
     setCampana(v => !v);
@@ -1522,7 +1558,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
         </div>}
         {(vista === 'catalogo' || vista === 'pedido') && <>
           {vista === 'catalogo' && <div style={{ marginTop: 20 }}><label className="jv-field">{etiqueta('Buscar productos')}<input style={campo} value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, código o categoría" /></label><button style={{ ...btn, marginBottom: 14 }} onClick={() => void cargarProductos()} disabled={cargando}>{cargando ? 'Consultando…' : '↻ Actualizar catálogo'}</button>{error && <p role="alert" style={{ color: '#a32645' }}>{error}</p>}{!cargando && !error && productos.length === 0 && <p className="jv-muted">No hay productos visibles para tu cuenta. Comprueba los permisos de lectura en Supabase.</p>}{encontrados.map(p => <div key={p.id} className="jv-product"><div style={{ flex: '1 1 240px' }}><strong>{p.nombre}</strong><div className="jv-muted" style={{ fontSize: 13 }}>{p.codigo || 'Sin código'} · {p.categoria || 'Sin categoría'}</div><div style={{ fontSize: 14, marginTop: 4 }}>{p.precio === null ? 'Precio no disponible' : formato(p.precio)} · {p.stock === null ? 'Inventario por verificar' : 'Existencias: ' + p.stock}</div></div><button style={btn} disabled={p.precio === null} onClick={() => agregar(p)}>+ Agregar</button></div>)}</div>}
-          {vista === 'pedido' && <div style={{ marginTop: 20 }}><p className="jv-muted">Referencia {numeroBorrador}. Guarda el pedido en Supabase antes de enviarlo a Bodega.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e => setCliente(v => ({ ...v, nombre: e.target.value }))} /></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e => setCliente(v => ({ ...v, telefono: e.target.value }))} /></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e => setCliente(v => ({ ...v, ciudad: e.target.value }))} /></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e => setCliente(v => ({ ...v, direccion: e.target.value }))} /></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{ ...campo, minHeight: 70 }} value={cliente.observaciones} onChange={e => setCliente(v => ({ ...v, observaciones: e.target.value }))} /></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={() => setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length === 0 ? <p className="jv-muted">Todavía no has agregado productos.</p> : carrito.map(x => <div key={x.producto.id} className="jv-product"><div style={{ flex: '1 1 200px' }}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio || 0)} por unidad</div></div><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button style={btn} aria-label="Restar unidad" onClick={() => setCarrito(v => v.map(z => z.producto.id === x.producto.id ? { ...z, cantidad: Math.max(0, z.cantidad - 1) } : z).filter(z => z.cantidad > 0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={() => agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio || 0) * x.cantidad)}</strong></div>)}<div style={{ textAlign: 'right', margin: '18px 0' }}><strong style={{ fontSize: 20 }}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{ fontSize: 12 }}>IVA y total definitivo requieren validación comercial.</p></div><button style={{ ...btn, width: '100%', marginBottom: 10 }} disabled={!carrito.length || !cliente.nombre.trim()} onClick={async () => { try { const p = await crearPedidoCentral({ cliente_nombre: cliente.nombre, cliente_telefono: cliente.telefono, ciudad: cliente.ciudad, direccion: cliente.direccion, observaciones: cliente.observaciones, lineas: carrito.map(x => ({ productId: x.producto.id, sku: x.producto.codigo, nombre: x.producto.nombre, imagen: '', cantidad: x.cantidad, precio: x.producto.precio || 0, iva: x.producto.iva || 0 })) }); setCarrito([]); setCliente({ nombre: '', telefono: '', direccion: '', ciudad: '', observaciones: '' }); setAviso('Pedido #' + p.numero + ' guardado y visible para Bodega.'); setVista('historial'); } catch (e: any) { setAviso('No se pudo guardar: ' + e.message) } }}>✓ Confirmar y enviar pedido a Bodega</button><button style={{ ...btn, background: '#128C51', width: '100%', fontSize: 16 }} onClick={compartir} disabled={!carrito.length || !cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{ fontSize: 12 }}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
+          {vista === 'pedido' && <div style={{ marginTop: 20 }}><p className="jv-muted">Referencia {numeroBorrador}. Guarda el pedido en Supabase antes de enviarlo a Bodega.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e => setCliente(v => ({ ...v, nombre: e.target.value }))} /></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e => setCliente(v => ({ ...v, telefono: e.target.value }))} /></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e => setCliente(v => ({ ...v, ciudad: e.target.value }))} /></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e => setCliente(v => ({ ...v, direccion: e.target.value }))} /></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{ ...campo, minHeight: 70 }} value={cliente.observaciones} onChange={e => setCliente(v => ({ ...v, observaciones: e.target.value }))} /></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={() => setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length === 0 ? <p className="jv-muted">Todavía no has agregado productos.</p> : carrito.map(x => <div key={x.producto.id} className="jv-product"><div style={{ flex: '1 1 200px' }}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio || 0)} por unidad</div></div><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button style={btn} aria-label="Restar unidad" onClick={() => setCarrito(v => v.map(z => z.producto.id === x.producto.id ? { ...z, cantidad: Math.max(0, z.cantidad - 1) } : z).filter(z => z.cantidad > 0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={() => agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio || 0) * x.cantidad)}</strong></div>)}<div style={{ textAlign: 'right', margin: '18px 0' }}><strong style={{ fontSize: 20 }}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{ fontSize: 12 }}>IVA y total definitivo requieren validación comercial.</p></div><button style={{ ...btn, width: '100%', marginBottom: 10 }} disabled={enviandoPedido || !carrito.length || !cliente.nombre.trim()} onClick={() => void confirmarPedido()}>{enviandoPedido ? 'Enviando pedido…' : '✓ Confirmar y enviar pedido a Bodega'}</button><button style={{ ...btn, background: '#128C51', width: '100%', fontSize: 16 }} onClick={compartir} disabled={!carrito.length || !cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{ fontSize: 12 }}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
         </>}
         {vista === 'historial' && <CentroPedidos rol="vendedor" />}
         {['clientes', 'agenda', 'reportes'].includes(vista) && <div style={{ marginTop: 25, padding: 20, borderRadius: 14, background: '#f8f3fb' }}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo se conectará a las tablas y políticas de Supabase correspondientes. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
@@ -1638,7 +1674,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
   const reproducirCampana = async () => {
     try {
       const ctx = audioRef.current;
-      if (!ctx || ctx.state === 'closed') return;
+      if (!ctx || ctx.state === 'closed') throw new Error('Audio inactivo');
       if (ctx.state === 'suspended') await ctx.resume();
       const base = ctx.currentTime + .025;
       const nivel = Math.min(.8, Math.max(.02, volumenRef.current / 100 * .65));
@@ -1655,7 +1691,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
           osc.start(inicio); osc.stop(inicio + .32);
         });
       });
-    } catch { setMensaje('No se pudo reproducir la alerta. Revisa el sonido del equipo.'); }
+    } catch { throw new Error('No se pudo reproducir la campana. Revisa el sonido del equipo.'); }
   };
   const reproducirVozIsa = async () => {
     try {
@@ -1664,7 +1700,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       voz.pause(); voz.currentTime = 0;
       voz.volume = Math.min(1, Math.max(.1, volumenRef.current / 100));
       await voz.play();
-    } catch { setMensaje('La campana funciona, pero la voz de Isa no pudo sonar. Verifica public/isa-voz-pedido.mp3 y los permisos de audio del navegador.'); }
+    } catch { throw new Error('No se pudo reproducir la voz de Isa. Verifica public/isa-voz-pedido.mp3 y los permisos de audio del navegador.'); }
   };
   const reproducirAvisoCompleto = async () => {
     await reproducirCampana();
@@ -1678,9 +1714,12 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       await audioRef.current.resume();
       habilitadoRef.current = true;
       setSonidoHabilitado(true);
+      setMensaje('');
       await reproducirAvisoCompleto();
       setMensaje('Campana y voz de Isa activadas. Ajusta el volumen del equipo y los parlantes.');
-    } catch { setMensaje('El navegador bloqueó el audio. Pulsa de nuevo «Activar y probar campana».'); }
+    } catch (error) {
+      setMensaje(error instanceof Error ? error.message : 'No se pudo iniciar el audio en este navegador.');
+    }
   };
   useEffect(() => {
     let activo = true;
@@ -1699,9 +1738,13 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         vistosRef.current.add(id);
         const numero = evento.new?.numero;
         setNotificaciones(prev => [{ id, titulo: 'Nuevo pedido' + (numero ? ' #' + numero : ''), fecha: new Date().toLocaleString('es-CO') }, ...prev].slice(0, 30));
-        if (habilitadoRef.current) void reproducirAvisoCompleto();
+        if (habilitadoRef.current) {
+          void reproducirAvisoCompleto().catch((error: Error) => {
+            if (activo) setMensaje(error.message);
+          });
+        }
       }).subscribe();
-    return () => { activo = false; void supabase.removeChannel(canal); void audioRef.current?.close(); audioRef.current = null; vozIsaRef.current?.pause(); vozIsaRef.current = null; };
+    return () => { activo = false; habilitadoRef.current = false; void supabase.removeChannel(canal); void audioRef.current?.close(); audioRef.current = null; vozIsaRef.current?.pause(); vozIsaRef.current = null; };
   }, []);
   const cards: { id: Seccion; icono: string; titulo: string; detalle: string }[] = [
     { id: 'pedidos', icono: 'pedidos', titulo: 'Pedidos recibidos', detalle: 'Pendientes de preparación' },
@@ -1725,7 +1768,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <div className="jv-warehouse-status-copy">
           <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · WAREHOUSE HUB</div>
           <div className="jv-warehouse-status-title">Centro operativo en preparación <span className="jv-warehouse-status-badge">MODO PRUEBA</span></div>
-          <p>Inventario y catálogos en consulta. Los pedidos reales y las alertas automáticas se activarán cuando finalicemos su conexión segura.</p>
+          <p>Consulta los pedidos recibidos, el inventario y los catálogos. En Notificaciones puedes activar la campana y la voz de Isa.</p>
         </div>
       </section>
       {mensaje && <p role="status" style={{ padding: 12, background: '#f1e7f9', borderRadius: 12 }}>{mensaje}</p>}
@@ -1766,7 +1809,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
           </>}
         </>}
         {seccion === 'catalogos' && <><button style={boton} onClick={() => void cargar()}>Actualizar catálogos</button><GaleriaCatalogos catalogos={catalogos} /></>}
-        {seccion === 'notificaciones' && <><p>🔔 {notificaciones.length === 0 ? 'No hay notificaciones reales recibidas.' : 'Notificaciones recibidas:'}</p><button style={boton} onClick={() => void probarSonido()}>🔊 Activar y probar campana + voz de Isa</button><label style={{ display: 'block', marginTop: 14 }}>Volumen de la alerta: {volumenAlerta}% <input type="range" min="10" max="100" step="5" value={volumenAlerta} onChange={e => setVolumenAlerta(Number(e.target.value))} style={{ display: 'block', width: 'min(340px,100%)', marginTop: 6 }} /></label><p style={{ color: '#756682', fontSize: 13 }}>Campana y mensaje grabado de Isa para pedidos nuevos mientras la aplicación esté abierta. {sonidoHabilitado ? 'Sonido probado en esta sesión.' : 'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n => <p key={n.id}>{n.titulo} · {n.fecha}</p>)}</>}
+        {seccion === 'notificaciones' && <><p>🔔 {notificaciones.length === 0 ? 'No hay notificaciones reales recibidas.' : 'Notificaciones recibidas:'}</p><button style={boton} onClick={() => void probarSonido()}>🔊 Activar y probar campana + voz de Isa</button><label style={{ display: 'block', marginTop: 14 }}>Volumen de la alerta: {volumenAlerta}% <input type="range" min="10" max="100" step="5" value={volumenAlerta} onChange={e => setVolumenAlerta(Number(e.target.value))} style={{ display: 'block', width: 'min(340px,100%)', marginTop: 6 }} /></label><p style={{ color: '#756682', fontSize: 13 }}>Campana y mensaje grabado de Isa para pedidos nuevos mientras la aplicación esté abierta. {sonidoHabilitado ? 'Audio habilitado en esta sesión.' : 'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n => <p key={n.id}>{n.titulo} · {n.fecha}</p>)}</>}
         {seccion === 'pedidos' && <><CentroPedidos rol="bodega" /><ModulosEmpresa rol="bodega" /></>}
         {['despachos', 'etiquetas'].includes(seccion) && <p style={{ padding: 18, background: '#f8f3fb', borderRadius: 12 }}>Esta sección se activará con pedidos reales sincronizados en Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
       </section>}
