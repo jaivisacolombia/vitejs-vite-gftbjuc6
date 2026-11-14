@@ -1516,7 +1516,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
       </aside>
       {aviso && <div role="status" style={{ background: '#f3e7fb', borderRadius: 12, padding: 13, marginBottom: 14 }}>{aviso} <button onClick={() => setAviso('')} style={{ border: 0, background: 'transparent', color: '#6a2b8b', fontWeight: 800 }}>Cerrar</button></div>}
       {vista === 'inicio' ? <>
-        <section className="jv-grid" style={{ marginBottom: 17 }}>{[{ t: 'Productos consultables', n: String(productos.length), i: 'caja' }, { t: 'Artículos en borrador', n: String(carrito.reduce((s, x) => s + x.cantidad, 0)), i: 'carrito' }, { t: 'Subtotal del borrador', n: formato(subtotal), i: 'grafico' }].map(x => <div key={x.t} style={panel}><div style={{ fontSize: 25 }}><IconoNext nombre={x.i} tamano={25} /></div><strong style={{ display: 'block', fontSize: 22, margin: '8px 0' }}>{x.n}</strong><span className="jv-muted" style={{ fontSize: 13 }}>{x.t}</span></div>)}</section>
+        <section className="jv-grid" style={{ marginBottom: 17 }}>{[{ t: 'Productos cargados (máx. 500)', n: String(productos.length), i: 'caja' }, { t: 'Artículos en borrador', n: String(carrito.reduce((s, x) => s + x.cantidad, 0)), i: 'carrito' }, { t: 'Subtotal del borrador', n: formato(subtotal), i: 'grafico' }].map(x => <div key={x.t} style={panel}><div style={{ fontSize: 25 }}><IconoNext nombre={x.i} tamano={25} /></div><strong style={{ display: 'block', fontSize: 22, margin: '8px 0' }}>{x.n}</strong><span className="jv-muted" style={{ fontSize: 13 }}>{x.t}</span></div>)}</section>
         <section className="jv-grid" aria-label="Herramientas del vendedor">{opciones.map(o => <button className="jv-card" key={o.id} onClick={() => setVista(o.id)}><span style={{ fontSize: 30, display: 'block', marginBottom: 10 }}><IconoNext nombre={o.icono} tamano={28} /></span><strong style={{ fontSize: 17, display: 'block' }}>{o.titulo}</strong><span className="jv-muted" style={{ display: 'block', fontSize: 13, marginTop: 5 }}>{o.descripcion}</span><span style={{ display: 'block', color: '#753b93', fontSize: 12, fontWeight: 800, marginTop: 12 }}>Abrir sección →</span></button>)}</section>
       </> : <section style={panel}>
         <div className="jv-row"><button style={btn} onClick={() => { setVista('inicio'); setAviso(''); }}>← Inicio</button><strong style={{ fontSize: 20 }}><IconoNext nombre={opciones.find(o => o.id === vista)?.icono || "chispa"} /> {opciones.find(o => o.id === vista)?.titulo}</strong></div>
@@ -1763,18 +1763,19 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       </header>
       <h1 style={{ fontSize: 'clamp(24px,4vw,34px)', marginBottom: 5 }}>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! 👋</h1>
       <p style={{ color: '#766384' }}>Consulta productos, catálogos y prepara tu centro de trabajo.</p>
-      <section role="status" aria-label="Estado de Bodega" className="jv-warehouse-status">
-        <div className="jv-warehouse-status-icon"><IconoNext nombre="campana" tamano={22} /></div>
+      <section aria-label="Centro Operativo de Bodega" className="jv-warehouse-status">
+        <div className="jv-warehouse-status-icon"><IconoNext nombre="caja" tamano={22} /></div>
         <div className="jv-warehouse-status-copy">
-          <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · WAREHOUSE HUB</div>
-          <div className="jv-warehouse-status-title">Centro operativo en preparación <span className="jv-warehouse-status-badge">MODO PRUEBA</span></div>
-          <p>Consulta los pedidos recibidos, el inventario y los catálogos. En Notificaciones puedes activar la campana y la voz de Isa.</p>
+          <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · BODEGA</div>
+          <div className="jv-warehouse-status-title">Centro Operativo de Bodega</div>
+          <p>Consulta pedidos recibidos, prepara productos, revisa el inventario y organiza despachos desde los módulos disponibles.</p>
+          <p>Activa la campana y la voz de Isa desde Notificaciones. Los indicadores dependen de los datos y permisos disponibles en Supabase.</p>
         </div>
       </section>
       {mensaje && <p role="status" style={{ padding: 12, background: '#f1e7f9', borderRadius: 12 }}>{mensaje}</p>}
       {seccion === 'inicio' ? <>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 16 }}>
-          {[['caja', String(productos.length), 'Productos consultables'], ['libros', String(catalogos.length), 'Catálogos PDF'], ['campana', String(notificaciones.length), 'Avisos recibidos']].map(([ico, nombre, detalle]) => <div key={detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p></div>)}
+          {[['caja', String(productos.length), 'Productos cargados (máx. 500)'], ['libros', String(catalogos.length), 'Catálogos PDF'], ['campana', String(notificaciones.length), 'Avisos recibidos']].map(([ico, nombre, detalle]) => <div key={detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p></div>)}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>{cards.map(c => <button className="jv-next-card" key={c.id} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22, minHeight: 145, cursor: 'pointer' }}><span style={{ fontSize: 30 }}><IconoNext nombre={c.icono} tamano={28} /></span><h3 style={{ margin: '10px 0 6px', color: '#351448' }}>{c.titulo}</h3><div style={{ color: '#756682', fontSize: 13 }}>{c.detalle}</div><strong style={{ color: '#64258e', display: 'block', marginTop: 12 }}>Abrir sección →</strong></button>)}</div>
       </> : <section style={{ background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22 }}>
@@ -1782,7 +1783,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <h2><IconoNext nombre={cards.find(c => c.id === seccion)?.icono || "chispa"} /> {cards.find(c => c.id === seccion)?.titulo}</h2>
         {seccion === 'inventario' && <>
           <input aria-label="Buscar producto" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, referencia o categoría" style={{ width: '100%', padding: 13, border: '1px solid #d8c8e4', borderRadius: 10, marginBottom: 15 }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) en Supabase · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) cargados (máximo 500) en Supabase · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
           <button type="button" style={{ ...boton, marginBottom: 12 }} onClick={() => { setCrearNuevo(true); setFotoPendiente(null); setProductoEditando({ id: '', nombre: '', codigo: '', stock: null, precio: 0, categoria: '', imagen_url: '', campos: columnasProductos.length ? columnasProductos : ['nombre', 'codigo', 'precio', 'categoria', 'imagen_url'] }); setAvisoProducto('') }}>＋ Agregar producto</button>
           {error && <p role="alert">{error}</p>}{avisoProducto && <p role="status" style={{ padding: 12, background: '#f4eafa', borderRadius: 10 }}>{avisoProducto}</p>}
           {productoEditando && <form onSubmit={e => void guardarProducto(e)} style={{ border: '1px solid #d8c8e4', background: '#faf6fd', padding: 16, borderRadius: 14, margin: '15px 0', display: 'grid', gap: 12 }}>
@@ -2054,4 +2055,135 @@ class JaivisaErrorBoundary extends React.Component<
 const JaivisaApp = App;
 export { JaivisaErrorBoundary, JaivisaApp };
 
-export default function AppProtegida() { return <JaivisaErrorBoundary><IsaAsistente /><style>{JAIVISA_SHARED_CSS}</style><JaivisaApp /></JaivisaErrorBoundary>; }
+/**
+ * Cierre por inactividad para todos los portales (clientes, vendedores, bodega y administración).
+ * Advertencia a los 59 minutos; cierre de sesión en Supabase a los 60.
+ * La protección definitiva de datos depende también de las políticas RLS de Supabase.
+ */
+function SesionConInactividad({ children }: { children: React.ReactNode }) {
+  const LIMITE_MS = 60 * 60_000;
+  const AVISO_MS = 59 * 60_000;
+  const CLAVE_ACTIVIDAD = 'jaivisa_ultima_actividad_v1';
+  const [autenticado, setAutenticado] = useState(false);
+  const [advertencia, setAdvertencia] = useState(false);
+  const [errorCierre, setErrorCierre] = useState('');
+  const ultimaActividad = React.useRef(Date.now());
+  const cerrando = React.useRef(false);
+  const autenticadoRef = React.useRef(false);
+  const ultimaEscritura = React.useRef(0);
+
+  const cerrarSesion = useCallback(async () => {
+    if (cerrando.current) return;
+    cerrando.current = true;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      autenticadoRef.current = false;
+      setAutenticado(false);
+      setAdvertencia(false);
+      setErrorCierre('');
+      try { localStorage.removeItem(CLAVE_ACTIVIDAD); } catch { /* Almacenamiento no disponible */ }
+    } catch {
+      setErrorCierre('No se pudo cerrar la sesión. Comprueba la conexión e inténtalo nuevamente.');
+      setAdvertencia(true);
+    } finally {
+      cerrando.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    let montado = true;
+    const actualizar = (activo: boolean) => {
+      if (!montado) return;
+      autenticadoRef.current = activo;
+      setAutenticado(activo);
+      if (activo) {
+        let guardada = 0;
+        try { guardada = Number(localStorage.getItem(CLAVE_ACTIVIDAD)) || 0; } catch { /* Sin almacenamiento */ }
+        ultimaActividad.current = guardada > 0 && guardada <= Date.now() ? guardada : Date.now();
+      } else {
+        setAdvertencia(false);
+        setErrorCierre('');
+      }
+    };
+    void supabase.auth.getSession().then(({ data }) => actualizar(!!data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, sesion) => {
+      if (evento === 'SIGNED_IN' || evento === 'SIGNED_OUT') actualizar(!!sesion);
+    });
+    return () => { montado = false; subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!autenticado) return;
+    const comprobar = () => {
+      if (!autenticadoRef.current || cerrando.current) return;
+      const transcurrido = Date.now() - ultimaActividad.current;
+      if (transcurrido >= LIMITE_MS) { void cerrarSesion(); return; }
+      setAdvertencia(transcurrido >= AVISO_MS);
+    };
+    const registrarActividad = () => {
+      if (!autenticadoRef.current || cerrando.current) return;
+      const ahora = Date.now();
+      // Si el equipo despertó tras una suspensión, no renovar una sesión ya vencida.
+      if (ahora - ultimaActividad.current >= LIMITE_MS) { void cerrarSesion(); return; }
+      ultimaActividad.current = ahora;
+      setAdvertencia(false);
+      setErrorCierre('');
+      if (ahora - ultimaEscritura.current > 5000) {
+        ultimaEscritura.current = ahora;
+        try { localStorage.setItem(CLAVE_ACTIVIDAD, String(ahora)); } catch { /* Sin almacenamiento */ }
+      }
+    };
+    const sincronizarPestanas = (evento: StorageEvent) => {
+      if (evento.key !== CLAVE_ACTIVIDAD) return;
+      const tiempo = Number(evento.newValue);
+      if (Number.isFinite(tiempo) && tiempo > ultimaActividad.current && tiempo <= Date.now()) {
+        ultimaActividad.current = tiempo;
+        comprobar();
+      }
+    };
+    const alVolver = () => comprobar();
+    const eventos = ['pointerdown', 'keydown', 'touchstart', 'scroll'] as const;
+    eventos.forEach(evento => window.addEventListener(evento, registrarActividad, { passive: true }));
+    window.addEventListener('storage', sincronizarPestanas);
+    window.addEventListener('focus', alVolver);
+    document.addEventListener('visibilitychange', alVolver);
+    const intervalo = window.setInterval(comprobar, 5000);
+    comprobar();
+    return () => {
+      window.clearInterval(intervalo);
+      eventos.forEach(evento => window.removeEventListener(evento, registrarActividad));
+      window.removeEventListener('storage', sincronizarPestanas);
+      window.removeEventListener('focus', alVolver);
+      document.removeEventListener('visibilitychange', alVolver);
+    };
+  }, [autenticado, cerrarSesion]);
+
+  return <>
+    {children}
+    {autenticado && (advertencia || errorCierre) && <div role="alertdialog" aria-modal="true" aria-label="Aviso de cierre de sesión" style={{ position: 'fixed', inset: 0, zIndex: 2147483640, background: '#17082199', display: 'grid', placeItems: 'center', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: 420, background: '#fff', color: '#321343', borderRadius: 20, padding: 24, boxSizing: 'border-box', boxShadow: '0 18px 65px #17082177', fontFamily: 'system-ui,sans-serif' }}>
+        <h2 style={{ fontSize: 22, marginTop: 0 }}>JAIVISA · Seguridad de sesión</h2>
+        <p>{errorCierre || 'Tu sesión se cerrará en aproximadamente un minuto por inactividad. Guarda tus cambios pendientes antes de continuar.'}</p>
+        {!errorCierre && <button type="button" onClick={() => {
+          const ahora = Date.now();
+          ultimaActividad.current = ahora;
+          ultimaEscritura.current = ahora;
+          try { localStorage.setItem(CLAVE_ACTIVIDAD, String(ahora)); } catch { /* Sin almacenamiento */ }
+          setAdvertencia(false);
+        }} style={{ border: 0, borderRadius: 10, background: '#572080', color: '#fff', padding: '12px 18px', cursor: 'pointer', fontWeight: 700 }}>Continuar trabajando</button>}
+        {errorCierre && <button type="button" onClick={() => void cerrarSesion()} style={{ border: '1px solid #572080', borderRadius: 10, background: '#572080', color: '#fff', padding: '12px 18px', cursor: 'pointer' }}>Reintentar cierre</button>}
+      </div>
+    </div>}
+  </>;
+}
+
+export default function AppProtegida() {
+  return <JaivisaErrorBoundary>
+    <SesionConInactividad>
+      <IsaAsistente />
+      <style>{JAIVISA_SHARED_CSS}</style>
+      <JaivisaApp />
+    </SesionConInactividad>
+  </JaivisaErrorBoundary>;
+}
