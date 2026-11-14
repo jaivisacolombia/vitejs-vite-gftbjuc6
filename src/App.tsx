@@ -1755,13 +1755,16 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       }).subscribe();
     return () => { activo = false; habilitadoRef.current = false; void supabase.removeChannel(canal); void audioRef.current?.close(); audioRef.current = null; vozIsaRef.current?.pause(); vozIsaRef.current = null; };
   }, []);
-  const cards: { id: Seccion; icono: string; titulo: string; detalle: string }[] = [
-    { id: 'pedidos', icono: 'pedidos', titulo: 'Pedidos recibidos', detalle: 'Pendientes de preparación' },
-    { id: 'inventario', icono: 'caja', titulo: 'Inventario', detalle: 'Productos y existencias' },
-    { id: 'despachos', icono: 'camion', titulo: 'Despachos', detalle: 'Seguimiento de entregas' },
-    { id: 'etiquetas', icono: 'etiqueta', titulo: 'Etiquetas', detalle: 'Impresión y empaque' },
-    { id: 'catalogos', icono: 'libros', titulo: 'Catálogos PDF', detalle: 'Documentos publicados' },
-    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Avisos de nuevos pedidos' }
+  // Accesos visuales: las secciones adicionales conducen a módulos existentes.
+  const cards: { id: Seccion; icono: string; titulo: string; detalle: string; tono: string }[] = [
+    { id: 'pedidos', icono: 'pedidos', titulo: 'Pedidos', detalle: 'Revisa los pedidos recibidos', tono: 'violeta' },
+    { id: 'inventario', icono: 'caja', titulo: 'Inventario', detalle: 'Consulta productos y existencias', tono: 'azul' },
+    { id: 'pedidos', icono: 'caja', titulo: 'Preparación', detalle: 'Organiza pedidos por preparar', tono: 'verde' },
+    { id: 'despachos', icono: 'camion', titulo: 'Despachos', detalle: 'Consulta el estado del módulo', tono: 'naranja' },
+    { id: 'catalogos', icono: 'libros', titulo: 'Catálogos PDF', detalle: 'Consulta documentos vigentes', tono: 'azul' },
+    { id: 'etiquetas', icono: 'etiqueta', titulo: 'Etiquetas', detalle: 'Consulta el módulo de impresión', tono: 'rosa' },
+    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Revisa avisos y pedidos nuevos', tono: 'rosa' },
+    { id: 'notificaciones', icono: 'campana', titulo: 'Actividad reciente', detalle: 'Consulta los últimos avisos', tono: 'violeta' }
   ];
   const boton: React.CSSProperties = { border: 0, borderRadius: 11, padding: '11px 15px', background: '#64258e', color: '#fff', fontWeight: 750, cursor: 'pointer' };
   return <main className="jv-bodega jv-unified jv-future-bodega" style={{ minHeight: '100vh', background: '#faf7fc', padding: '18px clamp(12px,3vw,35px)', fontFamily: 'Inter,system-ui,sans-serif', color: '#351448' }}>
@@ -1771,7 +1774,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <div className="jv-future-actions"><button type="button" aria-label={'Abrir notificaciones, ' + notificaciones.length + ' avisos'} onClick={() => setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={21} />{notificaciones.length > 0 && <span className="jv-future-bubble">{notificaciones.length}</span>}</button><button type="button" onClick={() => void salir()}>Salir</button></div>
       </header>
       <section className="jv-future-hero" aria-label="Bienvenida al Centro Operativo de Bodega">
-        <img className="jv-future-isa" src="/jaivisa-isa-hero.png" alt="Isa, asistente de JAIVISA" />
+        <img className="jv-future-isa" src="/isa-oficial-jaivisa.png" alt="Isa, asistente de JAIVISA" />
         <div className="jv-future-hero-copy">
           <div className="jv-future-eyebrow">JAIVISA NEXT · CENTRO OPERATIVO</div>
           <h1>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! 👋</h1>
@@ -1786,7 +1789,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         <div className="jv-future-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 16 }}>
           {([['caja', String(productos.length), 'Productos cargados (máx. 500)', 'inventario'], ['libros', String(catalogos.length), 'Catálogos PDF', 'catalogos'], ['campana', String(notificaciones.length), 'Avisos recibidos', 'notificaciones']] as const).map(([ico, nombre, detalle, destino]) => <button type="button" className="jv-future-stat" key={detalle} onClick={() => setSeccion(destino)} aria-label={'Abrir ' + detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center', cursor: 'pointer', color: '#351448', fontFamily: 'inherit', width: '100%' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p><span style={{ fontSize: 12, color: '#64258e', fontWeight: 700 }}>Ver sección →</span></button>)}
         </div>
-        <div className="jv-bodega-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>{cards.map(c => <button className="jv-next-card jv-bodega-menu-card" key={c.id} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22, minHeight: 145, cursor: 'pointer' }}><span style={{ fontSize: 30 }}><IconoNext nombre={c.icono} tamano={28} /></span><h3 style={{ margin: '10px 0 6px', color: '#351448' }}>{c.titulo}</h3><div style={{ color: '#756682', fontSize: 13 }}>{c.detalle}</div><strong style={{ color: '#64258e', display: 'block', marginTop: 12 }}>Abrir sección →</strong></button>)}</div>
+        <div className="jv-bodega-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 14 }}>{cards.map(c => <button type="button" className={'jv-next-card jv-bodega-menu-card jv-tone-' + c.tono} key={c.titulo} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: '#351258', border: '1px solid #a957ec', borderRadius: 20, padding: 19, minHeight: 145, cursor: 'pointer' }}><span className="jv-menu-symbol"><IconoNext nombre={c.icono} tamano={30} /></span><span className="jv-menu-copy"><h3>{c.titulo}</h3><span className="jv-menu-detail">{c.detalle}</span><strong>Abrir sección →</strong></span></button>)}</div>
         <button type="button" className="jv-future-activity" onClick={() => setSeccion('notificaciones')}><span><IconoNext nombre="campana" tamano={25} /> <strong>Actividad reciente</strong><small>Consulta los últimos avisos recibidos por Bodega</small></span><b>Ver avisos →</b></button>
       </> : <section style={{ background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22 }}>
         <button style={boton} onClick={() => setSeccion('inicio')}>← Inicio</button>
@@ -2028,6 +2031,317 @@ const JAIVISA_SHARED_CSS = `
 .jv-future-bodega>div>section:not(.jv-future-hero){color:#341346}
 @media(max-width:680px){.jv-future-header{padding:8px 10px!important;flex-wrap:nowrap!important}.jv-future-brand{gap:7px}.jv-future-brand img{width:70px!important;height:45px!important}.jv-future-brand strong{font-size:12px}.jv-future-brand small{font-size:9px}.jv-future-actions{gap:5px}.jv-future-actions button{padding:7px!important;min-height:39px!important;font-size:11px}.jv-future-hero{min-height:174px}.jv-future-isa{width:29%;object-position:38% center}.jv-future-warehouse{width:24%}.jv-future-hero-copy{width:74%;margin-left:12%;padding:13px 2px}.jv-future-eyebrow{font-size:8px;letter-spacing:.7px}.jv-future-hero h1{font-size:clamp(17px,5vw,23px);margin:4px 0}.jv-future-hero h2{font-size:12px;margin:5px 0}.jv-future-hero p{font-size:10px;line-height:1.35;margin:5px auto}.jv-future-hero-hint{display:none}.jv-future-stats{gap:6px!important}.jv-future-stat{padding:9px 4px!important;border-radius:12px!important}.jv-future-stat strong{font-size:17px!important}.jv-future-stat p{font-size:9px!important;margin:4px 0!important}.jv-future-stat svg{width:20px!important}.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}.jv-future-bodega .jv-bodega-menu-card{min-height:80px!important;padding:9px 3px!important;border-radius:12px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:10px!important}.jv-future-activity{padding:12px;flex-wrap:wrap}.jv-future-activity strong{font-size:14px}.jv-future-activity small{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.jv-future-bodega *{transition:none!important}}
+/* JAIVISA NEXT Premium V3 · Diseño de Bodega inspirado en la referencia visual.
+   No altera los datos, las políticas ni el flujo de pedidos. */
+.jv-future-bodega{background:radial-gradient(ellipse at 10% 25%,rgba(126,40,208,.48),transparent 48%),radial-gradient(ellipse at 95% 65%,rgba(78,33,168,.38),transparent 46%),linear-gradient(145deg,#18082d,#2b1051 48%,#160923)!important;color:#fff!important}
+.jv-future-bodega .jv-future-header{border-radius:22px 22px 0 0!important;border-bottom:2px solid #a541f3!important;background:linear-gradient(105deg,#250a43,#341055 60%,#220b42)!important}
+.jv-future-bodega .jv-future-hero{min-height:305px;background:radial-gradient(ellipse at 48% 55%,#5e168f,#240a41 78%)!important}
+.jv-future-bodega .jv-future-isa{width:32%;object-fit:contain;object-position:left bottom;mask-image:linear-gradient(to right,#000 80%,transparent 100%);filter:drop-shadow(0 0 18px #ad54fa77)}
+.jv-future-bodega .jv-future-warehouse{width:37%;opacity:.96}
+.jv-future-bodega .jv-future-hero-copy{width:58%;margin-left:4%;padding:26px 16px}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(27px,3.7vw,52px);font-weight:900;text-shadow:0 0 24px #f58aff88}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(16px,2vw,26px)}
+.jv-future-bodega .jv-future-stats{gap:14px!important;margin-top:14px!important;margin-bottom:28px!important}
+.jv-future-bodega .jv-future-stat{min-height:122px!important;position:relative;overflow:hidden;text-align:left!important;display:grid;grid-template-columns:64px 1fr;grid-template-rows:auto auto auto;column-gap:15px;align-content:center;padding:20px!important;background:linear-gradient(125deg,#5a2489,#29134f 75%)!important;border:1px solid #bf71fb!important;box-shadow:inset 0 -2px #d24cff,0 12px 25px #0d041f77!important}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(120deg,#273a9c,#40116f)!important;border-color:#6b9cff!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(120deg,#833068,#34135b)!important;border-color:#ff9b73!important}
+.jv-future-bodega .jv-future-stat>div{grid-column:1;grid-row:1/4;align-self:center;justify-self:center;filter:drop-shadow(0 0 10px #ffffff55)}
+.jv-future-bodega .jv-future-stat>div svg{width:44px!important;height:44px!important}
+.jv-future-bodega .jv-future-stat strong{grid-column:2;grid-row:2;font-size:30px!important;line-height:1.1}
+.jv-future-bodega .jv-future-stat p{grid-column:2;grid-row:1;margin:0 0 4px!important;font-size:13px!important;font-weight:750}
+.jv-future-bodega .jv-future-stat>span{grid-column:2;grid-row:3;font-size:11px!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
+.jv-future-bodega .jv-bodega-menu-card{display:flex!important;align-items:center!important;gap:13px!important;min-width:0!important;min-height:152px!important;padding:17px!important;background:linear-gradient(135deg,#592083,#311257)!important;border:1px solid #b75bfa!important;border-radius:25px!important;box-shadow:inset 0 1px #ffffff33,inset 0 -2px #b746f4,0 13px 24px #09021677!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(130deg,#283e9a,#35145c)!important;border-color:#769bff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(130deg,#194d6d,#37145d)!important;border-color:#64e6cb!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(130deg,#794080,#391456)!important;border-color:#ffae66!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(130deg,#822477,#371052)!important;border-color:#f575d5!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex:0 0 60px;display:grid!important;place-items:center!important;width:60px!important;height:60px!important;margin:0!important;border-radius:18px!important;background:linear-gradient(135deg,#a93ff1,#5a1aab)!important;color:#fff!important;border:1px solid #d99affaa!important;box-shadow:inset 0 1px #ffffff55,0 7px 18px #14052566!important}
+.jv-future-bodega .jv-tone-azul .jv-menu-symbol{background:linear-gradient(135deg,#08c9e9,#2851a8)!important}
+.jv-future-bodega .jv-tone-verde .jv-menu-symbol{background:linear-gradient(135deg,#14d9a4,#087a6e)!important}
+.jv-future-bodega .jv-tone-naranja .jv-menu-symbol{background:linear-gradient(135deg,#ffb31c,#bd5a0a)!important}
+.jv-future-bodega .jv-tone-rosa .jv-menu-symbol{background:linear-gradient(135deg,#f33ca3,#90216c)!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol svg{width:31px!important;height:31px!important}
+.jv-future-bodega .jv-menu-copy{display:block;min-width:0}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(13px,1.25vw,19px)!important;margin:0 0 8px!important;color:#fff!important;line-height:1.2!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{display:block;color:#f0dfff!important;font-size:12px;line-height:1.45}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:block!important;margin-top:8px!important;font-size:11px;color:#eac8ff!important}
+.jv-future-bodega .jv-future-activity{margin-top:30px;margin-bottom:16px;padding:22px!important;background:linear-gradient(100deg,#5a2192,#23113f)!important;box-shadow:0 8px 28px #11051f88,inset 0 -2px #b850f8}
+.jv-future-bodega .jv-future-activity strong{color:#fff}
+.jv-future-bodega>div>footer{color:#c9a9e9!important}
+@media(max-width:1050px) and (min-width:681px){.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}.jv-future-bodega .jv-bodega-menu-card{flex-direction:column;align-items:flex-start!important;padding:13px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex-basis:auto}}
+@media(max-width:680px){
+ .jv-future-bodega .jv-future-hero{min-height:182px!important}
+ .jv-future-bodega .jv-future-isa{width:35%!important;object-fit:contain!important;object-position:left bottom!important}
+ .jv-future-bodega .jv-future-warehouse{width:28%!important}
+ .jv-future-bodega .jv-future-hero-copy{width:71%!important;margin-left:19%!important;padding:12px 3px!important}
+ .jv-future-bodega .jv-future-stats{gap:6px!important;margin-bottom:16px!important}
+ .jv-future-bodega .jv-future-stat{min-height:86px!important;display:flex;flex-direction:column;align-items:center;text-align:center!important;gap:2px;padding:8px 3px!important}
+ .jv-future-bodega .jv-future-stat>div svg{width:23px!important;height:23px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:20px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:9px!important;line-height:1.2!important}
+ .jv-future-bodega .jv-future-stat>span{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:98px!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 3px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{width:40px!important;height:40px!important;flex:0 0 40px!important;border-radius:12px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol svg{width:23px!important;height:23px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:10px!important;text-align:center!important;margin:0!important;line-height:1.2!important;overflow-wrap:anywhere}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+ .jv-future-bodega .jv-future-activity{padding:13px!important;margin-top:17px}
+}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-bodega-menu-card,.jv-future-bodega .jv-future-stat{transition:none!important}}
+/* V4 · Full-bleed nocturno, contraste y legibilidad. Solo Bodega. */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{margin:0!important;min-height:100%!important;background:#150720!important}
+body:has(.jv-future-bodega){overflow-x:hidden!important}
+.jv-future-bodega{box-sizing:border-box!important;min-height:100dvh!important;width:100%!important;margin:0!important;padding:0 clamp(12px,3vw,48px) 44px!important;background:radial-gradient(ellipse 65% 48% at 5% 28%,#60209c99,transparent 75%),radial-gradient(ellipse 65% 40% at 94% 88%,#3c1b8999,transparent 75%),linear-gradient(140deg,#19072e 0%,#2a0c4d 50%,#130621 100%)!important;color:#fff!important;font-family:Inter,'Segoe UI',system-ui,sans-serif!important}
+.jv-future-bodega>div{max-width:1480px!important;width:100%!important;margin-inline:auto!important}
+.jv-future-bodega .jv-future-header{margin:0!important;padding:15px clamp(14px,2.3vw,32px)!important;border-radius:0 0 18px 18px!important;border-color:#9c4de777!important;box-shadow:0 12px 35px #0d031a88!important}
+.jv-future-bodega .jv-future-brand strong{font-size:clamp(15px,1.6vw,23px)!important;font-weight:850!important;letter-spacing:.02em!important;color:#fff!important}
+.jv-future-bodega .jv-future-brand small{font-size:clamp(11px,1vw,14px)!important;color:#e6caff!important}
+.jv-future-bodega .jv-future-hero{border-radius:0 0 24px 24px!important;min-height:clamp(260px,27vw,370px)!important;box-shadow:0 16px 40px #0c021d99!important}
+.jv-future-bodega .jv-future-hero-copy{width:61%!important;max-width:740px!important;margin-left:3%!important}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(32px,4.1vw,64px)!important;line-height:1.06!important;letter-spacing:-.04em!important;color:#fff!important}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(18px,2.2vw,30px)!important;line-height:1.2!important;font-weight:800!important;color:#fff!important}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.25vw,17px)!important;line-height:1.6!important;color:#f2e4ff!important}
+.jv-future-bodega .jv-future-eyebrow{font-size:clamp(10px,.85vw,13px)!important;letter-spacing:.16em!important}
+.jv-future-bodega .jv-future-stats{margin:18px 0 28px!important;gap:16px!important}
+.jv-future-bodega .jv-future-stat{min-height:138px!important;border-radius:23px!important;background:linear-gradient(120deg,#60219b,#271049)!important;border:1.5px solid #b85dff!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #bc52ff!important;transition:transform .2s,box-shadow .2s!important}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(120deg,#2445a5,#381064)!important;border-color:#70baff!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #4bafff!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(120deg,#873467,#37104e)!important;border-color:#ffab8a!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #ff8d9b!important}
+.jv-future-bodega .jv-future-stat :is(p,strong,span,svg){color:#fff!important;text-shadow:none!important}
+.jv-future-bodega .jv-future-stat p{font-size:clamp(12px,1.1vw,16px)!important;font-weight:750!important;line-height:1.25!important}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(27px,2.7vw,40px)!important;font-weight:900!important}
+.jv-future-bodega .jv-future-stat>span{font-size:12px!important;color:#e8d4ff!important}
+.jv-future-bodega .jv-bodega-menu-grid{gap:18px!important}
+.jv-future-bodega .jv-bodega-menu-card{background:linear-gradient(140deg,#67249a 0%,#321054 100%)!important;border:1.5px solid #b855ff!important;border-radius:23px!important;min-height:166px!important;box-shadow:0 12px 27px #0b031d88,inset 0 1px #ffffff24!important;transition:transform .2s,box-shadow .2s!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(135deg,#264ba6,#2d1056)!important;border-color:#5ea5ff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(135deg,#086f79,#2e1256)!important;border-color:#45e9c5!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(135deg,#97531c,#3b1258)!important;border-color:#ffad51!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(135deg,#8d1d75,#351052)!important;border-color:#ff67d1!important}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong,svg){color:#fff!important;opacity:1!important;text-shadow:none!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(15px,1.3vw,21px)!important;font-weight:850!important;letter-spacing:-.025em!important;line-height:1.2!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(11px,.9vw,14px)!important;line-height:1.5!important;color:#f0e4ff!important;font-weight:500!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{font-size:12px!important;color:#e7c9ff!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{box-shadow:0 7px 18px #14032377,inset 0 1px #ffffff66!important;color:#fff!important}
+.jv-future-bodega .jv-future-activity{border-radius:23px!important;min-height:96px!important;background:linear-gradient(105deg,#62219c,#23103f)!important;color:#fff!important}
+.jv-future-bodega .jv-future-activity :is(strong,small,b,svg){color:#fff!important}
+.jv-future-bodega .jv-future-activity strong{font-size:clamp(17px,1.5vw,24px)!important}
+.jv-future-bodega .jv-future-activity small{font-size:clamp(11px,1vw,15px)!important;color:#e7d6ff!important}
+.jv-future-bodega .jv-future-stat:hover,.jv-future-bodega .jv-bodega-menu-card:hover{transform:translateY(-4px)!important;box-shadow:0 20px 42px #080216cc!important}
+.jv-future-bodega :is(button,a):focus-visible{outline:3px solid #6ae8ff!important;outline-offset:3px!important}
+/* Los paneles de trabajo siguen claros para leer formularios y tablas. */
+.jv-future-bodega>div>section:not(.jv-future-hero){color:#341346}
+@media(min-width:1450px){.jv-future-bodega{padding-inline:max(24px,calc((100vw - 1500px)/2))!important}}
+@media(max-width:1050px) and (min-width:681px){.jv-future-bodega .jv-bodega-menu-card{min-height:154px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:15px!important}}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 10px 35px!important}
+ .jv-future-bodega .jv-future-header{border-radius:0 0 13px 13px!important;padding:9px 11px!important}
+ .jv-future-bodega .jv-future-hero{min-height:200px!important}
+ .jv-future-bodega .jv-future-hero-copy{width:74%!important;margin-left:18%!important;padding:10px 5px!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(23px,6vw,35px)!important}
+ .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3.6vw,18px)!important}
+ .jv-future-bodega .jv-future-hero p{font-size:11px!important;line-height:1.35!important}
+ .jv-future-bodega .jv-future-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:12px 0 17px!important}
+ .jv-future-bodega .jv-future-stat{min-height:100px!important;padding:9px 3px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:10px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+ .jv-future-bodega .jv-future-stat>span{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:106px!important;padding:8px 3px!important;gap:7px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.5vw,12px)!important;line-height:1.15!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{width:41px!important;height:41px!important;flex-basis:41px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+ .jv-future-bodega .jv-future-activity{min-height:70px!important;padding:12px!important}
+}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card{transition:none!important;transform:none!important}}
+
+/* V5 · Corrección final de anchura, contraste y diseño inmersivo */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega){
+  width:100%!important;max-width:none!important;margin:0!important;
+  background:#160722!important;overflow-x:hidden!important
+}
+body:has(.jv-future-bodega) #root{
+  width:100%!important;max-width:none!important;min-width:0!important;
+  margin:0!important;padding:0!important;background:#160722!important
+}
+.jv-future-bodega{
+  width:100%!important;max-width:none!important;min-height:100dvh!important;
+  padding:0 clamp(14px,3vw,52px) 55px!important;
+  background:radial-gradient(ellipse at 8% 22%,#6e23916b,transparent 52%),
+  radial-gradient(ellipse at 94% 65%,#3a269e8a,transparent 52%),
+  linear-gradient(125deg,#170728,#2b0b4e 55%,#11061f)!important;
+  color:#fff!important
+}
+.jv-future-bodega>div{
+  width:100%!important;max-width:1560px!important;margin-inline:auto!important
+}
+.jv-future-bodega .jv-future-header{
+  border-radius:0 0 20px 20px!important;
+  background:linear-gradient(105deg,#230b3b,#351252 65%,#4b1c73)!important
+}
+.jv-future-bodega .jv-future-hero{
+  overflow:hidden!important;min-height:clamp(270px,25vw,370px)!important;
+  border:1px solid #a64bea88!important;border-top:0!important;
+  background:linear-gradient(90deg,#250a41 0%,#4a1570 53%,#180829 100%)!important
+}
+.jv-future-bodega .jv-future-hero-copy{
+  width:57%!important;max-width:770px!important;margin-left:25%!important;
+  position:relative!important;z-index:2!important;text-align:center!important
+}
+.jv-future-bodega .jv-future-isa{
+  width:30%!important;max-width:450px!important;object-fit:contain!important;
+  object-position:left bottom!important;z-index:1!important
+}
+.jv-future-bodega .jv-future-warehouse{width:36%!important}
+.jv-future-bodega .jv-future-hero h1{
+  font-size:clamp(32px,3.8vw,60px)!important;line-height:1.07!important;
+  font-weight:850!important;letter-spacing:-.035em!important
+}
+.jv-future-bodega .jv-future-hero h2{
+  font-size:clamp(18px,1.7vw,28px)!important;line-height:1.22!important
+}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.1vw,17px)!important}
+.jv-future-bodega .jv-future-stats{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important
+}
+.jv-future-bodega .jv-future-stat{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  justify-content:center!important;min-width:0!important;min-height:128px!important;
+  padding:20px 25px!important;text-align:left!important
+}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(26px,2.5vw,40px)!important}
+.jv-future-bodega .jv-future-stat p{color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-future-stat>span{color:#e5cbff!important}
+.jv-future-bodega .jv-bodega-menu-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:17px!important
+}
+.jv-future-bodega .jv-bodega-menu-card{
+  min-width:0!important;min-height:156px!important;
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  padding:18px!important;gap:14px!important;color:#fff!important;
+  background:linear-gradient(135deg,#622095,#30104e)!important;
+  border:1.5px solid #ad56f4!important;opacity:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{
+  background:linear-gradient(130deg,#244fa6,#2d125a)!important;border-color:#63a6ff!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{
+  background:linear-gradient(130deg,#087c77,#281253)!important;border-color:#4fe2c9!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{
+  background:linear-gradient(130deg,#a25716,#351050)!important;border-color:#ffb360!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{
+  background:linear-gradient(130deg,#a02280,#331052)!important;border-color:#ff77d4!important
+}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong,svg){
+  color:#fff!important;opacity:1!important;visibility:visible!important;
+  -webkit-text-fill-color:#fff!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy{
+  display:block!important;min-width:0!important;flex:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card h3{
+  font-size:clamp(15px,1.15vw,20px)!important;font-weight:800!important;line-height:1.2!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{
+  display:block!important;font-size:clamp(11px,.85vw,14px)!important;
+  color:#f1e2ff!important;line-height:1.45!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+  flex:0 0 58px!important;width:58px!important;height:58px!important
+}
+.jv-future-bodega .jv-future-activity{
+  width:100%!important;min-height:94px!important;margin-top:24px!important
+}
+@media(min-width:681px) and (max-width:1080px){
+  .jv-future-bodega .jv-bodega-menu-card{
+    flex-direction:column!important;align-items:flex-start!important;gap:9px!important;padding:13px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+    flex:0 0 45px!important;width:45px!important;height:45px!important
+  }
+}
+@media(max-width:680px){
+  .jv-future-bodega{padding:0 9px 32px!important}
+  .jv-future-bodega .jv-future-hero{min-height:200px!important}
+  .jv-future-bodega .jv-future-isa{width:35%!important}
+  .jv-future-bodega .jv-future-warehouse{width:32%!important}
+  .jv-future-bodega .jv-future-hero-copy{
+    width:68%!important;margin-left:28%!important;padding:12px 4px!important
+  }
+  .jv-future-bodega .jv-future-hero h1{font-size:clamp(22px,5.5vw,32px)!important}
+  .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3vw,17px)!important}
+  .jv-future-bodega .jv-future-hero p{font-size:10px!important;line-height:1.35!important}
+  .jv-future-bodega .jv-future-stats{gap:6px!important;margin:11px 0 15px!important}
+  .jv-future-bodega .jv-future-stat{
+    min-height:96px!important;padding:10px 7px!important;align-items:center!important;text-align:center!important
+  }
+  .jv-future-bodega .jv-future-stat p{font-size:9px!important;overflow-wrap:anywhere!important}
+  .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+  .jv-future-bodega .jv-bodega-menu-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card{
+    flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    min-height:99px!important;padding:8px 3px!important;gap:7px!important;border-radius:13px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+    flex:0 0 38px!important;width:38px!important;height:38px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-copy{text-align:center!important}
+  .jv-future-bodega .jv-bodega-menu-card h3{
+    font-size:clamp(9px,2.4vw,12px)!important;line-height:1.15!important;
+    overflow-wrap:anywhere!important;margin:0!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+}
+
+
+/* V6: identidad visual consistente y legibilidad */
+.jv-future-bodega .jv-bodega-menu-card,
+.jv-future-bodega .jv-bodega-menu-card.jv-next-card{
+  background:linear-gradient(135deg,#6725a1,#2d104d)!important;
+  color:#fff!important;border-color:#b763fb!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{
+  background:linear-gradient(130deg,#2354a5,#261054)!important;border-color:#5d9eff!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{
+  background:linear-gradient(130deg,#087e78,#27104f)!important;border-color:#47e4c5!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{
+  background:linear-gradient(130deg,#aa5815,#37104e)!important;border-color:#ffae58!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{
+  background:linear-gradient(130deg,#a42586,#310d50)!important;border-color:#ff7bd3!important
+}
+.jv-future-bodega .jv-bodega-menu-card *{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+  background:linear-gradient(135deg,#c244f5,#4a2d9c)!important;
+  box-shadow:0 6px 18px #14052477!important
+}
+.jv-future-bodega .jv-future-stat{
+  background:linear-gradient(125deg,#52218a,#250c45)!important;
+  color:#fff!important;border:1px solid #a855f7!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(2){
+  background:linear-gradient(125deg,#2253a8,#28115a)!important;border-color:#54a4ff!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(3){
+  background:linear-gradient(125deg,#8c2b75,#2b1050)!important;border-color:#ff6fc6!important
+}
+.jv-future-bodega .jv-future-stat *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+.jv-future-bodega .jv-future-isa{
+  object-fit:contain!important;object-position:left bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 8px 18px #10041b88)!important
+}
+.jv-future-bodega .jv-future-hero{
+  background:linear-gradient(90deg,#2c0c4a,#4c1770 55%,#1b0b34)!important
+}
+.jv-future-bodega .jv-future-activity{color:#fff!important}
 
 `;
 function MarcoJAIVISANext({ rol, nombre, salir, children }: { rol: string; nombre?: string; salir?: () => Promise<void>; children: React.ReactNode }) {
