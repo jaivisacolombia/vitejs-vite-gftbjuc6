@@ -93,7 +93,7 @@ const { IsaAsistente } = (() => {
         <p style={{ fontSize: 12 }}>La facturación electrónica debe realizarse en el sistema autorizado. No compartas contraseñas ni datos bancarios conmigo.</p>
         <button onClick={() => setAbierta(false)} style={{ border: 0, borderRadius: 8, padding: 8, background: '#572080', color: 'white' }}>Cerrar</button>
       </div>}
-      <button aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-ayuda.png" alt="" aria-hidden="true" style={{ width: 37, height: 37, objectFit: 'cover', objectPosition: '44% 33%', borderRadius: '50%', background: '#f2dfff', verticalAlign: 'middle', marginRight: 0, border: '2px solid #f0c6ff' }} />Isa · Ayuda</button>
+      <button aria-label={abierta ? "Ocultar ayuda de Isa" : "Abrir ayuda de Isa"} aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-ayuda.png" alt="" aria-hidden="true" style={{ width: 37, height: 37, objectFit: 'cover', objectPosition: '44% 33%', borderRadius: '50%', background: '#f2dfff', verticalAlign: 'middle', marginRight: 0, border: '2px solid #f0c6ff' }} />Isa · Ayuda</button>
     </aside>;
   }
   return { IsaAsistente };
@@ -488,10 +488,19 @@ function JaivisaHeroPanoramico({ portal, seccion, nombre }: { portal: JaivisaPor
     vendedores: 'Organiza tus clientes, consulta productos y prepara tus pedidos.',
   }[portal];
   const srcIsa = `/isa-${portal}.png`;
+  const esPortadaClientesConPerritos = portal === 'clientes' && esInicio;
+  const fondoHero = esPortadaClientesConPerritos
+    ? '/jv-clientes-isa-perritos-banner.webp'
+    : fondoSeccionJAIVISA(portal, seccion);
   return (
-    <section className={'jv-hero-panorama jv-hero-panorama-' + portal} aria-label={'Bienvenida a ' + tituloPortal}>
-      <div className="jv-hero-panorama-escena" aria-hidden="true" style={{ backgroundImage: `url('${fondoSeccionJAIVISA(portal, seccion)}')` }} />
-      <img className="jv-hero-panorama-isa" src={srcIsa} alt={'Isa te acompaña en el portal de ' + tituloPortal} />
+    <section
+      className={'jv-hero-panorama jv-hero-panorama-' + portal + (esPortadaClientesConPerritos ? ' jv-hero-clientes-perritos' : '')}
+      aria-label={'Bienvenida a ' + tituloPortal}
+    >
+      <div className="jv-hero-panorama-escena" aria-hidden="true" style={{ backgroundImage: `url('${fondoHero}')` }} />
+      {!esPortadaClientesConPerritos && (
+        <img className="jv-hero-panorama-isa" src={srcIsa} alt={'Isa te acompaña en el portal de ' + tituloPortal} />
+      )}
       <div className="jv-hero-panorama-texto">
         <span className="jv-hero-panorama-etiqueta">JAIVISA NEXT · PORTAL {tituloPortal.toLocaleUpperCase('es')}</span>
         <h1>{esInicio ? (primeraPalabra ? `¡Hola, ${primeraPalabra.toLocaleUpperCase('es')}!` : '¡Bienvenido!') : seccion}
@@ -518,6 +527,19 @@ const JV_PANORAMA_CSS = `
 #root .jv-client-shell .jv-hero-panorama,#root .layout .jv-hero-panorama,#root .jv-vendedor .jv-hero-panorama{color:#fff!important}
 @media (max-width:720px){#root .jv-hero-panorama{min-height:190px!important;padding:10px 12px!important;margin:10px 0 15px!important;border-radius:16px!important}#root .jv-hero-panorama-isa{width:32%!important;max-width:32%!important;height:170px!important}#root .jv-hero-panorama-texto{width:68%!important;padding:5px!important}#root .jv-hero-panorama h1{font-size:clamp(19px,4.5vw,29px)!important}#root .jv-hero-panorama h2{font-size:clamp(12px,3vw,17px)!important}#root .jv-hero-panorama p{font-size:11px!important}#root .jv-hero-panorama-etiqueta{letter-spacing:.06em!important;font-size:8px!important}}
 @media (max-width:390px){#root .jv-hero-panorama{min-height:166px!important}#root .jv-hero-panorama-isa{height:145px!important}#root .jv-hero-panorama h1{font-size:19px!important}#root .jv-hero-panorama p{display:none!important}}
+/* Portada exclusiva de Inicio Clientes: conserva exactamente el alto de los demás banners. */
+#root .jv-hero-clientes-perritos{justify-content:flex-end!important;background:#210a38!important}
+#root .jv-hero-clientes-perritos::before{content:"";position:absolute;z-index:1;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 0%,rgba(20,3,39,.08) 41%,rgba(20,3,39,.42) 62%,rgba(20,3,39,.48) 100%)}
+#root .jv-hero-clientes-perritos .jv-hero-panorama-escena{background-position:center center!important}
+#root .jv-hero-clientes-perritos .jv-hero-panorama-texto{flex:0 0 49%!important;width:49%!important;max-width:49%!important;margin:0 0 0 auto!important;padding:10px 7px!important}
+@media (max-width:720px){
+  #root .jv-hero-clientes-perritos .jv-hero-panorama-escena{background-position:31% center!important}
+  #root .jv-hero-clientes-perritos::before{background:linear-gradient(90deg,rgba(20,3,39,.02) 0%,rgba(20,3,39,.29) 36%,rgba(20,3,39,.76) 69%,rgba(20,3,39,.87) 100%)}
+  #root .jv-hero-clientes-perritos .jv-hero-panorama-texto{flex:0 0 60%!important;width:60%!important;max-width:60%!important;padding:5px!important}
+}
+@media (max-width:390px){
+  #root .jv-hero-clientes-perritos .jv-hero-panorama-texto{flex-basis:64%!important;width:64%!important;max-width:64%!important}
+}
 @media (prefers-reduced-motion:reduce){#root .jv-hero-panorama-mano{animation:none!important}}
 `;
 
@@ -1264,7 +1286,7 @@ function ClientesMayoristas({ perfil, salir }: { perfil: PerfilAcceso; salir: ()
   const [error, setError] = useState('');
   const [errorCatalogos, setErrorCatalogos] = useState('');
   const [cargando, setCargando] = useState(true);
-  const [seccion, setSeccion] = useState<'inicio' | 'catalogos' | 'productos' | 'cuenta'>('catalogos');
+  const [seccion, setSeccion] = useState<'inicio' | 'catalogos' | 'productos' | 'cuenta'>('inicio');
   const [buscarCatalogo, setBuscarCatalogo] = useState('');
   const catalogosVisibles = catalogos.filter(c => c.nombre.toLocaleLowerCase('es').includes(buscarCatalogo.toLocaleLowerCase('es')));
   useEffect(() => {    
@@ -1379,8 +1401,34 @@ let activo = true; (async () => {
           <span className="jv-portal-lateral-pie">JAIVISA NEXT · Clientes</span>
         </aside>
         <main className="jv-portal-contenido" style={{ maxWidth: 'none', width: '100%', margin: 0, padding: '32px 22px 65px' }}>
-        <JaivisaHeroPanoramico portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} nombre={perfil.nombre ?? undefined} />
-        <IsaEnSeccionJAIVISA portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} />
+        {/* La portada de Clientes utiliza el mismo banner de las demás secciones. */}
+        {seccion === 'inicio' ? (
+          <JaivisaHeroPanoramico portal="clientes" seccion="Inicio" nombre={perfil.nombre ?? undefined} />
+        ) : (
+          <>
+            <JaivisaHeroPanoramico
+              portal="clientes"
+              seccion={
+                seccion === 'catalogos'
+                  ? 'Catálogos PDF'
+                  : seccion === 'productos'
+                    ? 'Productos'
+                    : 'Mi cuenta'
+              }
+              nombre={perfil.nombre ?? undefined}
+            />
+            <IsaEnSeccionJAIVISA
+              portal="clientes"
+              seccion={
+                seccion === 'catalogos'
+                  ? 'Catálogos PDF'
+                  : seccion === 'productos'
+                    ? 'Productos'
+                    : 'Mi cuenta'
+              }
+            />
+          </>
+        )}
 
         <nav style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }} aria-label="Secciones del portal">
           <button type="button" className={'jv-client-tab ' + (seccion === 'catalogos' ? 'active' : '')} onClick={() => setSeccion('catalogos')}><IconoClienteNext tipo="catalogos" /> Catálogos</button>
@@ -3589,6 +3637,199 @@ export default function AppProtegida() {
           #root .jv-isa-en-seccion small{color:#ead4ff!important;-webkit-text-fill-color:#ead4ff!important;font-size:12px;line-height:1.3}
           @media(max-width:540px){#root .jv-isa-en-seccion{gap:10px;padding:8px;min-height:84px}#root .jv-isa-en-seccion img{width:82px;height:68px}#root .jv-isa-en-seccion strong{font-size:12px}}
         `}</style>
+
+        <style>{`
+/* ================================================================
+   JAIVISA NEXT · MENU MOVIL AURORA · UNIFICACION DE PORTALES
+   Patrón de Bodega: barra horizontal morada ANTES de la portada.
+   Se reutilizan los botones existentes y sus funciones React.
+   No altera el menú lateral de escritorio, permisos ni Supabase.
+   ================================================================ */
+@media (max-width: 800px) {
+  /* Clientes y Vendedores: recuperar el menú original para situarlo arriba. */
+  #root .jv-client-shell .jv-client-estructura,
+  #root .jv-vendedor.jv-vendedor-portal .jv-vendedor-estructura {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) !important;
+    width: 100% !important;
+    gap: 0 !important;
+  }
+  #root .jv-client-shell .jv-client-estructura > .jv-portal-lateral,
+  #root .jv-vendedor.jv-vendedor-portal .jv-vendedor-estructura > .jv-portal-lateral {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 9px 11px 8px !important;
+    padding: 9px 10px !important;
+    border: 1px solid rgba(205,143,255,.40) !important;
+    border-radius: 17px !important;
+    background: linear-gradient(105deg,#27103f,#3f195b 70%,#4c2275) !important;
+    box-shadow: 0 7px 21px rgba(10,2,24,.34) !important;
+    overflow: hidden !important;
+  }
+  #root .jv-client-shell .jv-client-estructura .jv-portal-lateral-marca,
+  #root .jv-client-shell .jv-client-estructura .jv-portal-lateral-pie,
+  #root .jv-vendedor .jv-vendedor-estructura .jv-portal-lateral-marca,
+  #root .jv-vendedor .jv-vendedor-estructura .jv-portal-lateral-pie {
+    display: none !important;
+  }
+  #root .jv-client-shell .jv-portal-lateral nav,
+  #root .jv-vendedor .jv-portal-lateral nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #9862c2 transparent;
+    padding: 2px 1px 5px !important;
+  }
+  #root .jv-client-shell .jv-portal-lateral nav button,
+  #root .jv-vendedor .jv-portal-lateral nav button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 9px 12px !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    background: transparent !important;
+    color: #f0e2fb !important;
+    -webkit-text-fill-color: #f0e2fb !important;
+    border: 1px solid transparent !important;
+    border-radius: 11px !important;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+  }
+  #root .jv-client-shell .jv-portal-lateral nav button svg,
+  #root .jv-vendedor .jv-portal-lateral nav button svg {
+    flex: none !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: currentColor !important;
+  }
+  #root .jv-client-shell .jv-portal-lateral nav button:is(.activo,[aria-current="page"]),
+  #root .jv-vendedor .jv-portal-lateral nav button:is(.activo,[aria-current="page"]) {
+    background: rgba(153,78,207,.28) !important;
+    border-color: #c38fe7 !important;
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+  }
+  #root .jv-client-shell .jv-client-estructura > .jv-portal-contenido,
+  #root .jv-vendedor .jv-vendedor-estructura > .jv-portal-contenido {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    padding-top: 7px !important;
+    padding-bottom: 20px !important;
+    min-width: 0 !important;
+  }
+  /* Eliminar la barra inferior blanca y su espacio sobrante. */
+  #root .jv-vendedor .jv-mobile-nav,
+  #root .jv-client-shell .jv-mobile-bottom {
+    display: none !important;
+  }
+  /* Administración: la misma barra con sus opciones y estado originales. */
+  #root .jv-administracion .layout {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  #root .jv-administracion .layout > .sidebar {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    overflow: hidden !important;
+    background: linear-gradient(105deg,#27103f,#3f195b 70%,#4c2275) !important;
+    border-bottom: 1px solid rgba(205,143,255,.40) !important;
+    box-shadow: 0 7px 21px rgba(10,2,24,.32) !important;
+  }
+  #root .jv-administracion .layout > .sidebar .logo,
+  #root .jv-administracion .layout > .sidebar .sidebottom {
+    display: none !important;
+  }
+  #root .jv-administracion .layout > .sidebar .nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 3px 0 6px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #9862c2 transparent;
+  }
+  #root .jv-administracion .layout > .sidebar .nav button {
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    min-height: 44px !important;
+    padding: 9px 12px !important;
+    white-space: nowrap !important;
+    border: 1px solid transparent !important;
+    border-radius: 11px !important;
+    background: transparent !important;
+    color: #f0e2fb !important;
+    -webkit-text-fill-color: #f0e2fb !important;
+    font-size: 13px !important;
+    font-weight: 750 !important;
+  }
+  #root .jv-administracion .layout > .sidebar .nav button.on {
+    background: rgba(153,78,207,.28) !important;
+    border-color: #c38fe7 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+  #root .jv-administracion .layout > .main {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  /* Isa permanece abajo, compacta: ya no tapa botones de navegación. */
+  #root .jaivisa-isa-responsive {
+    right: 10px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #root .jaivisa-isa-responsive > button {
+    width: 54px !important;
+    height: 54px !important;
+    min-width: 54px !important;
+    padding: 6px !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    font-size: 0 !important;
+    border-radius: 50% !important;
+  }
+  #root .jaivisa-isa-responsive > button img {
+    width: 39px !important;
+    height: 39px !important;
+    margin: 0 !important;
+    flex: 0 0 39px !important;
+  }
+}
+`}</style>
 
         <JaivisaApp />
       </SesionConInactividad>
