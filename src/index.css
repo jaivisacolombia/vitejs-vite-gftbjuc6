@@ -1,254 +1,40 @@
-
-/* =========================================
-   JAIVISA NEXT AURORA
-   ESTILOS GENERALES
-   ========================================= */
-
-   :root {
-    --text: #e9dff5;
-    --text-h: #ffffff;
-    --bg: #160825;
-    --border: rgba(194, 112, 255, 0.28);
-    --code-bg: #29133d;
-    --accent: #b84dff;
-    --accent-bg: rgba(170, 59, 255, 0.14);
-    --accent-border: rgba(192, 132, 252, 0.55);
-    --social-bg: rgba(94, 38, 144, 0.25);
-  
-    --shadow:
-      0 12px 35px rgba(8, 2, 20, 0.35),
-      0 0 22px rgba(165, 54, 255, 0.12);
-  
-    --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-    --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-    --mono: ui-monospace, Consolas, monospace;
-  
-    font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.5;
-    letter-spacing: 0.1px;
-  
-    color-scheme: dark;
-    color: var(--text);
-    background: var(--bg);
-  
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  /* =========================================
-     ESTRUCTURA DE PANTALLA COMPLETA
-     ========================================= */
-  
-  * {
-    box-sizing: border-box;
-  }
-  
-  html {
-    min-width: 320px;
-    min-height: 100%;
-    background: #160825;
-  }
-  
-  body {
-    margin: 0;
-    min-width: 320px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  
-    background:
-      radial-gradient(
-        ellipse at 12% 15%,
-        rgba(151, 49, 255, 0.24),
-        transparent 38%
-      ),
-      radial-gradient(
-        ellipse at 88% 78%,
-        rgba(33, 108, 255, 0.18),
-        transparent 42%
-      ),
-      linear-gradient(
-        135deg,
-        #170725 0%,
-        #300c52 48%,
-        #11071f 100%
-      );
-  
-    background-attachment: fixed;
-  }
-  
-  #root {
-    width: 100%;
-    max-width: none;
-    min-height: 100vh;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    text-align: left;
-    display: block;
-    position: relative;
-    isolation: isolate;
-  }
-  
-  /* =========================================
-     DESTELLOS Y LUCES FUTURISTAS
-     ========================================= */
-  
-  #root::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  
-    background:
-      radial-gradient(
-        circle at 8% 38%,
-        rgba(211, 87, 255, 0.18),
-        transparent 28%
-      ),
-      radial-gradient(
-        circle at 92% 22%,
-        rgba(64, 145, 255, 0.16),
-        transparent 26%
-      ),
-      radial-gradient(
-        circle at 50% 100%,
-        rgba(149, 44, 255, 0.14),
-        transparent 35%
-      );
-  }
-  
-  #root::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  
-    background:
-      linear-gradient(
-        115deg,
-        transparent 0%,
-        transparent 46%,
-        rgba(185, 89, 255, 0.055) 50%,
-        transparent 54%,
-        transparent 100%
-      );
-  
-    background-size: 220% 220%;
-    animation: jaivisaAurora 16s ease-in-out infinite alternate;
-  }
-  
-  @keyframes jaivisaAurora {
-    from {
-      background-position: 0% 50%;
-      opacity: 0.45;
-    }
-  
-    to {
-      background-position: 100% 50%;
-      opacity: 0.9;
-    }
-  }
-  
-  /* =========================================
-     TIPOGRAFÍA
-     ========================================= */
-  
-  h1,
-  h2 {
-    font-family: var(--heading);
-    color: var(--text-h);
-  }
-  
-  h1 {
-    font-size: clamp(28px, 4vw, 48px);
-    line-height: 1.15;
-  }
-  
-  h2 {
-    font-size: clamp(20px, 2.5vw, 28px);
-    line-height: 1.2;
-  }
-  
-  p {
-    line-height: 1.5;
-  }
-  
-  code {
-    font-family: var(--mono);
-    border-radius: 6px;
-    color: #f4e9ff;
-    background: var(--code-bg);
-    padding: 4px 8px;
-  }
-  
-  /* =========================================
-     CAMPOS DE FORMULARIOS
-     VISIBLES EN COMPUTADOR Y CELULAR
-     ========================================= */
-  
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select {
-    color: #241331 !important;
-    -webkit-text-fill-color: #241331 !important;
-    background-color: #ffffff !important;
-    caret-color: #592078 !important;
-    opacity: 1 !important;
-    color-scheme: light;
-  }
-  
-  input::placeholder,
-  textarea::placeholder {
-    color: #797080 !important;
-    -webkit-text-fill-color: #797080 !important;
-    opacity: 1 !important;
-  }
-  
-  input:focus,
-  textarea:focus,
-  select:focus {
-    color: #241331 !important;
-    -webkit-text-fill-color: #241331 !important;
-    caret-color: #592078 !important;
-  }
-  
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
-    -webkit-text-fill-color: #241331 !important;
-    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-    box-shadow: 0 0 0 1000px #ffffff inset !important;
-    caret-color: #592078 !important;
-  }
-  
-  /* =========================================
-     ADAPTACIÓN A CELULARES
-     ========================================= */
-  
-  @media (max-width: 768px) {
-    input,
-    textarea,
-    select {
-      font-size: 16px !important;
-    }
-  
-    body {
-      background-attachment: scroll;
-    }
-  }
-  
-  /* =========================================
-     ACCESIBILIDAD
-     ========================================= */
-  
-  @media (prefers-reduced-motion: reduce) {
-    #root::after {
-      animation: none;
-    }
-  }
-  
+/* JAIVISA NEXT AURORA — estilos globales sin limitar el ancho de la aplicación */
+:root {
+  --text:#e9dff5; --text-h:#fff; --bg:#160825;
+  --border:rgba(194,112,255,.28); --code-bg:#29133d;
+  --accent:#b84dff; --accent-bg:rgba(170,59,255,.14);
+  --accent-border:rgba(192,132,252,.55); --social-bg:rgba(94,38,144,.25);
+  --shadow:0 12px 35px rgba(8,2,20,.35),0 0 22px rgba(165,54,255,.12);
+  --sans:system-ui,'Segoe UI',Roboto,sans-serif;
+  --heading:system-ui,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,Consolas,monospace;
+  font:16px/1.5 var(--sans);letter-spacing:.1px;color:var(--text);
+  background:var(--bg);font-synthesis:none;text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+*{box-sizing:border-box}
+html{min-width:320px;min-height:100%;background:#160825}
+body{margin:0;min-width:320px;min-height:100vh;overflow-x:hidden;
+ background:radial-gradient(ellipse at 12% 15%,rgba(151,49,255,.24),transparent 38%),
+ radial-gradient(ellipse at 88% 78%,rgba(33,108,255,.18),transparent 42%),
+ linear-gradient(135deg,#170725 0%,#300c52 48%,#11071f 100%);background-attachment:fixed}
+#root{width:100%;max-width:none;min-height:100vh;margin:0;padding:0;border:0;text-align:left;display:block;position:relative;isolation:isolate}
+#root::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+ background:radial-gradient(circle at 8% 38%,rgba(211,87,255,.18),transparent 28%),
+ radial-gradient(circle at 92% 22%,rgba(64,145,255,.16),transparent 26%),
+ radial-gradient(circle at 50% 100%,rgba(149,44,255,.14),transparent 35%)}
+#root::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+ background:linear-gradient(115deg,transparent 0%,transparent 46%,rgba(185,89,255,.08) 50%,transparent 54%,transparent 100%);
+ background-size:220% 220%;animation:jaivisaAurora 16s ease-in-out infinite alternate}
+@keyframes jaivisaAurora{from{background-position:0% 50%;opacity:.45}to{background-position:100% 50%;opacity:.9}}
+h1,h2{font-family:var(--heading)}
+h1{font-size:clamp(28px,4vw,48px);line-height:1.15}
+h2{font-size:clamp(20px,2.5vw,28px);line-height:1.2}
+p{line-height:1.5}
+code{font-family:var(--mono);border-radius:6px;color:#f4e9ff;background:var(--code-bg);padding:4px 8px}
+input:not([type=checkbox]):not([type=radio]),textarea,select{color:#241331!important;-webkit-text-fill-color:#241331!important;background-color:#fff!important;caret-color:#592078!important;opacity:1!important;color-scheme:light}
+input::placeholder,textarea::placeholder{color:#797080!important;-webkit-text-fill-color:#797080!important;opacity:1!important}
+input:focus,textarea:focus,select:focus{color:#241331!important;-webkit-text-fill-color:#241331!important;caret-color:#592078!important}
+input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#241331!important;-webkit-box-shadow:0 0 0 1000px #fff inset!important;box-shadow:0 0 0 1000px #fff inset!important;caret-color:#592078!important}
+@media(max-width:768px){input,textarea,select{font-size:16px!important}body{background-attachment:scroll}}
+@media(prefers-reduced-motion:reduce){#root::after{animation:none}}

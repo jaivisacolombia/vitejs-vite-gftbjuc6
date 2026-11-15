@@ -86,14 +86,14 @@ const { IsaAsistente } = (() => {
  `}</style>
       {abierta && <div role="dialog" aria-label="Ayuda de Isa" style={{ width: 290, maxWidth: 'calc(100vw - 36px)', padding: 16, background: '#fff', border: '1px solid #e4d2ef', borderRadius: 16, boxShadow: '0 12px 35px #32134333', marginBottom: 8, color: '#321343' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <img src="/isa-original.png" alt="Isa, asistente original de JAIVISA" style={{ width: 88, height: 105, objectFit: 'contain', borderRadius: 12, background: '#faf5fd' }} />
+          <img src="/isa-ayuda.png" alt="Isa con audífonos, asistente de Ayuda JAIVISA" style={{ width: 122, height: 108, objectFit: 'contain', objectPosition: 'center center', borderRadius: 12, background: 'linear-gradient(135deg,#f3e5ff,#e9d6fd)' }} />
           <div><strong>¡Hola! Soy Isa</strong><p style={{ margin: '4px 0' }}>Tu guía de JAIVISA NEXT.</p></div>
         </div>
         <p style={{ fontSize: 13 }}>Para crear un pedido: abre el catálogo, agrega productos y guarda el pedido. En Bodega podrás revisarlo, imprimirlo y marcar su preparación.</p>
         <p style={{ fontSize: 12 }}>La facturación electrónica debe realizarse en el sistema autorizado. No compartas contraseñas ni datos bancarios conmigo.</p>
         <button onClick={() => setAbierta(false)} style={{ border: 0, borderRadius: 8, padding: 8, background: '#572080', color: 'white' }}>Cerrar</button>
       </div>}
-      <button aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-original.png" alt="" aria-hidden="true" style={{ width: 30, height: 30, objectFit: 'cover', objectPosition: 'center top', borderRadius: '50%', background: 'white', verticalAlign: 'middle', marginRight: 0 }} />Isa · Ayuda</button>
+      <button aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-ayuda.png" alt="" aria-hidden="true" style={{ width: 37, height: 37, objectFit: 'cover', objectPosition: '44% 33%', borderRadius: '50%', background: '#f2dfff', verticalAlign: 'middle', marginRight: 0, border: '2px solid #f0c6ff' }} />Isa · Ayuda</button>
     </aside>;
   }
   return { IsaAsistente };
@@ -400,6 +400,126 @@ function CatalogosVistaPrevia() {
     <p className="muted" style={{ marginTop: 15 }}>Los catálogos se almacenan de forma segura en JAIVISA. Su publicación requiere que el módulo de documentos esté habilitado. Los enlaces de consulta vencen después de una hora.</p>
   </section>;
 }
+
+
+
+// JAIVISA AURORA · Portadas luminosas reutilizables para todas las páginas.
+type JaivisaPortalTipo = 'administracion' | 'clientes' | 'vendedores';
+function fondoSeccionJAIVISA(portal: JaivisaPortalTipo, seccion: string): string {
+  const clave = seccion.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (clave === 'inicio') return `/jv-fondo-${portal}.webp`;
+  const casos: [RegExp, string][] = [
+    [/nuevo pedido|crear pedido/, 'nuevo-pedido'],
+    [/mis pedidos|historial/, 'mis-pedidos'],
+    [/agenda/, 'agenda'],
+    [/resultado|comision/, 'resultados'],
+    [/etiqueta/, 'etiquetas'],
+    [/notific|alerta/, 'notificaciones'],
+    [/despach|envio/, 'despachos'],
+    [/preparac/, 'preparacion'],
+    [/inventario|bodega/, 'inventario'],
+    [/catalogos pdf|catalogospdf|catalogos/, 'catalogos'],
+    [/catalogo|productos/, 'productos'],
+    [/pedido|carrito|venta/, 'pedidos'],
+    [/cliente|cuenta|mis datos/, 'clientes'],
+    [/acceso|permiso|usuario|empleado/, 'usuarios'],
+    [/personalizacion|configuracion/, 'configuracion'],
+    [/reporte|operacion/, 'reportes'],
+  ];
+  const coincidencia = casos.find(([patron]) => patron.test(clave));
+  return coincidencia ? `/jv-fondo-${coincidencia[1]}.webp` : `/jv-fondo-${portal}.webp`;
+}
+// JAIVISA NEXT · Isa contextual por sección; solo usa imágenes dentro de /public.
+type PortalIsaJAIVISA = JaivisaPortalTipo | 'bodega';
+function imagenIsaModuloJAIVISA(portal: PortalIsaJAIVISA, seccion: string): string | null {
+  const clave = seccion.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (clave === 'inicio') return null;
+  if (portal === 'bodega') {
+    const poses: Record<string, string> = {
+      pedidos: 'isa-bodega-pedidos.png',
+      inventario: 'isa-bodega-inventario.png',
+      preparacion: 'isa-bodega-preparacion.png',
+      despachos: 'isa-bodega-despachos.png',
+      etiquetas: 'isa-bodega-etiquetas.png',
+      notificaciones: 'isa-bodega-notificaciones.png',
+    };
+    return poses[clave] ? '/' + poses[clave] : '/isa-modulo-catalogos-pdf.png';
+  }
+  const opciones: [RegExp, string][] = [
+    [/catalogos pdf|catalogospdf|catalogos/, 'catalogos-pdf'],
+    [/nuevo pedido|crear pedido|carrito/, 'nuevo-pedido'],
+    [/mis pedidos|historial/, 'mis-pedidos'],
+    [/mis clientes|cartera comercial/, 'mis-clientes'],
+    [/mis resultados|comision/, 'resultados'],
+    [/agenda/, 'agenda'],
+    [/notificacion|alerta/, 'notificaciones'],
+    [/etiqueta/, 'etiquetas'],
+    [/despach|envio/, 'despachos'],
+    [/preparacion/, 'preparacion'],
+    [/inventario/, 'inventario'],
+    [/catalogo|productos/, 'catalogo'],
+    [/pedidos|pedido|venta|whatsapp/, 'pedidos'],
+    [/cliente|cuenta|mis datos/, portal === 'vendedores' ? 'mis-clientes' : 'clientes'],
+    [/usuarios|empleado|acceso|permiso/, 'usuarios'],
+    [/configuracion|personalizacion/, 'configuracion'],
+    [/reporte|operacion/, 'reportes'],
+    [/resultado/, 'resultados'],
+    [/ayuda|soporte/, 'ayuda'],
+  ];
+  const coincidencia = opciones.find(([patron]) => patron.test(clave));
+  return coincidencia ? '/isa-modulo-' + coincidencia[1] + '.png' : '/isa-modulo-' + portal + '.png';
+}
+function IsaEnSeccionJAIVISA({ portal, seccion }: { portal: PortalIsaJAIVISA; seccion: string }) {
+  const imagen = imagenIsaModuloJAIVISA(portal, seccion);
+  if (!imagen) return null;
+  return <aside className="jv-isa-en-seccion" aria-label={'Isa te acompaña en ' + seccion}>
+    <img src={imagen} alt={'Isa trabajando en ' + seccion} loading="lazy" />
+    <div><strong>Isa te acompaña en {seccion}</strong><small>Tu guía JAIVISA NEXT en esta sección.</small></div>
+  </aside>;
+}
+
+function JaivisaHeroPanoramico({ portal, seccion, nombre }: { portal: JaivisaPortalTipo; seccion: string; nombre?: string }) {
+  const esInicio = seccion.toLowerCase() === 'inicio';
+  const primeraPalabra = (nombre || '').trim().split(/\s+/)[0];
+  const tituloPortal = { administracion: 'Administración', clientes: 'Clientes', vendedores: 'Vendedores' }[portal];
+  const frase = {
+    administracion: 'Controla tu operación y gestiona JAIVISA desde un solo lugar.',
+    clientes: 'Explora el catálogo, consulta tus productos y encuentra lo que necesitas.',
+    vendedores: 'Organiza tus clientes, consulta productos y prepara tus pedidos.',
+  }[portal];
+  const srcIsa = `/isa-${portal}.png`;
+  return (
+    <section className={'jv-hero-panorama jv-hero-panorama-' + portal} aria-label={'Bienvenida a ' + tituloPortal}>
+      <div className="jv-hero-panorama-escena" aria-hidden="true" style={{ backgroundImage: `url('${fondoSeccionJAIVISA(portal, seccion)}')` }} />
+      <img className="jv-hero-panorama-isa" src={srcIsa} alt={'Isa te acompaña en el portal de ' + tituloPortal} />
+      <div className="jv-hero-panorama-texto">
+        <span className="jv-hero-panorama-etiqueta">JAIVISA NEXT · PORTAL {tituloPortal.toLocaleUpperCase('es')}</span>
+        <h1>{esInicio ? (primeraPalabra ? `¡Hola, ${primeraPalabra.toLocaleUpperCase('es')}!` : '¡Bienvenido!') : seccion}
+          {esInicio && <img className="jv-hero-panorama-mano" src="/isa-mano-saludo-1.png" alt="" aria-hidden="true" />}
+        </h1>
+        <h2>{esInicio ? 'Bienvenido al Portal de ' + tituloPortal : 'JAIVISA NEXT · ' + tituloPortal}</h2>
+        <p>{esInicio ? frase : 'Isa te acompaña mientras trabajas en esta sección.'}</p>
+      </div>
+    </section>
+  );
+}
+
+const JV_PANORAMA_CSS = `
+#root .jv-hero-panorama{box-sizing:border-box!important;isolation:isolate;display:flex!important;align-items:center!important;justify-content:flex-start!important;position:relative!important;overflow:hidden!important;width:100%!important;max-width:none!important;min-height:clamp(220px,23vw,330px)!important;margin:14px 0 22px!important;padding:15px clamp(18px,4vw,52px)!important;border:1px solid rgba(189,104,255,.58)!important;border-radius:22px!important;background:#230c3b!important;box-shadow:0 14px 35px rgba(12,2,30,.5),0 0 22px rgba(178,67,255,.15)!important;color:#fff!important}
+#root .jv-hero-panorama .jv-hero-panorama-escena{position:absolute!important;z-index:-1!important;inset:0!important;background-color:#240939!important;background-position:center center!important;background-size:cover!important;background-repeat:no-repeat!important}
+#root .jv-hero-panorama::after{content:"";position:absolute;bottom:0;left:5%;right:5%;height:3px;background:linear-gradient(90deg,transparent,#d24eff,#41bbff,transparent);box-shadow:0 0 14px #c34dff;pointer-events:none}
+#root .jv-hero-panorama-isa{display:block!important;position:relative!important;z-index:2!important;width:clamp(130px,19vw,230px)!important;height:clamp(195px,22vw,300px)!important;max-width:36%!important;flex-shrink:0!important;object-fit:contain!important;object-position:center bottom!important;filter:drop-shadow(0 4px 24px rgba(190,93,255,.52))!important;pointer-events:none}
+#root .jv-hero-panorama-texto{position:relative!important;z-index:3!important;flex:1!important;min-width:0!important;max-width:700px!important;margin:0 auto!important;padding:10px clamp(4px,1.5vw,20px)!important;text-align:center!important;text-shadow:0 2px 12px #11041eee!important}
+#root .jv-hero-panorama-etiqueta{display:block!important;font-size:clamp(9px,1vw,12px)!important;font-weight:850!important;letter-spacing:.17em!important;color:#e8c0ff!important;margin-bottom:10px!important}
+#root .jv-hero-panorama h1{font-size:clamp(25px,3.3vw,48px)!important;line-height:1.10!important;letter-spacing:-.035em!important;font-weight:900!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:5px 0 7px!important;text-shadow:0 3px 18px #8f33ff80!important;overflow-wrap:anywhere}
+#root .jv-hero-panorama h2{font-size:clamp(14px,1.8vw,23px)!important;font-weight:800!important;line-height:1.25!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:6px 0!important}
+#root .jv-hero-panorama p{font-size:clamp(12px,1.3vw,16px)!important;line-height:1.5!important;color:#f5e8ff!important;-webkit-text-fill-color:#f5e8ff!important;margin:8px auto!important;max-width:540px!important}
+#root .jv-hero-panorama-mano{width:clamp(23px,2.6vw,34px)!important;height:clamp(23px,2.6vw,34px)!important;object-fit:contain!important;display:inline-block!important;vertical-align:middle!important;margin-left:8px!important;transform:rotate(-12deg)}
+#root .jv-client-shell .jv-hero-panorama,#root .layout .jv-hero-panorama,#root .jv-vendedor .jv-hero-panorama{color:#fff!important}
+@media (max-width:720px){#root .jv-hero-panorama{min-height:190px!important;padding:10px 12px!important;margin:10px 0 15px!important;border-radius:16px!important}#root .jv-hero-panorama-isa{width:32%!important;max-width:32%!important;height:170px!important}#root .jv-hero-panorama-texto{width:68%!important;padding:5px!important}#root .jv-hero-panorama h1{font-size:clamp(19px,4.5vw,29px)!important}#root .jv-hero-panorama h2{font-size:clamp(12px,3vw,17px)!important}#root .jv-hero-panorama p{font-size:11px!important}#root .jv-hero-panorama-etiqueta{letter-spacing:.06em!important;font-size:8px!important}}
+@media (max-width:390px){#root .jv-hero-panorama{min-height:166px!important}#root .jv-hero-panorama-isa{height:145px!important}#root .jv-hero-panorama h1{font-size:19px!important}#root .jv-hero-panorama p{display:none!important}}
+@media (prefers-reduced-motion:reduce){#root .jv-hero-panorama-mano{animation:none!important}}
+`;
 
 function PortalAdministrador() {
   type ThemeSettings = { primary: string; accent: string; surface: string; font: string; style: string };
@@ -1048,8 +1168,10 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
 .jv-client-tab{padding:12px 20px;border-radius:12px;border:1px solid #dfcde9;background:#fff;color:#5d277b;font-weight:750;cursor:pointer}
 .jv-client-tab.active{background:linear-gradient(100deg,#a02fe0,#5b198c);color:#fff;border-color:transparent;box-shadow:0 6px 20px #8233b744}
   `}</style><div className="layout" style={{ '--brand-primary': themeSettings.primary, '--brand-accent': themeSettings.accent, '--brand-surface': themeSettings.surface, '--brand-font': themeFont(themeSettings.font) } as React.CSSProperties}><aside className="sidebar"><div className="logo"><img className="brandLogo" src={JAIVISA_LOGO} alt="Jaivisa.com, logo oficial" /><small>PORTAL MAYORISTA <i>◆</i></small></div><nav className="nav">{menu.map(m => <button key={m} className={page === m ? 'on' : ''} onClick={() => setPage(m)}><NavIcon name={m} /> <span>{m}</span></button>)}</nav><div className="sidebottom"><span className="pulseDot" /> SISTEMA JAIVISA <small>Portal interno · Versión de pruebas</small></div></aside><main className="main"><header className="top"><div><div className="hint">CENTRO DE CONTROL <span className="crumbSep">/</span> JAIVISA</div><h1>{page}</h1></div><span className="pill"><NavIcon name="Permisos" /> Administrador <span className="onlineDot" /></span></header>
+      <JaivisaHeroPanoramico portal="administracion" seccion={page} />
+      <IsaEnSeccionJAIVISA portal="administracion" seccion={page} />
       {page === 'Inicio' && <div className="jvDashboard">
-        <section className="jvWelcome"><span className="jvCrown">♕</span><div><h2>Panel del Administrador</h2><p>Gestión general de JAIVISA · Resumen del portal</p></div><span className="jvAdminTag">● Administrador</span></section>
+
         <section className="jvStats">
           <button onClick={() => setPage('Pedidos')} className="jvStat"><span className="jvStatIcon">🛒</span><span><small>Pedidos</small><strong>{orders.length}</strong><em>Consultar pedidos</em></span></button>
           <button onClick={() => setPage('Productos')} className="jvStat"><span className="jvStatIcon">▧</span><span><small>Productos</small><strong>{products.length}</strong><em>Inventario registrado</em></span></button>
@@ -1248,10 +1370,18 @@ let activo = true; (async () => {
 .jv-client-shell .jv-catalog-card{border-radius:12px!important}
 .jv-client-shell .jv-catalog-open{border-radius:8px!important}
 `}</style><div className="jv-client-shell" style={{ minHeight: '100vh', fontFamily: 'Inter,system-ui,sans-serif', color: '#31183f' }}>
-      <header className="jv-client-header"><div><img src={JAIVISA_LOGO} alt="Jaivisa.com · Logo oficial" style={{ width: 190, maxWidth: "55vw", height: 72, objectFit: "contain", objectPosition: "left center", display: "block" }} /><div style={{ fontSize: 12, opacity: .85, letterSpacing: 1 }}>PORTAL MAYORISTA · CLIENTES</div></div><button style={{ ...boton, background: '#fff', color: '#4c1d69' }} onClick={salir}>Cerrar sesión</button></header>
-      <main style={{ maxWidth: 1200, margin: 'auto', padding: '32px 22px 65px' }}>
-        <h1 className="jv-client-greeting">Bienvenido, <span>{nombreClienteElegante(perfil.nombre)}</span><span className="jv-greeting-dot">.</span></h1>
-        <p style={{ color: '#746080', marginBottom: 20 }}>Descubre primero nuestros catálogos mayoristas y encuentra los productos para tu negocio.</p>
+      <div className="jv-client-estructura jv-portal-estructura">
+        <aside className="jv-portal-lateral" aria-label="Menú de Clientes">
+          <div className="jv-portal-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+          <nav aria-label="Secciones de Clientes">
+            {([['inicio', 'Inicio'], ['catalogos', 'Catálogos PDF'], ['productos', 'Productos'], ['cuenta', 'Mi cuenta']] as const).map(([id, titulo]) => <button key={id} type="button" className={seccion === id ? 'activo' : ''} aria-current={seccion === id ? 'page' : undefined} onClick={() => setSeccion(id)}><IconoClienteNext tipo={id} /> {titulo}</button>)}
+          </nav>
+          <span className="jv-portal-lateral-pie">JAIVISA NEXT · Clientes</span>
+        </aside>
+        <main className="jv-portal-contenido" style={{ maxWidth: 'none', width: '100%', margin: 0, padding: '32px 22px 65px' }}>
+        <JaivisaHeroPanoramico portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} nombre={perfil.nombre} />
+        <IsaEnSeccionJAIVISA portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} />
+
         <nav style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }} aria-label="Secciones del portal">
           <button type="button" className={'jv-client-tab ' + (seccion === 'catalogos' ? 'active' : '')} onClick={() => setSeccion('catalogos')}><IconoClienteNext tipo="catalogos" /> Catálogos</button>
           <button type="button" className={'jv-client-tab ' + (seccion === 'productos' ? 'active' : '')} onClick={() => setSeccion('productos')}><IconoClienteNext tipo="productos" /> Productos</button>
@@ -1269,7 +1399,7 @@ let activo = true; (async () => {
         {seccion === 'cuenta' && <section style={{ background: '#fff', border: '1px solid #e9d9f2', borderRadius: 18, padding: 20 }}><h2>Mi cuenta</h2><p><strong>Nombre:</strong> {perfil.nombre || 'Cliente JAIVISA'}</p><p style={{ fontSize: 13, color: '#746080' }}>Para modificar tus datos de acceso, comunícate con JAIVISA.</p><button type="button" className="jv-client-tab" onClick={() => void salir()}>Cerrar sesión</button></section>}
       </main><nav className="jv-mobile-bottom" aria-label="Navegación móvil">
         {([['inicio', 'Inicio'], ['catalogos', 'Catálogos'], ['productos', 'Productos'], ['cuenta', 'Mi cuenta']] as const).map(([id, texto]) => <button key={id} type="button" aria-current={seccion === id ? 'page' : undefined} onClick={() => { setSeccion(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span aria-hidden="true"><IconoClienteNext tipo={id} /></span>{texto}</button>)}
-      </nav></div></>;
+      </nav></div></div></>;
 }
 
 export function AprobacionesClientes() {
@@ -1501,21 +1631,26 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
   const btn: React.CSSProperties = { border: 0, borderRadius: 12, padding: '12px 17px', background: '#622582', color: '#fff', fontWeight: 750, cursor: 'pointer' };
   const panel: React.CSSProperties = { background: '#fff', border: '1px solid #e9ddef', borderRadius: 18, padding: 'clamp(16px,3vw,25px)', boxShadow: '0 8px 24px #431c5909' };
   const etiqueta = (t: string) => <span style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#5a3970' }}>{t}</span>;
-  return <main className="jv-vendedor jv-unified" style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#f6effb,#fff 55%,#f8f5fb)', fontFamily: 'Inter,system-ui,sans-serif', color: '#341943', padding: 'clamp(12px,3vw,30px)' }}>
+  return <main className="jv-vendedor jv-unified jv-vendedor-portal" style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#f6effb,#fff 55%,#f8f5fb)', fontFamily: 'Inter,system-ui,sans-serif', color: '#341943', padding: 'clamp(12px,3vw,30px)' }}>
     <style>{jaivisaNextCSS}</style><style>{jaivisaNextPremiumCSS}</style><style>{`.jv-vendedor *{box-sizing:border-box}.jv-vendedor button{font:inherit;cursor:pointer}.jv-vendedor button:disabled{opacity:.5;cursor:not-allowed}.jv-vendedor button:focus-visible,.jv-vendedor input:focus-visible{outline:3px solid #bd77ea;outline-offset:2px}.jv-vendedor .jv-card{background:#fff;border:1px solid #e9ddef;border-radius:18px;padding:20px;text-align:left;min-height:145px;box-shadow:0 8px 22px #431c590d;transition:transform .15s}.jv-vendedor .jv-card:hover{transform:translateY(-2px)}.jv-vendedor .jv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}.jv-vendedor .jv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.jv-vendedor .jv-muted{color:#75667f;line-height:1.55}.jv-vendedor .jv-field{display:block;margin-bottom:13px}.jv-vendedor .jv-product{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #f0e8f4;padding:15px 0}@media(max-width:520px){.jv-vendedor .jv-card{padding:16px;min-height:130px}}`}</style>
-    <div style={{ maxWidth: 1130, margin: '0 auto' }}>
+    <div className="jv-vendedor-estructura jv-portal-estructura" style={{ width: '100%', maxWidth: 'none', margin: 0 }}>
+      <aside className="jv-portal-lateral" aria-label="Menú de Vendedores">
+        <div className="jv-portal-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+        <nav aria-label="Secciones de Vendedores">
+          <button type="button" className={vista === 'inicio' ? 'activo' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} onClick={() => setVista('inicio')}><IconoNext nombre="caja" tamano={18} /> Inicio</button>
+          {opciones.map(o => <button key={o.id} type="button" className={vista === o.id ? 'activo' : ''} aria-current={vista === o.id ? 'page' : undefined} onClick={() => setVista(o.id)}><IconoNext nombre={o.icono} tamano={18} /> {o.titulo}</button>)}
+        </nav>
+        <span className="jv-portal-lateral-pie">JAIVISA NEXT · Vendedores</span>
+      </aside>
+      <div className="jv-portal-contenido jv-vendedor-contenido">
+      
       <header className="jv-row" style={{ background: 'linear-gradient(110deg,#321047,#632a86)', color: '#fff', borderRadius: 20, padding: '15px 20px', boxShadow: '0 12px 30px #4c1d6930' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><img src={JAIVISA_LOGO} alt="JAIVISA" style={{ width: 100, height: 62, objectFit: 'contain' }} /><div><strong style={{ fontSize: 12, letterSpacing: 1 }}>JAIVISA · PORTAL MAYORISTA</strong><div style={{ fontSize: 14 }}>Centro comercial del vendedor</div></div></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button aria-label="Abrir notificaciones" title="Notificaciones" onClick={tocarCampana} style={{ ...btn, background: '#fff', color: '#572077' }}><IconoNext nombre="campana" tamano={19} /> {notificaciones.length || ''}</button><button onClick={() => void salir()} style={{ ...btn, background: '#fff', color: '#572077' }}>Salir</button></div>
       </header>
       {campana && <aside style={{ ...panel, marginTop: 12 }}><strong>Centro de notificaciones</strong><p className="jv-muted" style={{ fontSize: 14 }}>Las alertas reales y su sonido se activarán cuando configuremos los pedidos persistentes, las autorizaciones y el servicio de avisos de JAIVISA. Esta pantalla no inventa pedidos.</p>{notificaciones.length === 0 && <p>No hay notificaciones registradas.</p>}<p style={{ fontSize: 12, color: '#786389' }}>El navegador puede requerir una interacción para permitir audio.</p></aside>}
-      <section className="jv-next-welcome" aria-label="Bienvenida al espacio comercial">
-        <div className="jv-next-welcome-copy"><span className="jv-next-eyebrow"><span className="jv-next-pulse" /> JAIVISA NEXT <span className="jv-next-eyebrow-divider">/</span> SALES WORKSPACE</span>
-          <h1>Bienvenido, <span>{perfil.nombre ? perfil.nombre.split(' ')[0].toLocaleUpperCase('es') : 'EQUIPO'}</span><span className="jv-next-period">.</span></h1>
-          <p>Tu espacio comercial, conectado a cada oportunidad.</p>
-        </div>
-        <div className="jv-next-hero-graphic" aria-hidden="true"><div className="jv-next-ring jv-next-ring-one" /><div className="jv-next-ring jv-next-ring-two" /><div className="jv-next-hero-core"><IconoNext nombre="grafico" tamano={33} /></div></div>
-      </section>
+      <JaivisaHeroPanoramico portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} nombre={perfil.nombre} />
+      <IsaEnSeccionJAIVISA portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} />
       <aside className="jv-next-status" aria-label="Estado de la plataforma">
         <div className="jv-next-status-icon"><IconoNext nombre="escudo" tamano={21} /></div>
         <div className="jv-next-status-copy"><div className="jv-next-status-heading"><strong>Entorno de preparación</strong><span className="jv-next-status-label">VISTA DE PRUEBA</span></div><p>Consulta productos y prepara pedidos para compartir por WhatsApp. <b>Los borradores todavía no se registran como ventas.</b></p>
@@ -1575,6 +1710,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
         {([{ id: 'inicio', titulo: 'Inicio', icono: 'caja' }, { id: 'clientes', titulo: 'Clientes', icono: 'usuarios' }, { id: 'catalogosPDF', titulo: 'Catálogos', icono: 'libros' }, { id: 'catalogo', titulo: 'Productos', icono: 'caja' }, { id: 'pedido', titulo: 'Pedido', icono: 'carrito' }] as const).map(item => <button key={item.id} type="button" aria-current={vista === item.id ? 'page' : undefined} onClick={() => { setVista(item.id); setAviso(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><IconoNext nombre={item.icono} tamano={21} /><span>{item.titulo}</span></button>)}
       </nav>
       <footer style={{ textAlign: 'center', padding: 25, fontSize: 12, color: '#887293' }}>JAIVISA · Portal Mayorista · Panel comercial</footer>
+      </div>
     </div>
   </main>;
 }
@@ -1763,26 +1899,33 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
     { id: 'despachos', icono: 'camion', titulo: 'Despachos', detalle: 'Consulta el estado del módulo', tono: 'naranja' },
     { id: 'catalogos', icono: 'libros', titulo: 'Catálogos PDF', detalle: 'Consulta documentos vigentes', tono: 'azul' },
     { id: 'etiquetas', icono: 'etiqueta', titulo: 'Etiquetas', detalle: 'Consulta el módulo de impresión', tono: 'rosa' },
-    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Revisa avisos y pedidos nuevos', tono: 'rosa' },
-    { id: 'notificaciones', icono: 'campana', titulo: 'Actividad reciente', detalle: 'Consulta los últimos avisos', tono: 'violeta' }
+    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Revisa avisos y pedidos nuevos', tono: 'rosa' }
   ];
   const boton: React.CSSProperties = { border: 0, borderRadius: 11, padding: '11px 15px', background: '#64258e', color: '#fff', fontWeight: 750, cursor: 'pointer' };
-  return <main className="jv-bodega jv-unified jv-future-bodega" style={{ minHeight: '100vh', background: '#faf7fc', padding: '18px clamp(12px,3vw,35px)', fontFamily: 'Inter,system-ui,sans-serif', color: '#351448' }}>
-    <style>{jaivisaNextCSS}</style><div style={{ maxWidth: 1160, margin: 'auto' }}>
+  return <main className="jv-bodega jv-unified jv-future-bodega" style={{ minHeight: '100vh', width: '100%', background: 'linear-gradient(145deg,#160825,#2b1051 55%,#10071e)', padding: '18px clamp(12px,2vw,32px)', fontFamily: 'Inter,system-ui,sans-serif', color: '#f7eaff' }}>
+    <style>{jaivisaNextCSS}</style><div className="jv-bodega-estructura" style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
+      <aside className="jv-bodega-lateral" aria-label="Menú de Bodega">
+        <div className="jv-bodega-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+        <nav aria-label="Secciones de Bodega">
+          <button type="button" className={seccion === 'inicio' ? 'activo' : ''} onClick={() => setSeccion('inicio')}>⌂ Inicio</button>
+          {cards.map(c => <button type="button" key={c.titulo} className={seccion === c.id && c.titulo !== 'Preparación' ? 'activo' : ''} onClick={() => setSeccion(c.id)}><IconoNext nombre={c.icono} tamano={17} /> {c.titulo}</button>)}
+        </nav>
+        <span className="jv-bodega-lateral-pie">JAIVISA NEXT · Bodega</span>
+      </aside>
       <header className="jv-future-header">
         <div className="jv-future-brand"><img src={JAIVISA_LOGO} alt="JAIVISA" /><div><strong>JAIVISA NEXT · BODEGA</strong><small>Centro Operativo del Equipo</small></div></div>
         <div className="jv-future-actions"><button type="button" aria-label={'Abrir notificaciones, ' + notificaciones.length + ' avisos'} onClick={() => setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={21} />{notificaciones.length > 0 && <span className="jv-future-bubble">{notificaciones.length}</span>}</button><button type="button" onClick={() => void salir()}>Salir</button></div>
       </header>
       <section className="jv-future-hero" aria-label="Bienvenida al Centro Operativo de Bodega">
-        <img className="jv-future-isa" src="/isa-jaivisa-oficial-v8.png" alt="Isa, asistente de JAIVISA" />
+        <img className="jv-future-isa" src={seccion === 'inicio' ? '/isa-bodega.png' : (imagenIsaModuloJAIVISA('bodega', seccion)?.startsWith('/isa-bodega-') ? imagenIsaModuloJAIVISA('bodega', seccion)! : '/isa-bodega.png')} alt={'Isa te acompaña en Bodega: ' + seccion} />
         <div className="jv-future-hero-copy">
           <div className="jv-future-eyebrow">JAIVISA NEXT · CENTRO OPERATIVO</div>
-          <h1>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! 👋</h1>
+          <h1>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! <img className="jv-isa-mano-saludo" src="/isa-mano-saludo-1.png" alt="Isa te saluda" /></h1>
           <h2>Bienvenida al Centro Operativo de Bodega</h2>
           <p>Gestiona pedidos, consulta existencias y coordina despachos desde un solo lugar.</p>
           <p className="jv-future-hero-hint">Isa te acompaña durante tu jornada.</p>
         </div>
-        <div className="jv-future-warehouse" aria-hidden="true" />
+        <div className="jv-future-warehouse" aria-hidden="true" style={seccion === 'inicio' ? undefined : { backgroundImage: `linear-gradient(90deg,rgba(50,16,80,.95),rgba(50,16,80,.05) 62%), url('/jv-fondo-${seccion === 'catalogos' ? 'catalogos' : seccion}.webp')` }} />
       </section>
       {mensaje && <p role="status" style={{ padding: 12, background: '#f1e7f9', borderRadius: 12 }}>{mensaje}</p>}
       {seccion === 'inicio' ? <>
@@ -1794,6 +1937,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       </> : <section style={{ background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22 }}>
         <button style={boton} onClick={() => setSeccion('inicio')}>← Inicio</button>
         <h2><IconoNext nombre={cards.find(c => c.id === seccion)?.icono || "chispa"} /> {cards.find(c => c.id === seccion)?.titulo}</h2>
+        <IsaEnSeccionJAIVISA portal="bodega" seccion={seccion} />
         {seccion === 'inventario' && <>
           <input aria-label="Buscar producto" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, referencia o categoría" style={{ width: '100%', padding: 13, border: '1px solid #d8c8e4', borderRadius: 10, marginBottom: 15 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) consultados (máximo 500) en JAIVISA · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
@@ -2536,6 +2680,24 @@ body:has(.jv-future-bodega) #root{background:transparent!important}
 @media(max-width:650px){.jv-future-stats{padding:7px!important;border-radius:15px!important}.jv-future-bodega .jv-bodega-menu-card::after{left:12%;right:12%}}
 @media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card,.jv-future-activity{transition:none!important}}
 
+
+/* JAIVISA NEXT AURORA — Bodega a pantalla completa */
+html,body,#root{width:100%;min-height:100%;margin:0}
+body:has(.jv-future-bodega){background:#160825!important}
+#root:has(.jv-future-bodega){max-width:none!important;padding:0!important}
+.jv-future-bodega{width:100%!important;max-width:none!important;min-height:100dvh!important;margin:0!important;background:radial-gradient(ellipse at 8% 12%,#68249a88,transparent 40%),radial-gradient(ellipse at 95% 82%,#174aaf55,transparent 45%),linear-gradient(145deg,#160825,#2b1051 55%,#10071e)!important;color:#f7eaff!important}
+.jv-future-bodega>div{width:100%!important;max-width:none!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-header,.jv-future-bodega .jv-future-hero,.jv-future-bodega .jv-future-stats,.jv-future-bodega .jv-bodega-menu-grid{width:100%!important;max-width:none!important}
+.jv-future-bodega .jv-future-header{border-radius:20px!important}
+@media(max-width:650px){.jv-future-bodega{padding:10px!important}}
+/* Ajuste final: fondo oscuro y anchura total sin alterar los módulos */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),#root:has(.jv-future-bodega){width:100%!important;max-width:none!important;min-height:100%!important;margin:0!important;padding:0!important;overflow-x:hidden!important;background:#160825!important}
+.jv-future-bodega{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:none!important;min-height:100dvh!important;margin:0!important;padding:clamp(10px,1.6vw,24px)!important;background:radial-gradient(ellipse at 12% 12%,rgba(134,42,218,.38),transparent 42%),radial-gradient(ellipse at 88% 75%,rgba(43,82,184,.25),transparent 42%),linear-gradient(145deg,#160825,#2b1051 55%,#10071e)!important}
+.jv-future-bodega>div{box-sizing:border-box!important;width:100%!important;max-width:none!important;margin:0!important}
+.jv-future-bodega .jv-future-header,.jv-future-bodega .jv-future-hero,.jv-future-bodega .jv-future-stats,.jv-future-bodega .jv-bodega-menu-grid{box-sizing:border-box!important;width:100%!important;max-width:none!important}
+.jv-future-bodega .jv-future-hero{overflow:hidden!important}
+@media(max-width:650px){.jv-future-bodega{padding:10px!important}}
+
 `;
 function MarcoJAIVISANext({ rol, nombre, salir, children }: { rol: string; nombre?: string; salir?: () => Promise<void>; children: React.ReactNode }) {
   return <div className={'jv-unified jv-' + (rol === 'Administración' ? 'administracion' : 'clientes')}>
@@ -2588,7 +2750,7 @@ e.preventDefault(); setMensaje(''); if (!registro.ciudad.trim() || registro.ciud
   const cambiarClave = async (e: React.FormEvent) => { e.preventDefault(); if (nuevaClave.length < 8) { setMensaje('Usa al menos 8 caracteres.'); return; } setProcesando(true); const { error } = await supabase.auth.updateUser({ password: nuevaClave }); setProcesando(false); setNuevaClave(''); if (error) { setMensaje('No se pudo actualizar la contraseña: ' + error.message); return; } setMensaje('Contraseña actualizada.'); await salir(); setMensaje('Contraseña actualizada. Ya puedes iniciar sesión.'); };
   const recuperar = async (e: React.FormEvent) => { e.preventDefault(); setProcesando(true); setMensaje(''); const { error } = await supabase.auth.resetPasswordForEmail(correo.trim(), { redirectTo: window.location.origin }); setProcesando(false); setMensaje(error ? 'No se pudo enviar el enlace. Comprueba la configuración de correo de JAIVISA.' : 'Si el correo está registrado, recibirás instrucciones para recuperar la contraseña.'); };
   if (estado === 'administrador') return <MarcoJAIVISANext rol="Administración" nombre={perfil?.nombre ?? 'Usuario'} salir={salir}><PortalAdministrador /></MarcoJAIVISANext>;
-  if (estado === 'cliente' && perfil) return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre ?? 'Usuario'}><ClientesMayoristas perfil={perfil} salir={salir} /></MarcoJAIVISANext>;
+  if (estado === 'cliente' && perfil) return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre ?? 'Usuario'} salir={salir}><ClientesMayoristas perfil={perfil} salir={salir} /></MarcoJAIVISANext>;
   if (estado === 'equipo' && perfil?.rol === 'vendedor') return <PanelVendedor perfil={perfil} salir={salir} />;
   if (estado === 'equipo' && perfil?.rol === 'bodega') return <PanelBodega perfil={perfil} salir={salir} />;
   return <div className="jaivisa-login-fondo" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'radial-gradient(ellipse at 12% 18%,#52258c 0%,transparent 45%),radial-gradient(ellipse at 92% 85%,#203f99 0%,transparent 40%),linear-gradient(135deg,#1b0d29,#4c1d69)', padding: 24, fontFamily: 'Inter,system-ui,sans-serif', position: 'relative', overflow: 'hidden' }}><style>{`
@@ -2774,11 +2936,662 @@ function SesionConInactividad({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppProtegida() {
-  return <JaivisaErrorBoundary>
-    <SesionConInactividad>
-      <IsaAsistente />
-      <style>{JAIVISA_SHARED_CSS}</style>
-      <JaivisaApp />
-    </SesionConInactividad>
-  </JaivisaErrorBoundary>;
+  return (
+    <JaivisaErrorBoundary>
+      <SesionConInactividad>
+        <IsaAsistente />
+
+        <style>{JAIVISA_SHARED_CSS}</style>
+
+        <style>{`
+          /* JAIVISA NEXT · Pantalla completa de Bodega, sin alterar los demás portales */
+          html:has(.jv-future-bodega),
+          body:has(.jv-future-bodega),
+          body:has(.jv-future-bodega) #root {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #160825 !important;
+            overflow-x: clip !important;
+          }
+          body:has(.jv-future-bodega) #root {
+            display: block !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-unified.jv-future-bodega {
+            display: block !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 100dvh !important;
+            margin: 0 !important;
+            padding: clamp(12px, 2vw, 30px) !important;
+            background: radial-gradient(ellipse at 12% 16%, #5b218a88, transparent 48%),
+                        radial-gradient(ellipse at 90% 85%, #223f9a66, transparent 52%),
+                        linear-gradient(140deg, #160825, #2b1051 55%, #10071e) !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega > div {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-header,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-hero,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-stats,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-bodega-menu-grid {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+          }
+          @media (max-width: 680px) {
+            body:has(.jv-future-bodega) #root .jv-bodega.jv-unified.jv-future-bodega {
+              padding: 10px !important;
+            }
+          }
+        `}</style>
+
+        <style>{`
+          /* JAIVISA NEXT · Sistema visual unificado · 4 portales */
+          body:has(.jv-future-bodega) { background: #f8f5fc !important; }
+          #root:has(.jv-future-bodega) { width: 100% !important; max-width: none !important; }
+          #root .jv-future-bodega.jv-bodega {
+            width: 100% !important; max-width: none !important; padding: 0 !important;
+            min-height: 100dvh !important; background: #f8f5fc !important; color: #321348 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-estructura {
+            width: 100% !important; max-width: none !important; margin: 0 !important;
+            display: grid !important; grid-template-columns: 205px minmax(0,1fr) !important;
+            gap: 0 18px; padding: 0 18px 24px 0 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-estructura > :not(.jv-bodega-lateral) { grid-column: 2; min-width: 0; }
+          #root .jv-future-bodega .jv-bodega-lateral {
+            grid-column: 1; grid-row: 1 / span 30; align-self: stretch;
+            display: flex; flex-direction: column; gap: 22px;
+            background: linear-gradient(170deg,#1e0c30,#37194c 75%,#451d65);
+            color: #fff; padding: 24px 12px; min-height: 100dvh;
+          }
+          .jv-bodega-lateral-marca { display: grid; justify-items: center; gap: 8px; padding: 12px 6px 20px; border-bottom: 1px solid #ffffff22; }
+          .jv-bodega-lateral-marca img { width: min(155px,100%); height: auto; object-fit: contain; }
+          .jv-bodega-lateral-marca small { color: #dec4ef; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; }
+          .jv-bodega-lateral nav { display: grid; gap: 6px; }
+          .jv-bodega-lateral nav button { display: flex; align-items: center; gap: 11px; width: 100%; border: 1px solid transparent; border-radius: 11px; background: transparent; color: #e7d8f3; padding: 12px; font-size: 13px; font-weight: 650; cursor: pointer; text-align: left; }
+          .jv-bodega-lateral nav button:hover,.jv-bodega-lateral nav button.activo { background: #74369b66; border-color: #c68ce1; color: #fff; }
+          .jv-bodega-lateral-pie { margin-top: auto; color: #cbb2df; font-size: 11px; text-align: center; }
+          #root .jv-future-bodega .jv-future-header { margin: 16px 0 12px !important; border-radius: 17px !important; }
+          #root .jv-future-bodega .jv-future-hero { border-radius: 18px !important; margin: 0 0 14px !important; }
+          #root .jv-future-bodega .jv-future-stats { margin: 8px 0 18px !important; }
+          #root .jv-future-bodega .jv-future-stat {
+            background: #fff !important; border: 1px solid #e4c8fa !important;
+            color: #321348 !important; box-shadow: 0 8px 22px #49216616 !important;
+          }
+          #root .jv-future-bodega .jv-future-stat:nth-child(2),
+          #root .jv-future-bodega .jv-future-stat:nth-child(3) { background: #fff !important; border-color: #e4c8fa !important; box-shadow: 0 8px 22px #49216616 !important; }
+          #root .jv-future-bodega .jv-future-stat :is(p,strong,span,svg) { color: #37184e !important; }
+          #root .jv-future-bodega .jv-bodega-menu-card,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-azul,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-verde,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa {
+            background: linear-gradient(135deg,#fff,#f4e8ff) !important;
+            border: 1px solid #e3c7f9 !important; color: #351449 !important;
+            box-shadow: 0 8px 24px #36114c18 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong) { color: #351449 !important; }
+          #root .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol { background: linear-gradient(135deg,#c63df3,#7222b6) !important; color: white !important; }
+          #root .jv-future-bodega .jv-future-activity { background: linear-gradient(100deg,#f3e2ff,#e9d9ff) !important; color: #321348 !important; border: 1px solid #e4c8fa !important; }
+          #root .jv-future-bodega .jv-future-activity :is(strong,small,b) { color: #321348 !important; }
+          /* Unifica la identidad de encabezados, sin cambiar permisos ni lógica. */
+          .jv-global-header { background: linear-gradient(105deg,#230d38,#58217a 70%,#8028ad) !important; }
+          @media(max-width: 800px) {
+            #root .jv-future-bodega .jv-bodega-estructura { grid-template-columns: minmax(0,1fr) !important; padding: 0 12px 20px !important; }
+            #root .jv-future-bodega .jv-bodega-lateral { grid-column: 1; grid-row: auto; min-height: 0; padding: 10px; border-radius: 0 0 16px 16px; }
+            .jv-bodega-lateral-marca,.jv-bodega-lateral-pie { display: none; }
+            .jv-bodega-lateral nav { display: flex; overflow-x: auto; gap: 6px; }
+            .jv-bodega-lateral nav button { width: auto; flex: 0 0 auto; padding: 9px 12px; white-space: nowrap; }
+            #root .jv-future-bodega .jv-bodega-estructura > :not(.jv-bodega-lateral) { grid-column: 1; }
+            #root .jv-future-bodega .jv-future-header { margin-top: 10px !important; }
+          }
+          /* VISIBILIDAD FINAL: texto oscuro en tarjetas claras de Bodega.
+             Selector más específico que las reglas luminosas antiguas. */
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat {
+            background: linear-gradient(145deg,#fff 12%,#f3e5ff 100%) !important;
+            color: #321348 !important;
+            border: 1px solid #cc9aff !important;
+            box-shadow: 0 9px 24px #12051f55, inset 0 -3px #aa43ef !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(2) {
+            background: linear-gradient(145deg,#fff 12%,#e7eaff 100%) !important;
+            border-color: #86a6ff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(3) {
+            background: linear-gradient(145deg,#fff 12%,#ffe5f4 100%) !important;
+            border-color: #f093d3 !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat *,
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat :is(p,strong,span,svg) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+            background: linear-gradient(145deg,#fff,#f1e5ff) !important;
+            color: #321348 !important;
+            border: 1px solid #d3a9ff !important;
+            box-shadow: 0 8px 22px #16062255, inset 0 -2px #aa52ed !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card *,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card :is(h3,strong,.jv-menu-detail) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card .jv-menu-symbol,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card .jv-menu-symbol * {
+            color: #fff !important;
+            -webkit-text-fill-color: #fff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity {
+            background: linear-gradient(135deg,#f4e7ff,#ece0fa) !important;
+            color: #321348 !important;
+            border-color: #d3a9ff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity *,
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity :is(strong,small,b) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+          }
+        `}</style>
+
+        <style>{`
+/* JAIVISA NEXT · Arquitectura compartida: Clientes y Vendedores */
+#root .jv-client-estructura,
+#root .jv-vendedor-estructura {
+  display: grid !important;
+  grid-template-columns: 205px minmax(0,1fr) !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 64px);
+  margin: 0 !important;
+  gap: 0 !important;
+}
+#root .jv-vendedor.jv-vendedor-portal {
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  background: linear-gradient(145deg,#210b33,#38204f 55%,#17214b) !important;
+}
+#root .jv-client-shell {
+  width: 100%; max-width: none; min-height: 100dvh;
+  background: linear-gradient(145deg,#210b33,#38204f 55%,#17214b) !important;
+}
+#root .jv-portal-estructura .jv-portal-lateral {
+  grid-column: 1;
+  min-width: 0;
+  background: linear-gradient(170deg,#1d0b2c,#371a51 77%,#46206c);
+  color: #fff;
+  border-right: 1px solid rgba(190,122,240,.18);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px 6px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca img {
+  display: block; width: min(155px,100%); height: auto;
+  max-height: 95px; object-fit: contain;
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca small {
+  color: #dec4ef; font-size: 10px; font-weight: 800; letter-spacing: 1.35px;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav {
+  display: grid; align-content: start; gap: 6px;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button {
+  appearance: none; width: 100%; min-height: 42px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; text-align: left;
+  color: #eadbf6 !important; background: transparent !important;
+  border: 1px solid transparent; border-radius: 11px;
+  font: 650 13px/1.3 Inter,system-ui,sans-serif;
+  cursor: pointer; transition: background .2s,border-color .2s;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button svg {
+  flex: 0 0 auto; width: 19px; height: 19px;
+  color: currentColor !important;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button:hover,
+#root .jv-portal-estructura .jv-portal-lateral nav button.activo {
+  background: rgba(141,76,189,.33) !important;
+  color: #fff !important;
+  border-color: #bd84e3;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button:focus-visible {
+  outline: 2px solid #e3a5ff; outline-offset: 2px;
+}
+#root .jv-portal-estructura .jv-portal-lateral-pie {
+  margin-top: auto; text-align: center; color: #d0b2e4;
+  font: 600 11px/1.4 Inter,system-ui,sans-serif;
+}
+#root .jv-portal-estructura > .jv-portal-contenido {
+  grid-column: 2; min-width: 0; width: 100% !important;
+  max-width: none !important; margin: 0 !important;
+  padding: clamp(18px,2.1vw,30px) !important;
+  background: radial-gradient(circle at 82% 8%,#f0e0fc,transparent 43%),
+              linear-gradient(135deg,#f7f0fc,#f0e6f8 60%,#eae2f5) !important;
+  color: #301740 !important;
+}
+#root .jv-client-estructura .jv-client-greeting { text-align: left !important; }
+#root .jv-client-estructura .jv-client-tab:not(.active) {
+  background: linear-gradient(145deg,#eee0f8,#e0c9ef) !important;
+  color: #43205d !important;
+  border: 1px solid #d3afeb !important;
+}
+#root .jv-client-estructura .jv-catalog-card,
+#root .jv-client-estructura article,
+#root .jv-client-estructura section[style] {
+  border-color: #d5b6e9;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido > .jv-row,
+#root .jv-vendedor-estructura .jv-vendedor-contenido > header {
+  width: 100% !important;
+  max-width: none !important;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-card,
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-grid > div {
+  background: linear-gradient(145deg,#f0e4fc,#e1c9f1) !important;
+  border-color: #c7a2e6 !important;
+  color: #321548 !important;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-card :is(strong,span) {
+  color: #35174a !important;
+}
+/* Bodega: paneles con color, sin superficies blancas deslumbrantes. */
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat {
+  background: linear-gradient(140deg,#4f2179,#352057 95%) !important;
+  color: #fff !important;
+  border: 1px solid #a96cdf !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.17),0 10px 24px rgba(16,4,38,.40) !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(2) {
+  background: linear-gradient(140deg,#274e91,#28245c) !important;
+  border-color: #57a5ef !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(3) {
+  background: linear-gradient(140deg,#7c276d,#4d1e6a) !important;
+  border-color: #e173ca !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+  background: linear-gradient(140deg,#4a206f,#2e1553) !important;
+  color: #fff !important;
+  border: 1px solid #a35de4 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.14),0 8px 24px #0e041d70 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul {
+  background: linear-gradient(140deg,#29468a,#26225b) !important;
+  border-color: #57a3ff !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde {
+  background: linear-gradient(140deg,#146b72,#1d285f) !important;
+  border-color: #3fcbc9 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja {
+  background: linear-gradient(140deg,#93502d,#512354) !important;
+  border-color: #f7a65c !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+  background: linear-gradient(140deg,#862c82,#4f1d63) !important;
+  border-color: #e477d9 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat *,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card *,
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat :is(p,strong,span,svg),
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card :is(h3,strong,span,p,svg,.jv-menu-detail) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity {
+  background: linear-gradient(120deg,#5a287f,#32205f) !important;
+  color: #fff !important;
+  border: 1px solid #a76bea !important;
+  box-shadow: 0 9px 25px #10051f65 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity *,
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity :is(strong,small,b) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+@media (max-width: 800px) {
+  #root .jv-client-estructura,
+  #root .jv-vendedor-estructura {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  #root .jv-client-estructura > .jv-portal-lateral,
+  #root .jv-vendedor-estructura > .jv-portal-lateral { display: none !important; }
+  #root .jv-portal-estructura > .jv-portal-contenido { grid-column: 1; padding: 15px !important; }
+  #root .jv-vendedor-estructura .jv-vendedor-contenido { padding-bottom: 90px !important; }
+  #root .jv-client-estructura .jv-client-greeting { text-align: center !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .jv-portal-estructura *, #root .jv-future-bodega .jv-future-stat,
+  #root .jv-future-bodega .jv-bodega-menu-card { transition: none !important; }
+}
+
+/* =============================================
+   JAIVISA NEXT · ISA INTEGRADA EN LOS 4 PORTALES
+   No modifica permisos, Supabase ni pedidos.
+   ============================================= */
+.jv-isa-mano-saludo {
+  display:inline-block!important; width:clamp(28px,3.4vw,52px)!important;
+  height:clamp(28px,3.4vw,52px)!important;
+  margin-left:4px!important; vertical-align:-.19em!important;
+  object-fit:contain!important; border:0!important; box-shadow:none!important;
+  transform-origin:80% 88%; animation:jvIsaSaluda 2.6s ease-in-out infinite;
+}
+.jv-isa-mano-pequena {width:46px;height:46px;object-fit:contain;flex:none;animation:jvIsaSaluda 2.8s ease-in-out infinite;transform-origin:80% 88%}
+@keyframes jvIsaSaluda {0%,45%,100%{transform:rotate(-7deg)}15%,30%{transform:rotate(12deg)}}
+/* Bodega: Isa de cuerpo completo, brillo suave y fondo sin corte rectangular */
+#root main.jv-bodega.jv-future-bodega .jv-future-hero {
+  isolation:isolate!important; overflow:hidden!important;
+  background:radial-gradient(ellipse at 21% 56%,rgba(158,55,226,.50),transparent 46%),
+  radial-gradient(ellipse at 79% 80%,rgba(34,111,255,.28),transparent 48%),
+  linear-gradient(105deg,#230a42 3%,#4a176f 48%,#1d0d43 100%)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-hero::before {
+  content:""!important;position:absolute!important;inset:-10% auto -12% -7%!important;
+  display:block!important;width:49%!important;z-index:1!important;
+  pointer-events:none!important;
+  background:radial-gradient(ellipse at 53% 57%,rgba(191,87,255,.35) 0%,rgba(115,26,224,.18) 39%,transparent 75%),
+  radial-gradient(ellipse at 45% 93%,rgba(230,89,255,.34),transparent 62%)!important;
+  filter:blur(17px)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-isa {
+  display:block!important;position:absolute!important;
+  z-index:3!important;left:1%!important;bottom:0!important;
+  width:35%!important;height:98%!important;max-width:none!important;
+  object-fit:contain!important;object-position:center bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 0 19px rgba(205,75,255,.30))!important;
+  pointer-events:none!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-warehouse {
+  z-index:1!important;width:42%!important;opacity:.92!important;
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 16%,#000 46%)!important;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 16%,#000 46%)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-hero-copy {position:relative!important;z-index:4!important}
+/* Clientes: Isa ayuda sin desplazar el catálogo a una columna estrecha */
+#root .jv-isa-portal-mensaje {
+  position:relative;isolation:isolate;min-height:126px;overflow:hidden;
+  display:flex;align-items:center;gap:17px;
+  padding:10px 18px; margin:0 0 20px;
+  border:1px solid rgba(187,112,246,.6);border-radius:19px;
+  background:radial-gradient(circle at 20% 50%,#7736bb70,transparent 42%),
+  linear-gradient(110deg,#2c104c,#532077 65%,#1d2a60);
+  box-shadow:0 12px 30px rgba(33,9,58,.22);color:#fff!important;
+}
+#root .jv-isa-portal-mensaje>img:first-child {
+  height:132px;width:145px;flex:0 0 145px;object-fit:contain;align-self:end;
+  filter:drop-shadow(0 0 15px rgba(194,72,255,.35));
+}
+#root .jv-isa-portal-mensaje strong {display:block;font-size:17px;line-height:1.3;color:#fff!important}
+#root .jv-isa-portal-mensaje p {margin:6px 0 0;font-size:13px;line-height:1.5;color:#f4e8ff!important}
+/* Vendedores: Isa con la tableta ocupa el lugar del gráfico decorativo */
+#root .jv-vendedor .jv-next-hero-graphic {width:205px!important;height:190px!important;flex:0 0 205px!important;margin-right:12px!important}
+#root .jv-vendedor .jv-isa-vendedores-hero {
+  display:block;width:205px;height:205px;position:relative;z-index:3;
+  object-fit:contain;object-position:center bottom;
+  filter:drop-shadow(0 0 17px rgba(180,67,247,.45));
+}
+/* Administración: Isa de apoyo a la organización dentro del panel */
+#root .layout .jvWelcome {min-height:108px;overflow:hidden}
+#root .layout .jv-isa-administracion-hero {
+  display:block;flex:0 0 114px;width:114px;height:118px;
+  object-fit:contain;align-self:end;margin-left:auto;
+  filter:drop-shadow(0 0 10px rgba(168,71,222,.20));
+}
+#root .layout .jvWelcome .jvAdminTag {margin-left:0!important}
+@media(max-width:780px) {
+  #root main.jv-bodega.jv-future-bodega .jv-future-isa{width:41%!important;height:94%!important;left:-1%!important}
+  #root main.jv-bodega.jv-future-bodega .jv-future-hero-copy{z-index:4!important}
+  #root .jv-isa-portal-mensaje{gap:9px;padding:8px 12px;min-height:99px}
+  #root .jv-isa-portal-mensaje>img:first-child{width:87px;flex-basis:87px;height:100px}
+  #root .jv-isa-portal-mensaje strong{font-size:13px}
+  #root .jv-isa-portal-mensaje p{font-size:11px}
+  #root .jv-isa-portal-mensaje .jv-isa-mano-pequena{width:27px;height:27px}
+  #root .jv-vendedor .jv-next-hero-graphic{width:110px!important;height:130px!important;flex-basis:110px!important;margin-right:0!important}
+  #root .jv-vendedor .jv-isa-vendedores-hero{width:116px;height:136px}
+  #root .layout .jv-isa-administracion-hero{height:78px;width:73px;flex-basis:73px}
+}
+@media(max-width:500px) {
+  #root .jv-isa-portal-mensaje>img:first-child{height:88px;width:72px;flex-basis:72px}
+  #root .jv-isa-portal-mensaje .jv-isa-mano-pequena{display:none}
+  #root .layout .jv-isa-administracion-hero{height:62px;width:55px;flex-basis:55px}
+}
+@media(prefers-reduced-motion:reduce){.jv-isa-mano-saludo,.jv-isa-mano-pequena{animation:none!important}}
+
+`}</style>
+
+        <style>{`
+/* ===========================================================
+   JAIVISA NEXT · AURORA UNIFICADO · 4 PORTALES
+   Interiores oscuros con alto contraste y controles legibles.
+   Solo estilos: no modifica componentes, estados ni Supabase.
+   =========================================================== */
+:root {
+  --jva-surface:linear-gradient(145deg,#4a2072 0%,#32144f 56%,#211139 100%);
+  --jva-surface-blue:linear-gradient(145deg,#284d82 0%,#202b62 55%,#25133f 100%);
+  --jva-surface-soft:linear-gradient(150deg,#35164e,#271037);
+  --jva-text:#f8efff;
+  --jva-text-muted:#e1cff2;
+  --jva-border:rgba(206,143,255,.36);
+  --jva-shadow:0 13px 35px rgba(11,3,28,.30),inset 0 1px 0 rgba(255,255,255,.08);
+}
+/* 1. Fondo detrás de los módulos (NO de la pantalla de ingreso). */
+#root .layout,
+#root .layout .main,
+#root .jv-client-shell,
+#root .jv-client-shell .jv-portal-estructura>.jv-portal-contenido,
+#root .jv-vendedor.jv-vendedor-portal,
+#root .jv-vendedor .jv-portal-estructura>.jv-portal-contenido,
+#root main.jv-future-bodega,
+#root main.jv-future-bodega .jv-bodega-estructura {
+  background:radial-gradient(ellipse at 13% 14%,rgba(152,57,239,.27),transparent 43%),
+             radial-gradient(ellipse at 94% 80%,rgba(35,113,239,.20),transparent 46%),
+             linear-gradient(135deg,#1b0a2e,#30134b 58%,#170a2d) !important;
+  color:var(--jva-text) !important;
+}
+/* 2. Superficies de tarjetas reales en Administración. */
+#root .layout .main :is(
+  .panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,
+  .categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,
+  .fusionAIWorkspace,.fusionAIBannerManager,.themeEditor,.themeColor,
+  .jvOrder,.jvActions button:not(.jvActionPrimary)
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* Los recuadros con cifras se distinguen en azul. */
+#root .layout .main :is(.jvStat,.fusionAIMetric):nth-child(even) {
+  background:var(--jva-surface-blue) !important;
+}
+/* 3. Clientes: catálogo, productos, cuenta y botones de navegación. */
+#root .jv-client-shell .jv-portal-contenido :is(
+  .jv-client-tab,.jv-catalog-card,.jv-catalog-grid article,
+  section[style*="background:"],
+  article[style*="background:"]
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+#root .jv-client-shell .jv-portal-contenido .jv-client-tab.active {
+  background:linear-gradient(130deg,#9940d4,#59208c) !important;
+  border-color:#d5a1ff !important;
+}
+/* 4. Vendedores: formularios, listas y tarjetas. */
+#root .jv-vendedor .jv-portal-contenido :is(
+  .jv-card,.jv-grid>div,.jv-next-status,.jv-product,
+  section[style*="background:"],
+  article[style*="background:"]
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* La bienvenida ilustrada de Isa conserva su fondo luminoso. */
+#root .jv-vendedor .jv-next-welcome,
+#root .jv-client-shell .jv-isa-portal-mensaje {
+  color:#fff !important;
+}
+/* 5. Bodega: solo paneles de trabajo internos. Se mantienen
+   las tarjetas de colores y la imagen de Isa de la portada. */
+#root main.jv-future-bodega .jv-bodega-estructura>section[style*="background:"],
+#root main.jv-future-bodega .jv-bodega-inventario-card,
+#root main.jv-future-bodega .jv-bodega-estructura form[style*="background:"] {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* 6. Tarjetas HTML con fondo blanco definido directamente en React.
+   Solo dentro del contenido de los portales; no afecta el login,
+   el cuadro de seguridad, ni la ventana flotante de Isa. */
+#root .layout .main :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .jv-client-shell .jv-portal-contenido :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .jv-vendedor .jv-portal-contenido :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root main.jv-future-bodega .jv-bodega-estructura :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .layout .main :is(div,section,article,form)[style*="background: white"],
+#root .jv-client-shell .jv-portal-contenido :is(div,section,article,form)[style*="background: white"],
+#root .jv-vendedor .jv-portal-contenido :is(div,section,article,form)[style*="background: white"],
+#root main.jv-future-bodega .jv-bodega-estructura :is(div,section,article,form)[style*="background: white"] {
+  background:var(--jva-surface-soft) !important;
+  color:var(--jva-text) !important;
+  border-color:var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* 7. Texto de las superficies oscuras: contrasta incluso si
+   alguna etiqueta tenía un color gris o morado inline. */
+#root .layout .main :is(.panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,.categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,.fusionAIWorkspace,.fusionAIBannerManager,.jvOrder,.jvActions button):is(h1,h2,h3,h4,p,span,strong,small,b,em),
+#root .layout .main :is(.panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,.categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,.fusionAIWorkspace,.fusionAIBannerManager,.jvOrder,.jvActions button) :is(h1,h2,h3,h4,p,span,strong,small,b,em),
+#root .jv-client-shell .jv-portal-contenido :is(h1,h2,h3,h4,p,small,strong,em),
+#root .jv-vendedor .jv-portal-contenido :is(h1,h2,h3,h4,p,small,strong,em),
+#root main.jv-future-bodega .jv-bodega-estructura>section[style*="background:"] :is(h1,h2,h3,h4,p,span,strong,small,th,td,label),
+#root main.jv-future-bodega .jv-bodega-inventario-card :is(h1,h2,h3,h4,p,span,strong,small,th,td,label) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* No borrar ni esconder textos secundarios. */
+#root .layout .main :is(.jvMuted,.muted,.hint,.jvEmptyOrders),
+#root .jv-client-shell .jv-portal-contenido :is(.muted,small),
+#root .jv-vendedor .jv-portal-contenido :is(.jv-muted,.muted),
+#root main.jv-future-bodega .jv-bodega-estructura :is(.jv-muted,.muted) {
+  color:var(--jva-text-muted) !important;
+  -webkit-text-fill-color:var(--jva-text-muted) !important;
+}
+/* 8. Centros de Pedidos, Operaciones empresariales y tablas. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  section[style*="font-family:"] {
+  color:var(--jva-text) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table {
+  background:transparent !important;
+  color:var(--jva-text) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table :is(th,td) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+  border-bottom-color:rgba(213,166,255,.25) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table tr:hover {
+  background:rgba(199,113,255,.08) !important;
+}
+/* Encabezados fuera de las tarjetas conservan contraste en fondo morado. */
+#root .layout .main>.top :is(h1,h2,h3),
+#root .jv-client-shell .jv-portal-contenido>.jv-client-greeting,
+#root .jv-client-shell .jv-portal-contenido>.jv-client-greeting span {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* Textos de los componentes de pedidos/operaciones con estilos inline. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  section[style*="font-family:"] :is(h1,h2,h3,h4,p,small,strong,span,label) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* 9. Formularios: campos blancos para leer y escribir bien,
+   listas desplegables y campos deshabilitados incluidos. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),textarea,select) {
+  background-color:#fff !important;
+  color:#29143c !important;
+  -webkit-text-fill-color:#29143c !important;
+  caret-color:#60278a !important;
+  border-color:#b991d8 !important;
+  color-scheme:light;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(input,textarea)::placeholder {color:#73657d !important;-webkit-text-fill-color:#73657d !important;opacity:1}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(select option) {background:#fff!important;color:#29143c!important}
+/* 10. Colores de estado y notificaciones: evitar mensajes ilegibles. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+ :is([role="alert"],[role="status"])[style*="background:"] {
+   background:#3b2058 !important;
+   color:#fff !important;
+   border:1px solid #cb91f4 !important;
+ }
+/* La interfaz clara se reserva a imágenes, entradas de texto y
+   vistas previas configurables, no a las tarjetas del portal. */
+@media (prefers-reduced-motion:reduce){
+  #root .layout .main *,
+  #root .jv-vendedor .jv-portal-contenido *,
+  #root .jv-client-shell .jv-portal-contenido *,
+  #root main.jv-future-bodega .jv-bodega-estructura * {transition:none!important}
+}
+
+`}</style>
+
+        <style>{JV_PANORAMA_CSS}</style>
+        <style>{`
+          /* Isa contextual: se aplica solamente a las tarjetas del módulo. */
+          #root .jv-isa-en-seccion{display:flex;align-items:center;gap:14px;width:100%;max-width:620px;min-height:96px;padding:8px 15px;margin:9px 0 18px;border-radius:18px;border:1px solid rgba(200,126,255,.43);background:linear-gradient(105deg,rgba(100,42,151,.85),rgba(35,18,69,.94));box-shadow:0 8px 24px rgba(12,3,28,.26);color:#fff;box-sizing:border-box}
+          #root .jv-isa-en-seccion img{width:105px;height:86px;flex-shrink:0;object-fit:contain;border-radius:12px}
+          #root .jv-isa-en-seccion div{min-width:0;display:grid;gap:6px}
+          #root .jv-isa-en-seccion strong{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:14px;line-height:1.3}
+          #root .jv-isa-en-seccion small{color:#ead4ff!important;-webkit-text-fill-color:#ead4ff!important;font-size:12px;line-height:1.3}
+          @media(max-width:540px){#root .jv-isa-en-seccion{gap:10px;padding:8px;min-height:84px}#root .jv-isa-en-seccion img{width:82px;height:68px}#root .jv-isa-en-seccion strong{font-size:12px}}
+        `}</style>
+
+        <JaivisaApp />
+      </SesionConInactividad>
+    </JaivisaErrorBoundary>
+  );
 }
