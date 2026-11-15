@@ -1,5 +1,494 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
+
+/* ===============================================================
+  JAIVISA NEXT AURORA — ESTUDIO VISUAL CENTRAL AUTOCONTENIDO
+  Este módulo está integrado dentro de App.tsx.
+  No necesita jaivisa-estudio-visual.tsx ni .css.
+  Para publicar para TODOS los usuarios, se necesita crear las
+  tablas y permisos de JAIVISA_CONFIGURAR_TEMAS_SUPABASE.sql.
+  =============================================================== */
+/** Estilos integrados del editor visual; no requiere otro archivo CSS. */
+const JAIVISA_ESTUDIO_VISUAL_ESTILOS = "/* ================================================================\n   JAIVISA NEXT AURORA — ESTUDIO VISUAL / V2\n   Variables guardadas localmente en jaivisa_diseno_aurora_v2.\n   Estilos limitados a portales, sin modificar documentos ni login.\n   ================================================================ */\n:root {\n  --jv-studio-primary: #4c1d69;\n  --jv-studio-accent: #b36cde;\n  --jv-studio-background: #200b36;\n  --jv-studio-bg-gradient: linear-gradient(145deg,#210e37,#190826);\n  --jv-studio-panel: rgba(80,37,119,.38);\n  --jv-studio-panel-border: rgba(196,139,231,.40);\n  --jv-studio-button: rgba(115,55,163,.88);\n  --jv-studio-button-hover: rgba(179,108,222,1);\n  --jv-studio-text: #fff;\n  --jv-studio-subtext: #eaddf4;\n  --jv-studio-menu: #210f35;\n  --jv-studio-border: #c48be7;\n  --jv-studio-radius: 18px;\n  --jv-studio-button-radius: 12px;\n  --jv-studio-blur: 12px;\n  --jv-studio-shadow: 0 12px 32px rgba(8,1,22,.29);\n  --jv-studio-font: Inter,system-ui,sans-serif;\n  --jv-studio-font-size: 14px;\n  --jv-studio-border-width: 1px;\n  --jv-studio-motion: .22s;\n}\n\n/* Aplicar solo al guardar: no hay cambio inesperado de la versión actual. */\nhtml.jv-diseno-habilitado body {\n  background: var(--jv-studio-bg-gradient) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .jv-administracion, .layout, .layout .main, .jv-client-shell,\n  .jv-vendedor, .jv-bodega\n) {\n  font-family: var(--jv-studio-font) !important;\n  background: var(--jv-studio-bg-gradient) !important;\n}\nhtml.jv-diseno-habilitado #root#root .layout {\n  --brand-primary: var(--jv-studio-primary) !important;\n  --brand-accent: var(--jv-studio-accent) !important;\n  --brand-surface: var(--jv-studio-bg-gradient) !important;\n  --brand-font: var(--jv-studio-font) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .sidebar, .jv-client-shell aside, .jv-vendedor aside,\n  .jv-bodega aside\n) {\n  background: linear-gradient(165deg,var(--jv-studio-menu),var(--jv-studio-primary)) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .main .panel,.layout .main .card,.layout .main .row,\n  .layout .main .securityPanel,.layout .main .jvPanel,\n  .layout .main .jvStat,.layout .main .jvOrder,\n  .layout .main .themeColor,.layout .main .bannerManager,\n  .jv-client-shell .jv-catalog-card,.jv-client-shell .jv-card,\n  .jv-vendedor .jv-card,.jv-vendedor .jv-next-status,\n  .jv-vendedor .jv-catalog-card,\n  .jv-bodega .jv-next-card,.jv-bodega .jv-catalog-card,\n  .jv-bodega .jv-warehouse-status,\n  .jv-bodega .jv-bodega-inventario-card\n) {\n  background: var(--jv-studio-panel) !important;\n  border: var(--jv-studio-border-width) solid var(--jv-studio-panel-border) !important;\n  border-radius: var(--jv-studio-radius) !important;\n  box-shadow: var(--jv-studio-shadow) !important;\n  backdrop-filter: blur(var(--jv-studio-blur));\n  -webkit-backdrop-filter: blur(var(--jv-studio-blur));\n  color: var(--jv-studio-text) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .main .panel,.layout .main .row,\n  .jv-client-shell .jv-catalog-card,.jv-vendedor .jv-card,\n  .jv-bodega .jv-next-card\n) :is(h2,h3,h4,strong,small,p,span,em,label:not(.jv-studio-select)) {\n  color: var(--jv-studio-text) !important;\n  -webkit-text-fill-color: var(--jv-studio-text) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .main,.jv-client-shell .jv-portal-contenido,\n  .jv-vendedor .jv-portal-contenido,.jv-bodega\n) :is(.muted,.jv-muted,.jvMuted,.securityFoot) {\n  color: var(--jv-studio-subtext) !important;\n  -webkit-text-fill-color: var(--jv-studio-subtext) !important;\n}\nhtml.jv-diseno-habilitado #root#root .layout .main :is(.field,.securityTitle,.sectionEyebrow) {\n  color: var(--jv-studio-subtext) !important;\n  -webkit-text-fill-color: var(--jv-studio-subtext) !important;\n}\n/* Secundarios: ciruela/lavanda y hover real sin ocultar la etiqueta. */\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .main, .jv-client-shell .jv-portal-contenido,\n  .jv-vendedor .jv-portal-contenido, .jv-bodega\n) :is(button.secondary,button.primary,button.jv-next-card,\n      button[style*=\"background: white\"],button[style*=\"background: #fff\"],\n      button[style*=\"background: rgb(255, 255, 255)\"],\n      button[style*=\"background-color: white\"],button[style*=\"background-color: #fff\"],\n      button[style*=\"background-color: rgb(255, 255, 255)\"]) {\n  background: var(--jv-studio-button) !important;\n  color: #ffffff !important;\n  -webkit-text-fill-color: #ffffff !important;\n  border: var(--jv-studio-border-width) solid var(--jv-studio-panel-border) !important;\n  border-radius: var(--jv-studio-button-radius) !important;\n  box-shadow: 0 5px 17px rgba(17,4,35,.18) !important;\n  transition: background var(--jv-studio-motion),box-shadow var(--jv-studio-motion),transform var(--jv-studio-motion) !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(\n  .layout .main, .jv-client-shell .jv-portal-contenido,\n  .jv-vendedor .jv-portal-contenido, .jv-bodega\n) :is(button.secondary,button.primary,button.jv-next-card) :is(span,strong,small) {\n  color: #fff !important;\n  -webkit-text-fill-color: #fff !important;\n}\n@media (hover:hover) and (pointer:fine) {\n  html.jv-diseno-habilitado #root#root :is(\n    .layout .main, .jv-client-shell .jv-portal-contenido,\n    .jv-vendedor .jv-portal-contenido, .jv-bodega\n  ) :is(button.secondary,button.primary,button.jv-next-card):not(:disabled):hover {\n    background: var(--jv-studio-button-hover) !important;\n    box-shadow: 0 9px 25px rgba(164,81,225,.32) !important;\n    filter: brightness(1.07);\n    transform: translateY(-2px);\n  }\n}\n/* Acción peligrosa diferenciada, para no confundir Suspender con Editar. */\nhtml.jv-diseno-habilitado #root#root .layout .main button.danger {\n  background: rgba(142,45,103,.81) !important;\n}\n/* Campos y PDFs: son áreas de lectura, nunca oscurecerlos. */\nhtml.jv-diseno-habilitado #root#root :is(input:not([type=color]):not([type=checkbox]):not([type=radio]),textarea,select) {\n  background: #fff !important;\n  color: #261331 !important;\n  -webkit-text-fill-color: #261331 !important;\n  border-color: #cfb6e3 !important;\n  color-scheme: light;\n}\nhtml.jv-diseno-habilitado #root#root :is(input,textarea)::placeholder {\n  color: #765c87 !important; -webkit-text-fill-color: #765c87 !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(.jv-client-shell,.jv-vendedor,.jv-bodega)\n  :is(.jv-catalog-cover,.jv-catalog-cover iframe,.jv-catalog-cover img) {\n  background: #f7f1fb !important;\n}\nhtml.jv-diseno-habilitado #root#root :is(.layout,.jv-client-shell,.jv-vendedor,.jv-bodega)\n :is(button,a):focus-visible { outline: 3px solid #e8baff !important;outline-offset:3px; }\nhtml.jv-diseno-habilitado.jv-diseno-sin-animacion #root * {animation-duration:.001ms !important;transition-duration:.001ms !important;}\n@media(prefers-reduced-motion:reduce) {html.jv-diseno-habilitado #root * {transition-duration:.001ms !important;}}\n\n/* ====================== PANEL ESTUDIO VISUAL ====================== */\n#root#root .jv-studio {--st-stroke:rgba(229,188,255,.3);--st-txt:#fff;--st-muted:#e9d6f3;\n  color:var(--st-txt)!important; background:linear-gradient(150deg,rgba(84,37,126,.6),rgba(32,11,56,.87))!important;\n  border:1px solid var(--st-stroke)!important;border-radius:22px!important;padding:clamp(16px,2.6vw,28px)!important;\n  box-shadow:0 22px 45px #0b031f39!important;font-family:Inter,system-ui,sans-serif!important;\n}\n#root#root .jv-studio *{box-sizing:border-box;}\n#root#root .jv-studio-intro{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;}\n#root#root .jv-studio-kicker{font-size:10px;font-weight:850;letter-spacing:.20em;color:#d9a6ff;}\n#root#root .jv-studio h2{color:white!important;font-size:clamp(23px,3vw,36px)!important;margin:9px 0 7px!important;}\n#root#root .jv-studio-intro p{color:#eddaf8!important;font-size:13px!important;max-width:650px;margin:0 0 16px!important;}\n#root#root .jv-studio-tag{display:inline-flex;color:#f4dfff;font-size:10px;font-weight:850;letter-spacing:1.2px;border:1px solid #c18be4a8;background:#ffffff14;border-radius:99px;padding:10px 14px;}\n#root#root .jv-studio-toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0 14px;}\n#root#root .jv-studio button{border:1px solid #c695e8aa;border-radius:11px;background:#ffffff15;color:white;-webkit-text-fill-color:white;font-weight:750;cursor:pointer;min-height:40px;padding:10px 13px;font-size:12px;transition:background .2s,transform .2s,box-shadow .2s;}\n#root#root .jv-studio button.jv-studio-save{background:linear-gradient(125deg,#9b45cf,#68319d)!important;border-color:#dcb0ff!important;}\n#root#root .jv-studio button:disabled{opacity:.48;cursor:not-allowed;}\n#root#root .jv-studio button:hover:not(:disabled){background:#a45ad1!important;box-shadow:0 8px 19px #17072255;transform:translateY(-1px);}\n#root#root .jv-studio button:focus-visible{outline:3px solid #e4b7ff;outline-offset:2px;}\n#root#root .jv-studio-note{border-left:3px solid #bd86ff;padding:8px 11px;background:#b17fe51d;color:#f3e3fb;font-size:12px;margin-bottom:15px;border-radius:0 9px 9px 0;}\n#root#root .jv-studio-tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;border-bottom:1px solid #d1a3f53b;padding-bottom:13px;}\n#root#root .jv-studio-tabs button[aria-current=page]{background:#a765d5!important;color:#fff;border-color:#efd2ff!important;}\n#root#root .jv-studio-grid{display:grid;grid-template-columns:minmax(260px,.82fr) minmax(340px,1.18fr);gap:18px;align-items:start;}\n#root#root .jv-studio-controls{background:#2d1249bb;border:1px solid var(--st-stroke);border-radius:17px;padding:18px;display:grid;gap:11px;min-width:0;}\n#root#root .jv-studio-controls h3{color:white!important;margin:0!important;font-size:17px!important;}\n#root#root .jv-studio-controls>p{color:#e9d8f4!important;margin:0 0 8px!important;font-size:12px!important;}\n#root#root .jv-studio-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}\n#root#root .jv-studio button.jv-studio-preset{text-align:left;display:flex;flex-direction:column;align-items:flex-start;min-height:116px;gap:5px;padding:12px;border:1px solid #e0befc4d!important;background:#7d45a23d!important;}\n#root#root .jv-studio-preset strong{font-size:12px;color:white!important;}\n#root#root .jv-studio-preset small{font-size:11px;color:#e8d5f7!important;}\n#root#root .jv-studio-dots{display:flex;gap:5px;margin-bottom:7px;}\n#root#root .jv-studio-dots i{width:22px;height:22px;border:2px solid #ffffff9e;border-radius:50%;display:block;}\n#root#root .jv-studio-color{display:grid;grid-template-columns:minmax(105px,1fr) 44px 92px;gap:8px;align-items:center;padding:8px 9px;background:#ffffff09;border:1px solid #ddb7f433;border-radius:10px;color:white!important;font-size:12px;}\n#root#root .jv-studio-c-label{color:#f7eaff!important;font-weight:650!important;}\n#root#root .jv-studio-color input[type=color]{padding:3px;width:43px;height:36px;cursor:pointer;background:#ffffff18!important;border:1px solid #dfb7f5!important;border-radius:9px;}\n#root#root .jv-studio-color input.jv-studio-hex{width:92px;min-width:0;padding:8px 5px!important;text-align:center;background:#ffffff!important;color:#301440!important;-webkit-text-fill-color:#301440!important;border:1px solid #dcb9f0!important;border-radius:8px;font-size:11px!important;}\n#root#root .jv-studio-range{display:grid;gap:8px;padding:10px 0;border-bottom:1px solid #c99bea29;color:#f7eaff!important;}\n#root#root .jv-studio-range>span{display:flex;justify-content:space-between;gap:10px;font-weight:650;font-size:12px;color:#f7eaff!important;}\n#root#root .jv-studio-range strong{color:#f8d9ff!important;}\n#root#root .jv-studio-range input[type=range]{accent-color:#c184ed;width:100%;cursor:pointer;}\n#root#root .jv-studio-select{display:grid;gap:8px;color:white!important;font-size:12px;}\n#root#root .jv-studio-select select{min-height:41px;border:1px solid #ca9fe7!important;background:#fff!important;color:#2c1241!important;-webkit-text-fill-color:#2c1241!important;border-radius:10px;padding:7px 10px;}\n#root#root .jv-studio-check{display:flex;align-items:center;gap:12px;font-size:12px;color:white!important;padding:9px 0;}\n#root#root .jv-studio-check input{width:19px;height:19px;accent-color:#a05bd0;}\n#root#root .jv-studio-help{font-size:11px!important;color:#dec5ed!important;line-height:1.6;}\n#root#root .jv-studio-preview-area{background:#2010368a;border:1px solid var(--st-stroke);border-radius:17px;padding:14px;min-width:0;}\n#root#root .jv-studio-preview-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px;margin-bottom:10px;color:#fff;}\n#root#root .jv-studio-preview-head>div{display:grid;gap:2px;}\n#root#root .jv-studio-preview-head strong{font-size:13px;color:white!important;}\n#root#root .jv-studio-preview-head small{font-size:11px;color:#e7d1f5!important;}\n#root#root .jv-studio-preview-head>span{font-size:10px;color:#efcfff;}\n#root#root .jv-studio-portals{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}\n#root#root .jv-studio-portals button{min-height:34px;font-size:10px;padding:7px 9px;}\n#root#root .jv-studio-portals button[aria-pressed=true]{background:#9e54d5!important;border-color:#f0d5ff!important;}\n#root#root .jv-studio-preview{display:grid;grid-template-columns:94px 1fr;min-height:320px;overflow:hidden;border:1px solid var(--p-border);border-radius:var(--p-radius);background:var(--p-bg);color:var(--p-text)!important;box-shadow:var(--p-shadow);}\n#root#root .jv-studio-preview-sidebar{display:flex;flex-direction:column;gap:12px;padding:18px 8px;background:var(--p-menu);min-width:0;}\n#root#root .jv-studio-preview-sidebar strong{font-size:10px;color:var(--p-text)!important;overflow-wrap:anywhere;}\n#root#root .jv-studio-preview-sidebar span{font-size:9px;color:var(--p-subtext)!important;}\n#root#root .jv-studio-preview-sidebar span.selected{border-radius:6px;background:var(--p-panel);padding:7px 3px;color:var(--p-text)!important;}\n#root#root .jv-studio-preview-main{padding:19px 13px;min-width:0;}\n#root#root .jv-studio-preview-minihead{letter-spacing:.1em;font-size:8px;font-weight:850;color:var(--p-subtext)!important;margin-bottom:13px;}\n#root#root .jv-studio-preview-banner{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:15px;border-radius:var(--p-radius);background:linear-gradient(118deg,var(--p-primary),transparent 140%);border:1px solid var(--p-border);min-height:120px;}\n#root#root .jv-studio-preview-banner small{color:var(--p-subtext)!important;letter-spacing:.12em;font-size:8px;}\n#root#root .jv-studio-preview-banner h3{color:var(--p-text)!important;font-size:18px!important;margin:7px 0!important;line-height:1.18;}\n#root#root .jv-studio-preview-banner p{color:var(--p-subtext)!important;font-size:10px!important;max-width:260px;}\n#root#root .jv-studio-preview-banner>span{font-size:35px;color:var(--p-accent);}\n#root#root .jv-studio-preview-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0;}\n#root#root .jv-studio-preview-cards article{padding:11px;border-radius:var(--p-radius);border:1px solid var(--p-border);background:var(--p-panel);backdrop-filter:blur(var(--p-blur));color:var(--p-text)!important;}\n#root#root .jv-studio-preview-cards article small{font-size:10px;color:var(--p-subtext)!important;}\n#root#root .jv-studio-preview-cards article strong{font-size:20px;color:var(--p-text)!important;display:block;}\n#root#root .jv-studio-preview-cards article span{font-size:9px;color:var(--p-subtext)!important;}\n#root#root .jv-studio-preview-action{display:flex;gap:8px;flex-wrap:wrap;}\n#root#root .jv-studio-preview-action button{font-size:10px;min-height:36px;padding:6px 9px;border-radius:var(--p-button-radius);background:var(--p-button)!important;border:1px solid var(--p-border)!important;color:white!important;}\n#root#root .jv-studio-preview-action button:hover{background:var(--p-accent)!important;}\n#root#root .jv-studio-warning{color:#e6d4ef!important;font-size:10px!important;line-height:1.6;margin:11px 0 0!important;}\n#root#root .jv-studio-footer{font-size:11px;line-height:1.6;color:#eaddf4;border-top:1px solid var(--st-stroke);padding-top:14px;margin-top:20px;}\n#root#root .jv-studio-footer strong{color:#fff!important;}\n@media(max-width:1050px){#root#root .jv-studio-grid{grid-template-columns:1fr;}}\n@media(max-width:580px){#root#root .jv-studio-preview{grid-template-columns:75px 1fr;}#root#root .jv-studio-preview-main{padding:12px 8px;}#root#root .jv-studio-presets{grid-template-columns:1fr;}#root#root .jv-studio-color{grid-template-columns:minmax(0,1fr) 43px 88px;}#root#root .jv-studio-color input.jv-studio-hex{width:88px;}}\n@media(prefers-reduced-motion:reduce){#root#root .jv-studio button{transition:none!important;transform:none!important;}}\n\n\n/* JAIVISA NEXT · ESTUDIO VISUAL CENTRAl — SELECTOR, PUBLICACIÓN Y HISTORIAL */\n#root#root .jv-studio-scope {margin:14px 0 8px;padding:16px;background:linear-gradient(120deg,#55207799,#211039a8);\n  border:1px solid #ddb6f766;border-radius:16px;display:grid;gap:8px;}\n#root#root .jv-studio-scope label {font-size:13px;color:#fff!important;font-weight:850!important;}\n#root#root .jv-studio-scope select {min-height:44px;max-width:390px;width:100%;padding:9px 12px;border-radius:12px;\n  color:#301440!important;background:#fff!important;-webkit-text-fill-color:#301440!important;border:1px solid #d7a6f5;}\n#root#root .jv-studio-scope p{color:#edd9fa!important;margin:0!important;font-size:12px!important;}\n#root#root .jv-studio button.jv-studio-publish {background:linear-gradient(125deg,#a157e0,#772ca6)!important;\n  border-color:#f0ccff!important;box-shadow:0 6px 16px #9d42e440!important;}\n#root#root .jv-studio-publicacion{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 20px;}\n#root#root .jv-studio-publicacion>div{display:flex;flex-direction:column;gap:3px;min-width:0;\n  background:#9862c01c;border:1px solid #e2b3fa40;border-radius:13px;padding:12px;}\n#root#root .jv-studio-publicacion strong{font-size:11px;color:#fff!important;}\n#root#root .jv-studio-publicacion span{font-size:11px;color:#ead6f8!important;line-height:1.4;overflow-wrap:anywhere;}\n#root#root .jv-studio-error{background:#c9435840!important;border-left-color:#ffc1c8!important;}\n#root#root .jv-studio-history{border-top:1px solid #dfacff55;margin-top:10px;padding-top:15px;display:grid;gap:9px;}\n#root#root .jv-studio-history strong{font-size:12px;color:#fff!important;}\n#root#root .jv-studio-history select{color:#341541!important;-webkit-text-fill-color:#341541!important;\n  background:#fff!important;min-width:0;max-width:100%;padding:9px;border-radius:10px;}\n#root#root .jv-studio-history button{background:#9252b4!important;}\n@media(max-width:740px){#root#root .jv-studio-publicacion{grid-template-columns:1fr;}}\n";
+
+
+/** JAIVISA AURORA: configuración central publicada por Administración, sin tocar datos comerciales. */
+export type JaivisaDiseno = {
+  primary: string; accent: string; background: string; panel: string;
+  button: string; text: string; subtext: string; border: string;
+  menu: string; font: 'Inter' | 'Montserrat' | 'Poppins' | 'Arial' | 'Sistema';
+  backgroundMode: 'aurora' | 'degradado' | 'solido';
+  panelOpacity: number; buttonOpacity: number; glassBlur: number;
+  radius: number; buttonRadius: number; borderWidth: number;
+  shadow: number; hover: number; fontSize: number; reducedMotion: boolean;
+};
+export const JAIVISA_DISENO_CLAVE = 'jaivisa_diseno_aurora_v2';
+export const JAIVISA_DISENO_PREDETERMINADO: JaivisaDiseno = {
+  primary: '#4c1d69', accent: '#b36cde', background: '#200b36', panel: '#502577',
+  button: '#7337a3', text: '#ffffff', subtext: '#eaddf4', border: '#c48be7',
+  menu: '#210f35', font: 'Inter', backgroundMode: 'aurora',
+  panelOpacity: 0.38, buttonOpacity: 0.88, glassBlur: 12,
+  radius: 18, buttonRadius: 12, borderWidth: 1,
+  shadow: 24, hover: 25, fontSize: 14, reducedMotion: false,
+};
+
+const colores = ['primary','accent','background','panel','button','text','subtext','border','menu'] as const;
+const numeros = {
+  panelOpacity: [0.12, 0.95], buttonOpacity: [0.32, 1], glassBlur: [0, 28],
+  radius: [4, 34], buttonRadius: [4, 26], borderWidth: [0, 3],
+  shadow: [0, 60], hover: [0, 65], fontSize: [12, 18],
+} as const;
+const familias: JaivisaDiseno['font'][] = ['Inter','Montserrat','Poppins','Arial','Sistema'];
+const modos: JaivisaDiseno['backgroundMode'][] = ['aurora','degradado','solido'];
+const COLOR_HEX = /^#[0-9a-f]{6}$/i;
+const fontCSS = (font: JaivisaDiseno['font']): string => ({
+  Inter: 'Inter, system-ui, sans-serif', Montserrat: 'Montserrat, system-ui, sans-serif',
+  Poppins: 'Poppins, system-ui, sans-serif', Arial: 'Arial, system-ui, sans-serif',
+  Sistema: 'system-ui, sans-serif',
+})[font];
+function rango(valor: unknown, min: number, max: number, predeterminado: number): number {
+  const n = typeof valor === 'number' ? valor : Number(valor);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : predeterminado;
+}
+export function normalizarDiseno(valor: unknown): JaivisaDiseno {
+  const entrada: Record<string, unknown> = valor && typeof valor === 'object' && !Array.isArray(valor)
+    ? valor as Record<string, unknown> : {};
+  const siguiente: JaivisaDiseno = { ...JAIVISA_DISENO_PREDETERMINADO };
+  for (const clave of colores) {
+    const dato = entrada[clave];
+    if (typeof dato === 'string' && COLOR_HEX.test(dato)) siguiente[clave] = dato;
+  }
+  for (const clave of Object.keys(numeros) as Array<keyof typeof numeros>) {
+    const [min, max] = numeros[clave];
+    siguiente[clave] = rango(entrada[clave], min, max, JAIVISA_DISENO_PREDETERMINADO[clave]);
+  }
+  if (familias.includes(entrada.font as JaivisaDiseno['font'])) siguiente.font = entrada.font as JaivisaDiseno['font'];
+  if (modos.includes(entrada.backgroundMode as JaivisaDiseno['backgroundMode'])) siguiente.backgroundMode = entrada.backgroundMode as JaivisaDiseno['backgroundMode'];
+  if (typeof entrada.reducedMotion === 'boolean') siguiente.reducedMotion = entrada.reducedMotion;
+  return siguiente;
+}
+export function leerDisenoGuardado(): JaivisaDiseno {
+  try { return normalizarDiseno(JSON.parse(localStorage.getItem(JAIVISA_DISENO_CLAVE) || '{}')); }
+  catch { return { ...JAIVISA_DISENO_PREDETERMINADO }; }
+}
+function rgba(hex: string, alfa: number) {
+  const c = hex.replace('#', '');
+  return `rgba(${parseInt(c.slice(0,2),16)},${parseInt(c.slice(2,4),16)},${parseInt(c.slice(4,6),16)},${alfa})`;
+}
+function fondoDiseno(diseno: JaivisaDiseno) {
+  switch (diseno.backgroundMode) {
+    case 'solido': return diseno.background;
+    case 'degradado': return `linear-gradient(140deg,${diseno.menu},${diseno.background} 58%,${diseno.primary})`;
+    default: return `radial-gradient(ellipse at 8% 8%, ${rgba(diseno.accent, 0.27)},transparent 45%),radial-gradient(ellipse at 96% 88%,${rgba(diseno.primary,0.58)},transparent 50%),linear-gradient(145deg,${diseno.menu},${diseno.background})`;
+  }
+}
+const VARIABLES = [
+  '--jv-studio-primary','--jv-studio-accent','--jv-studio-background','--jv-studio-bg-gradient',
+  '--jv-studio-panel','--jv-studio-panel-border','--jv-studio-button','--jv-studio-button-hover',
+  '--jv-studio-text','--jv-studio-subtext','--jv-studio-menu','--jv-studio-border',
+  '--jv-studio-radius','--jv-studio-button-radius','--jv-studio-blur',
+  '--jv-studio-shadow','--jv-studio-font','--jv-studio-font-size',
+  '--jv-studio-border-width','--jv-studio-motion',
+] as const;
+export function aplicarDiseno(disenoEntrada: JaivisaDiseno, habilitado = true) {
+  const d = normalizarDiseno(disenoEntrada);
+  const elemento = document.documentElement;
+  if (!habilitado) {
+    elemento.classList.remove('jv-diseno-habilitado', 'jv-diseno-sin-animacion');
+    VARIABLES.forEach(k => elemento.style.removeProperty(k));
+    return;
+  }
+  const props: Record<typeof VARIABLES[number], string> = {
+    '--jv-studio-primary': d.primary,
+    '--jv-studio-accent': d.accent,
+    '--jv-studio-background': d.background,
+    '--jv-studio-bg-gradient': fondoDiseno(d),
+    '--jv-studio-panel': rgba(d.panel, d.panelOpacity),
+    '--jv-studio-panel-border': rgba(d.border, Math.max(0.15, d.panelOpacity)),
+    '--jv-studio-button': rgba(d.button, d.buttonOpacity),
+    '--jv-studio-button-hover': rgba(d.accent, Math.min(1, d.buttonOpacity + d.hover/100)),
+    '--jv-studio-text': d.text,
+    '--jv-studio-subtext': d.subtext,
+    '--jv-studio-menu': d.menu,
+    '--jv-studio-border': d.border,
+    '--jv-studio-radius': `${d.radius}px`,
+    '--jv-studio-button-radius': `${d.buttonRadius}px`,
+    '--jv-studio-blur': `${d.glassBlur}px`,
+    '--jv-studio-shadow': `0 ${Math.round(d.shadow/2)}px ${d.shadow*2}px rgba(8,1,22,.29)`,
+    '--jv-studio-font': fontCSS(d.font),
+    '--jv-studio-font-size': `${d.fontSize}px`,
+    '--jv-studio-border-width': `${d.borderWidth}px`,
+    '--jv-studio-motion': d.reducedMotion ? '0s' : '.22s',
+  };
+  Object.entries(props).forEach(([k,v]) => elemento.style.setProperty(k,v));
+  elemento.classList.add('jv-diseno-habilitado');
+  elemento.classList.toggle('jv-diseno-sin-animacion', d.reducedMotion);
+}
+
+/** Cada portal aplica su diseño PUBLICADO; si no tiene uno, utiliza el GENERAL. */
+export type PortalVisual = 'general'|'administracion'|'clientes'|'vendedores'|'bodega';
+const AMBITOS: Array<{ id:PortalVisual; nombre:string; ayuda:string }> = [
+  {id:'general',nombre:'Todos los portales',ayuda:'Estilo base utilizado donde no haya un diseño individual'},
+  {id:'administracion',nombre:'Administración',ayuda:'Dirección, productos y configuración'},
+  {id:'clientes',nombre:'Clientes',ayuda:'Compra y catálogo mayorista'},
+  {id:'vendedores',nombre:'Vendedores',ayuda:'Gestión comercial y pedidos'},
+  {id:'bodega',nombre:'Bodega',ayuda:'Preparación, inventario y despachos'},
+];
+type RegistroTema = {
+  portal:PortalVisual; publicado:Record<string,unknown>|null;
+  borrador:Record<string,unknown>|null; version:number;
+  publicado_en:string|null; actualizado_en:string|null;
+};
+type VersionTema = { id:number; portal:PortalVisual; version:number; publicado:Record<string,unknown>; fecha:string };
+function detectarPortal() : PortalVisual|null {
+  const root=document.getElementById('root');
+  if (!root) return null;
+  if (root.querySelector('.jv-bodega')) return 'bodega';
+  if (root.querySelector('.jv-vendedor')) return 'vendedores';
+  if (root.querySelector('.jv-client-shell')) return 'clientes';
+  if (root.querySelector('.layout')) return 'administracion';
+  return null; // Login: no se aplican cambios visuales administrativos.
+}
+function elegirPublicado(registros:RegistroTema[],portal:PortalVisual|null):JaivisaDiseno|null {
+  if (!portal) return null;
+  const personal=registros.find(r=>r.portal===portal && r.publicado);
+  const general=registros.find(r=>r.portal==='general' && r.publicado);
+  const elegido=personal||general;
+  return elegido?.publicado ? normalizarDiseno(elegido.publicado) : null;
+}
+/** Lee los temas de Supabase al iniciar sesión y se actualiza al publicarlos. */
+export function JaivisaTemaGlobal({children}:{children:React.ReactNode}) {
+  useEffect(()=>{
+    let activo=true;
+    let registros:RegistroTema[]=[];
+    let autorizado=false;
+    let rAF=0;
+    let solicitud=0;
+    const aplicarAlPortal=()=>{
+      if(!activo) return;
+      const portal=detectarPortal();
+      const tema=autorizado?elegirPublicado(registros,portal):null;
+      if(tema) aplicarDiseno(tema,true);
+      else aplicarDiseno(JAIVISA_DISENO_PREDETERMINADO,false);
+      if(portal) document.documentElement.dataset.jvPortal=portal;
+      else delete document.documentElement.dataset.jvPortal;
+    };
+    const programar=()=>{
+      if(rAF) return;
+      rAF=window.requestAnimationFrame(()=>{rAF=0;aplicarAlPortal();});
+    };
+    const cargar=async()=>{
+      const n=++solicitud;
+      const {data:{session}}=await supabase.auth.getSession();
+      if(!activo||n!==solicitud)return;
+      autorizado=!!session;
+      if(!autorizado){registros=[];aplicarAlPortal();return;}
+      const {data,error}=await supabase.from('jv_temas_portal').select('portal,publicado');
+      if(!activo||n!==solicitud)return;
+      // Si aún falta instalar el SQL, se conserva el aspecto actual.
+      registros=error?[]:(data||[]) as RegistroTema[];
+      aplicarAlPortal();
+    };
+    const root=document.getElementById('root');
+    const observador=new MutationObserver(programar);
+    if(root) observador.observe(root,{subtree:true,childList:true});
+    const canal=supabase.channel('jv_temas_publicacion').on('postgres_changes',{
+      event:'*',schema:'public',table:'jv_temas_portal',
+    },()=>{void cargar();}).subscribe();
+    const {data:{subscription}}=supabase.auth.onAuthStateChange(()=>{
+      // Evitar llamadas async al cliente dentro del callback de autenticación.
+      window.setTimeout(()=>{void cargar();},0);
+    });
+    const cuandoVisible=()=>{if(document.visibilityState==='visible')void cargar();};
+    const cuandoFoco=()=>{void cargar();};
+    const cuandoPublicado=()=>{void cargar();};
+    const comprobacion=window.setInterval(()=>{void cargar();},60_000);
+    document.addEventListener('visibilitychange',cuandoVisible);
+    window.addEventListener('focus',cuandoFoco);
+    window.addEventListener('jv-tema-publicado',cuandoPublicado);
+    void cargar();
+    programar();
+    return()=>{
+      activo=false;
+      solicitud++;
+      window.clearInterval(comprobacion);
+      if(rAF)window.cancelAnimationFrame(rAF);
+      document.removeEventListener('visibilitychange',cuandoVisible);
+      window.removeEventListener('focus',cuandoFoco);
+      window.removeEventListener('jv-tema-publicado',cuandoPublicado);
+      observador.disconnect();
+      subscription.unsubscribe();
+      void supabase.removeChannel(canal);
+      aplicarDiseno(JAIVISA_DISENO_PREDETERMINADO,false);
+      delete document.documentElement.dataset.jvPortal;
+    };
+  },[]);
+  return <><style>{JAIVISA_ESTUDIO_VISUAL_ESTILOS}</style>{children}</>;
+}
+
+const PALETAS: Array<{nombre:string; descripcion:string; design:Partial<JaivisaDiseno>}> = [
+  { nombre:'Aurora JAIVISA', descripcion:'Morado corporativo clásico', design:{...JAIVISA_DISENO_PREDETERMINADO} },
+  { nombre:'Cristal Imperial', descripcion:'Lavanda translúcida y brillo', design:{primary:'#62258e',accent:'#cf9fff',background:'#1c0a32',panel:'#653a93',button:'#7744a5',border:'#e0afff',panelOpacity:0.36,glassBlur:18} },
+  { nombre:'Neón Futurista', descripcion:'Contraste intenso, sofisticado', design:{primary:'#5310a2',accent:'#c069ff',background:'#110628',panel:'#3b2075',button:'#6e2bba',border:'#aa66ed',panelOpacity:0.48,shadow:40} },
+  { nombre:'Lavanda Premium', descripcion:'Morado suave y elegante', design:{primary:'#7541a1',accent:'#e3b4ff',background:'#2c184a',panel:'#76519b',button:'#8552b0',border:'#dac3e8',panelOpacity:0.32,glassBlur:16} },
+  { nombre:'Noche Zafiro', descripcion:'Violeta con luz azulada', design:{primary:'#453381',accent:'#a9a0ff',background:'#111630',panel:'#32437b',button:'#5c4db0',border:'#b2a7ef',panelOpacity:0.47} },
+];
+const SECCIONES = ['Paletas','Colores','Paneles y fondos','Botones','Tipografía y efectos'] as const;
+type SeccionEstudio = typeof SECCIONES[number];
+type CampoColor = typeof colores[number];
+const COLORES_ETIQUETAS: Array<[CampoColor,string]> = [
+  ['primary','Morado principal'],['accent','Color de acento'],['background','Fondo del portal'],
+  ['panel','Color de tarjetas'],['button','Color de botones'],['text','Color de letras'],
+  ['subtext','Texto secundario'],['border','Bordes y líneas'],['menu','Menú lateral'],
+];
+const MODOS: Array<[JaivisaDiseno['backgroundMode'],string]> = [
+  ['aurora','Aurora luminosa'],['degradado','Degradado elegante'],['solido','Color sólido'],
+];
+
+/** Administración gestiona borradores por portal; Publicar exige autorización real mediante RLS + RPC. */
+export function EstudioVisualJAIVISA(){
+  const [ambito,setAmbito]=useState<PortalVisual>('general');
+  const [registros,setRegistros]=useState<RegistroTema[]>([]);
+  const [versiones,setVersiones]=useState<VersionTema[]>([]);
+  const [guardado,setGuardado]=useState<JaivisaDiseno>({...JAIVISA_DISENO_PREDETERMINADO});
+  const [borrador,setBorrador]=useState<JaivisaDiseno>({...JAIVISA_DISENO_PREDETERMINADO});
+  const [historialLocal,setHistorialLocal]=useState<JaivisaDiseno[]>([]);
+  const [seccion,setSeccion]=useState<SeccionEstudio>('Paletas');
+  const [mensaje,setMensaje]=useState('Cargando diseños publicados de JAIVISA…');
+  const [problema,setProblema]=useState(false);
+  const [cargando,setCargando]=useState(true);
+  const [ocupado,setOcupado]=useState(false);
+  const [versionElegida,setVersionElegida]=useState('');
+  const archivoImportacion=useRef<HTMLInputElement|null>(null);
+
+  const registroActual=registros.find(r=>r.portal===ambito);
+  const general=registros.find(r=>r.portal==='general');
+  const diseñoBase=(portal:PortalVisual,rs:RegistroTema[])=>(
+    rs.find(r=>r.portal===portal)?.borrador ||
+    rs.find(r=>r.portal===portal)?.publicado ||
+    (portal!=='general' ? rs.find(r=>r.portal==='general')?.publicado : null) ||
+    JAIVISA_DISENO_PREDETERMINADO
+  );
+  const aplicadoActual=registroActual?.publicado ?? (ambito==='general'?null:general?.publicado);
+  const personalPendiente=JSON.stringify(borrador)!==JSON.stringify(guardado);
+
+  const cargar=async()=>{
+    setCargando(true);
+    const {data,error}=await supabase.from('jv_temas_portal').select('portal,publicado,borrador,version,publicado_en,actualizado_en');
+    setCargando(false);
+    if(error){
+      setProblema(true);
+      setMensaje('Sin conexión a la configuración central: '+error.message+'. Instala el archivo SQL del paquete en Supabase.');
+      return;
+    }
+    setProblema(false);
+    setRegistros((data||[]) as RegistroTema[]);
+    if(!data?.length)setMensaje('El Estudio Visual está listo. Empieza por Todos los portales y publica tu primera paleta.');
+    else setMensaje('Diseños consultados desde Supabase. Solo lo publicado es visible para los demás usuarios.');
+  };
+  useEffect(()=>{void cargar();},[]);
+  useEffect(()=>{
+    const d=normalizarDiseno(diseñoBase(ambito,registros));
+    setGuardado(d);
+    setBorrador(d);
+    setHistorialLocal([]);
+    setVersionElegida('');
+    // El historial solo lo puede consultar Administración gracias a RLS.
+    let activo=true;
+    const obtener=async()=>{
+      const {data}=await supabase.from('jv_temas_historial')
+        .select('id,portal,version,publicado,fecha')
+        .eq('portal',ambito).order('version',{ascending:false}).limit(15);
+      if(activo)setVersiones((data||[]) as VersionTema[]);
+    };
+    void obtener();
+    return()=>{activo=false;};
+  },[ambito,registros]);
+
+  const cambiar=(datos:Partial<JaivisaDiseno>)=>{
+    setHistorialLocal(prev=>[...prev.slice(-19),borrador]);
+    setBorrador(prev=>normalizarDiseno({...prev,...datos}));
+    setMensaje('Vista previa modificada; los usuarios todavía no verán estos cambios.');
+  };
+  const deshacer=()=>{
+    if(!historialLocal.length)return;
+    setBorrador(historialLocal[historialLocal.length-1]);
+    setHistorialLocal(prev=>prev.slice(0,-1));
+  };
+  const guardarBorrador=async(d:JaivisaDiseno,mostrar=true):Promise<boolean>=>{
+    setOcupado(true);
+    const limpio=normalizarDiseno(d);
+    const {error}=await supabase.from('jv_temas_portal').upsert({
+      portal:ambito,borrador:limpio,actualizado_en:new Date().toISOString(),
+    },{onConflict:'portal'});
+    setOcupado(false);
+    if(error){setMensaje('No se guardó: '+error.message+'. Verifica que tu perfil tenga rol administrador y esté aprobado.');return false;}
+    if(mostrar){await cargar();setMensaje('Borrador guardado en Supabase. Aún no se publicó para los demás usuarios.');}
+    return true;
+  };
+  const publicar=async()=>{
+    if(problema||ocupado||cargando)return;
+    if(!window.confirm('¿Publicar el diseño de '+AMBITOS.find(x=>x.id===ambito)?.nombre+' para los usuarios correspondientes?'))return;
+    const listo=await guardarBorrador(borrador,false);
+    if(!listo)return;
+    setOcupado(true);
+    const {error}=await supabase.rpc('jv_publicar_tema',{p_portal:ambito});
+    setOcupado(false);
+    if(error){setMensaje('No se publicó: '+error.message);return;}
+    await cargar();
+    window.dispatchEvent(new Event('jv-tema-publicado'));
+    setMensaje('✓ Diseño publicado en Supabase. Los portales conectados actualizarán la apariencia.');
+  };
+  const restaurar=()=>{
+    cambiar({...JAIVISA_DISENO_PREDETERMINADO});
+    setMensaje('Paleta original cargada en la vista previa. Guarda o publica para aplicarla.');
+  };
+  const restaurarVersion=()=>{
+    const version=versiones.find(v=>String(v.version)===versionElegida);
+    if(!version)return;
+    cambiar(normalizarDiseno(version.publicado));
+    setMensaje('Versión '+version.version+' recuperada en la vista previa; pulsa Publicar para restaurarla a todos.');
+  };
+  const exportar=()=>{
+    const archivo=new Blob([JSON.stringify({nombre:'Estudio JAIVISA NEXT',version:3,portal:ambito,diseno:normalizarDiseno(borrador)},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(archivo);
+    const a=document.createElement('a');
+    a.href=url;a.download='JAIVISA_TEMA_'+ambito+'.json';document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    setMensaje('Diseño exportado como respaldo JSON.');
+  };
+  const importar=async(archivo?:File)=>{
+    if(!archivo)return;
+    if(archivo.size>20_000){setMensaje('El diseño debe pesar menos de 20 KB.');return;}
+    try{
+      const objeto=JSON.parse(await archivo.text());
+      if(!objeto || ![2,3].includes(objeto.version) || !objeto.diseno || typeof objeto.diseno!=='object')throw Error('Formato incorrecto');
+      cambiar(normalizarDiseno(objeto.diseno));
+      setMensaje('Diseño importado a la vista previa de '+ambito+'. Todavía no publicado.');
+    }catch{setMensaje('JSON incompatible: importa un diseño exportado desde JAIVISA.');}
+  };
+  const color=(key:CampoColor,etiqueta:string)=><label className="jv-studio-color" key={key}>
+    <span className="jv-studio-c-label">{etiqueta}</span>
+    <input type="color" aria-label={etiqueta} value={borrador[key]} onChange={e=>cambiar({[key]:e.target.value})}/>
+    <input className="jv-studio-hex" aria-label={`${etiqueta} HEX`} maxLength={7}
+      value={borrador[key].toUpperCase()} onChange={e=>{if(COLOR_HEX.test(e.target.value))cambiar({[key]:e.target.value});}}/>
+  </label>;
+  const deslizador=(key:keyof typeof numeros,etiqueta:string,unidad:string,factor=1)=>{
+    const [min,max]=numeros[key];
+    return <label className="jv-studio-range" key={key}><span>{etiqueta}<strong>{Math.round(borrador[key]*factor)}{unidad}</strong></span>
+      <input type="range" min={min} max={max} step={factor===100?.01:1} value={borrador[key]}
+        onChange={e=>cambiar({[key]:Number(e.target.value)})}/>
+    </label>;
+  };
+  const previewStyle={
+    '--p-primary':borrador.primary,'--p-accent':borrador.accent,
+    '--p-bg':fondoDiseno(borrador),'--p-panel':rgba(borrador.panel,borrador.panelOpacity),
+    '--p-button':rgba(borrador.button,borrador.buttonOpacity),'--p-text':borrador.text,
+    '--p-subtext':borrador.subtext,'--p-menu':borrador.menu,
+    '--p-border':rgba(borrador.border,Math.max(.3,borrador.panelOpacity)),
+    '--p-radius':`${borrador.radius}px`,'--p-button-radius':`${borrador.buttonRadius}px`,
+    '--p-blur':`${borrador.glassBlur}px`,'--p-shadow':`0 12px ${borrador.shadow}px #0004`,
+    fontFamily:fontCSS(borrador.font),fontSize:borrador.fontSize,
+  } as React.CSSProperties;
+
+  return <section className="jv-studio" aria-label="Estudio visual central de JAIVISA">
+    <header className="jv-studio-intro"><div>
+      <div className="jv-studio-kicker">JAIVISA NEXT · ADMINISTRACIÓN</div>
+      <h2>Estudio Visual AURORA</h2>
+      <p>Diseña cada portal sin código. Guarda borradores, publica para todos y recupera versiones anteriores.</p>
+    </div><span className="jv-studio-tag">CONTROL EMPRESARIAL</span></header>
+    <div className="jv-studio-scope">
+      <label htmlFor="jv-selector-portal">¿Qué portal deseas personalizar?</label>
+      <select id="jv-selector-portal" value={ambito} onChange={e=>setAmbito(e.target.value as PortalVisual)}>
+        {AMBITOS.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}
+      </select>
+      <p>{AMBITOS.find(x=>x.id===ambito)?.ayuda}. Los ajustes individuales tienen preferencia sobre el diseño general.</p>
+    </div>
+    <div className="jv-studio-toolbar" role="group" aria-label="Acciones de diseño">
+      <button type="button" className="jv-studio-save" disabled={problema||ocupado||cargando} onClick={()=>{void guardarBorrador(borrador);}}>Guardar borrador</button>
+      <button type="button" className="jv-studio-publish" disabled={problema||ocupado||cargando} onClick={()=>{void publicar();}}>✦ Publicar para usuarios</button>
+      <button type="button" disabled={!historialLocal.length||ocupado} onClick={deshacer}>↶ Deshacer</button>
+      <button type="button" disabled={ocupado} onClick={restaurar}>↺ Paleta original</button>
+      <button type="button" onClick={exportar}>↓ Exportar JSON</button>
+      <button type="button" onClick={()=>archivoImportacion.current?.click()}>↑ Importar JSON</button>
+      <input ref={archivoImportacion} type="file" accept=".json,application/json" hidden aria-label="Importar tema"
+        onChange={e=>{void importar(e.target.files?.[0]);e.target.value='';}}/>
+      <button type="button" disabled={cargando||ocupado} onClick={()=>{void cargar();}}>↻ Actualizar</button>
+    </div>
+    <div className={'jv-studio-note'+(problema?' jv-studio-error':'')} role="status" aria-live="polite">{mensaje}</div>
+    <div className="jv-studio-publicacion">
+      <div><strong>Diseño publicado</strong><span>{registroActual?.publicado ? 'Versión '+registroActual.version : aplicadoActual ? 'Heredado del diseño general' : 'Aspecto original'}</span></div>
+      <div><strong>Estado del editor</strong><span>{personalPendiente?'Cambios pendientes':'Vista previa sincronizada con el borrador'}</span></div>
+      <div><strong>Última publicación</strong><span>{registroActual?.publicado_en?new Date(registroActual.publicado_en).toLocaleString('es-CO'):'Sin publicación propia'}</span></div>
+    </div>
+    <nav className="jv-studio-tabs" aria-label="Apartados del estudio visual">
+      {SECCIONES.map(s=><button key={s} type="button" aria-current={seccion===s?'page':undefined} onClick={()=>setSeccion(s)}>{s}</button>)}
+    </nav>
+    <div className="jv-studio-grid">
+      <div className="jv-studio-controls">
+        {seccion==='Paletas'&&<><h3>Diseños listos para usar</h3><p>Aplica una paleta y ajústala antes de publicar.</p>
+          <div className="jv-studio-presets">{PALETAS.map(p=><button key={p.nombre} type="button" onClick={()=>cambiar(p.design)} className="jv-studio-preset">
+            <span className="jv-studio-dots">{[p.design.primary||borrador.primary,p.design.accent||borrador.accent,p.design.background||borrador.background].map((c,i)=><i key={i} style={{background:c}}/>)}</span>
+            <strong>{p.nombre}</strong><small>{p.descripcion}</small></button>)}</div></>}
+        {seccion==='Colores'&&<><h3>Todos los colores</h3><p>Modifica fondo, menú, letras, paneles y bordes.</p>
+          {COLORES_ETIQUETAS.map(([key,label])=>color(key,label))}</>}
+        {seccion==='Paneles y fondos'&&<><h3>Fondos y efecto cristal</h3>
+          <label className="jv-studio-select">Tipo de fondo<select value={borrador.backgroundMode} onChange={e=>cambiar({backgroundMode:e.target.value as JaivisaDiseno['backgroundMode']})}>{MODOS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+          {deslizador('panelOpacity','Opacidad de tarjetas','%',100)}
+          {deslizador('glassBlur','Difuminado de cristal',' px')}
+          {deslizador('radius','Radio de los paneles',' px')}
+          {deslizador('borderWidth','Grosor de los bordes',' px')}
+          {deslizador('shadow','Profundidad de sombra',' px')}
+          <p className="jv-studio-help">Se conservan los banners de Isa, las fotografías y las páginas PDF.</p></>}
+        {seccion==='Botones'&&<><h3>Botones y efectos</h3>
+          {color('button','Color de los botones')}
+          {deslizador('buttonOpacity','Opacidad del botón','%',100)}
+          {deslizador('buttonRadius','Redondeado de botones',' px')}
+          {deslizador('hover','Intensidad del brillo al pasar el cursor','%')}
+          <p className="jv-studio-help">Los botones mantienen etiquetas legibles, foco de teclado y estados de deshabilitado.</p></>}
+        {seccion==='Tipografía y efectos'&&<><h3>Tipografía y accesibilidad</h3>
+          <label className="jv-studio-select">Fuente<select value={borrador.font} onChange={e=>cambiar({font:e.target.value as JaivisaDiseno['font']})}>{familias.map(f=><option key={f} value={f}>{f}</option>)}</select></label>
+          {deslizador('fontSize','Tamaño de texto',' px')}
+          {color('text','Color de texto principal')}
+          {color('subtext','Color de texto secundario')}
+          <label className="jv-studio-check"><input type="checkbox" checked={borrador.reducedMotion} onChange={e=>cambiar({reducedMotion:e.target.checked})}/><span>Reducir animaciones y movimiento</span></label>
+          <p className="jv-studio-help">Los campos de texto conservan fondo claro para evitar errores de lectura.</p></>}
+        <div className="jv-studio-history">
+          <strong>Recuperación de versiones publicadas</strong>
+          <select aria-label="Seleccionar versión anterior" value={versionElegida} onChange={e=>setVersionElegida(e.target.value)}>
+            <option value="">Selecciona una versión</option>
+            {versiones.map(v=><option key={v.id} value={String(v.version)}>v{v.version} · {new Date(v.fecha).toLocaleString('es-CO')}</option>)}
+          </select>
+          <button type="button" disabled={!versionElegida} onClick={restaurarVersion}>Recuperar en vista previa</button>
+        </div>
+      </div>
+      <div className="jv-studio-preview-area">
+        <div className="jv-studio-preview-head"><div><strong>Vista previa · {AMBITOS.find(p=>p.id===ambito)?.nombre}</strong>
+          <small>Al publicar, el diseño se aplicará a los usuarios de ese portal</small></div>
+          <span>{personalPendiente?'● Sin guardar':'✓ Borrador guardado'}</span></div>
+        <div className="jv-studio-preview" style={previewStyle}>
+          <aside className="jv-studio-preview-sidebar"><strong>Jaivisa.com</strong>
+            {['Inicio','Catálogos','Pedidos','Cuenta'].map((x,i)=><span key={x} className={i===0?'selected':''}>◈ {x}</span>)}
+          </aside>
+          <main className="jv-studio-preview-main">
+            <div className="jv-studio-preview-minihead">JAIVISA NEXT · {ambito==='general'?'TODOS LOS PORTALES':ambito.toUpperCase()}</div>
+            <div className="jv-studio-preview-banner"><div><small>DISEÑO AURORA</small><h3>Tu negocio, en un solo lugar.</h3><p>Organiza, consulta y trabaja con JAIVISA.</p></div><span aria-hidden="true">✦</span></div>
+            <div className="jv-studio-preview-cards">
+              <article><small>Productos</small><strong>📦</strong><span>Consultar catálogo</span></article>
+              <article><small>Pedidos</small><strong>✓</strong><span>Seguimiento</span></article>
+            </div>
+            <div className="jv-studio-preview-action"><button type="button">Ver catálogos</button><button type="button">Explorar pedidos</button></div>
+          </main>
+        </div>
+        <p className="jv-studio-warning">Esta es una muestra visual. No modifica pedidos, productos, permisos ni imágenes originales de Isa.</p>
+      </div>
+    </div>
+    <footer className="jv-studio-footer"><strong>Control central de JAIVISA.</strong>
+      Guardar borrador no publica nada. Publicar requiere el rol de administrador aprobado en Supabase; los demás portales solo pueden leer configuraciones publicadas. Sin una configuración propia, cada portal hereda el diseño general.
+    </footer>
+  </section>;
+}
+
 
 // ===== COMPONENTE INTEGRADO: CentroPedidos =====
 const { CentroPedidos, crearPedidoCentral } = (() => {
@@ -544,17 +1033,7 @@ const JV_PANORAMA_CSS = `
 `;
 
 function PortalAdministrador() {
-  type ThemeSettings = { primary: string; accent: string; surface: string; font: string; style: string };
-  const defaultTheme: ThemeSettings = { primary: '#4c1d69', accent: '#9d65d1', surface: '#faf8fd', font: 'Inter', style: 'Moderno' };
   const [departamentoCliente, setDepartamentoCliente] = useState('');
-  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => {
-    try { return { ...defaultTheme, ...JSON.parse(localStorage.getItem('jaivisa_theme_v1') || '{}') }; }
-    catch { return defaultTheme; }
-  });
-  const [themeDraft, setThemeDraft] = useState<ThemeSettings>(themeSettings);
-  const saveTheme = () => { try { localStorage.setItem('jaivisa_theme_v1', JSON.stringify(themeDraft)); setThemeSettings(themeDraft); alert('Diseño guardado en este navegador.'); } catch { alert('No se pudo guardar el diseño.'); } };
-  const resetTheme = () => { setThemeDraft(defaultTheme); setThemeSettings(defaultTheme); try { localStorage.removeItem('jaivisa_theme_v1'); } catch { } };
-  const themeFont = (font: string) => ({ Inter: 'Inter, system-ui, sans-serif', Montserrat: 'Montserrat, system-ui, sans-serif', Poppins: 'Poppins, system-ui, sans-serif', Arial: 'Arial, sans-serif' } as Record<string, string>)[font] || 'system-ui, sans-serif';
   const [bannerImage, setBannerImage] = useState<string>(() => { try { return localStorage.getItem('jaivisa_banner_v1') || ''; } catch { return ''; } });
   const [bannerError, setBannerError] = useState('');
   const uploadBanner = (file?: File) => {
@@ -830,7 +1309,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
 .jv-catalog-thumb-fallback small{font-size:11px}
 @media(max-width:720px){.jv-catalog-thumb{height:160px!important;min-height:160px!important}.jv-catalog-thumb::after{content:none!important}.jv-catalog-thumb canvas{max-height:160px}}
 
-    *{box-sizing:border-box}body{margin:0;background:#f7f4fb;color:#281b36;font-family:Inter,system-ui,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}.layout{display:flex;min-height:100vh}.sidebar{width:245px;background:#4e1978;color:white;padding:24px 14px;flex-shrink:0}.logo{font-size:29px;font-weight:900;padding:5px 12px 25px}.logo span{color:#cda3f1}.logo small{display:block;font-size:12px;font-weight:400;color:#ddc5ee}.nav{display:grid;gap:5px}.nav button{display:block;text-align:left;width:100%;background:none;border:0;color:#ebdbf5;border-radius:10px;padding:12px 14px}.nav button.on,.nav button:hover{background:#7836a5;color:white}.sidebottom{font-size:13px;margin:35px 12px;color:#ddc7ee}.main{width:100%;min-width:0;padding:28px;max-width:1400px;margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:25px}.top h1{margin:3px 0;font-size:29px}.hint{font-size:12px;color:#8d76a0;letter-spacing:1px;font-weight:700}.pill{background:white;border:1px solid #e6d9ee;border-radius:24px;padding:9px 14px;font-size:12px}.hero{background:linear-gradient(115deg,#552085,#8b44b6);border-radius:18px;color:white;padding:30px;display:flex;justify-content:space-between;align-items:center}.hero h2{font-size:28px;margin:0}.hero p{color:#f0dff9}.isa{font-size:66px;text-align:center}.isa small{display:block;font-size:12px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}.card,.panel{background:white;border:1px solid #eae1f0;border-radius:15px;padding:22px;margin-bottom:18px}.card b{display:block;font-size:30px;color:#61258b}.card small{color:#7c6a89}.panel h3{margin:0 0 16px}.muted{color:#756981;font-size:13px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end}.field{display:grid;gap:6px;font-size:12px;font-weight:700;color:#594666}.field input,.field select,.wideSelect{width:100%;padding:11px;border:1px solid #ded1e9;border-radius:9px;background:white;color:#281b36}.primary{border:0;border-radius:9px;padding:12px 16px;background:#62258f;color:white;font-weight:700}.secondary{border:1px solid #ddcce9;background:#f7f0fb;color:#572084;border-radius:9px;padding:9px 12px}.danger{color:#b52e50!important}.table{overflow:auto}.table table{width:100%;border-collapse:collapse;min-width:650px;text-align:left}.table th,.table td{border-bottom:1px solid #eee7f3;padding:12px 9px;font-size:13px}.table th{color:#7e6d8b;background:#faf8fc}.table input{max-width:115px;padding:7px;border:1px solid #ddd;border-radius:7px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee7f3}.row small{display:block;color:#897990;margin-top:4px}.actions{display:flex;gap:6px;flex-wrap:wrap}.check{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eee7f3}.check input{width:20px;height:20px;accent-color:#64258e}.catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:13px}.item{border:1px solid #eee2f3;border-radius:12px;padding:15px;display:grid;gap:9px}.item .photo{background:#f5eff9;text-align:center;padding:18px;border-radius:10px;font-size:32px}.item small{color:#897a94}.total{display:grid;gap:8px;margin:20px 0 20px auto;max-width:330px}.total div{display:flex;justify-content:space-between}.total .big{font-size:22px;font-weight:800;border-top:1px solid #ddd;padding-top:12px;color:#5a2188}.notice{background:#f6edfc;border-radius:10px;padding:14px;font-size:13px;color:#684581;margin-top:16px}.badge{display:inline-block;background:#f1e7fa;border-radius:30px;padding:5px 10px;font-size:11px;color:#5c2187}.footer{font-size:12px;color:#9a8ba3;text-align:center;margin:28px}.labelPreview{border:1px dashed #b4a6bf;border-radius:10px;padding:20px;background:white;max-width:380px}.labelPreview h3{color:#572085}.labelPreview p{margin:7px 0;font-size:13px}.catalogHeading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}.catalogHeading h2{font-size:30px;letter-spacing:-.6px;margin:6px 0}.catalogSearch{width:100%;padding:16px;border-radius:12px;border:1px solid #e5dbea;background:#fbf9fc;font:inherit;margin-bottom:20px}.categoryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.categoryCard{border:1px solid #e8e0ed;background:white;border-radius:18px;padding:0;overflow:hidden;text-align:left;box-shadow:0 8px 20px #3c20510a;transition:transform .18s,box-shadow .18s}.categoryCard:hover{transform:translateY(-4px);box-shadow:0 12px 30px #3c205122}.categoryArt{height:155px;display:flex;align-items:center;justify-content:center;position:relative}.categoryArt>span{font-size:67px;filter:drop-shadow(0 8px 10px #42224c22)}.categoryArt small{position:absolute;bottom:12px;left:15px;color:#6c5d75;font-size:9px;font-weight:800;letter-spacing:1.2px}.categoryInfo{display:grid;gap:6px;padding:17px}.categoryInfo strong{font-size:18px;color:#2c1b39}.categoryInfo span{font-size:12px;color:#84778d}.categoryInfo small{font-size:12px;color:#6d278f;font-weight:700;margin-top:8px}.catalogProducts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}.catalogProduct{border:1px solid #eae1ee;border-radius:14px;overflow:hidden;background:white}.catalogPhoto{height:150px;background:#f6f1f8;display:grid;place-items:center}.catalogPhoto span{font-size:60px}.catalogPhoto img{height:100%;width:100%;object-fit:contain}.catalogDetails{display:grid;gap:8px;padding:16px}.catalogDetails small{font-size:11px;color:#85748e}.catalogDetails strong{min-height:36px}.catalogDetails b{color:#5d2185;font-size:20px}.backCat{display:block;border:0;background:none;color:#64258e;padding:0 0 20px;font-weight:700}.cartDock{position:sticky;bottom:12px;background:#4d1976;color:white;border-radius:15px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 10px 25px #2a104744;gap:12px}.cartDock div{display:grid;gap:4px}.cartDock span{font-size:13px;color:#e9d9f3}.cartDock button{background:white;border:0;color:#522078;padding:12px 17px;border-radius:9px;font-weight:800}@media(max-width:950px){.categoryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:530px){.categoryGrid{grid-template-columns:1fr 1fr;gap:9px}.categoryArt{height:105px}.categoryArt>span{font-size:44px}.categoryInfo{padding:11px}.categoryInfo strong{font-size:14px}.categoryInfo span{font-size:11px}.catalogHeading{align-items:flex-start;flex-direction:column}.catalogHeading h2{font-size:24px}}
+    *{box-sizing:border-box}body{margin:0;background:#f7f4fb;color:#281b36;font-family:Inter,system-ui,Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}.layout{display:flex;min-height:100vh}.sidebar{width:245px;background:#4e1978;color:white;padding:24px 14px;flex-shrink:0}.logo{font-size:29px;font-weight:900;padding:5px 12px 25px}.logo span{color:#cda3f1}.logo small{display:block;font-size:12px;font-weight:400;color:#ddc5ee}.nav{display:grid;gap:5px}.nav button{display:block;text-align:left;width:100%;background:none;border:0;color:#ebdbf5;border-radius:10px;padding:12px 14px}.nav button.on,.nav button:hover{background:#7836a5;color:white}.sidebottom{font-size:13px;margin:35px 12px;color:#ddc7ee}.main{width:100%;min-width:0;padding:28px;max-width:1400px;margin:0 auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:25px}.top h1{margin:3px 0;font-size:29px}.hint{font-size:12px;color:#8d76a0;letter-spacing:1px;font-weight:700}.pill{background:white;border:1px solid #e6d9ee;border-radius:24px;padding:9px 14px;font-size:12px}.hero{background:linear-gradient(115deg,#552085,#8b44b6);border-radius:18px;color:white;padding:30px;display:flex;justify-content:space-between;align-items:center}.hero h2{font-size:28px;margin:0}.hero p{color:#f0dff9}.isa{font-size:66px;text-align:center}.isa small{display:block;font-size:12px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}.card,.panel{background:white;border:1px solid #eae1f0;border-radius:15px;padding:22px;margin-bottom:18px}.card b{display:block;font-size:30px;color:#61258b}.card small{color:#7c6a89}.panel h3{margin:0 0 16px}.muted{color:#756981;font-size:13px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end}.field{display:grid;gap:6px;font-size:12px;font-weight:700;color:#f3e5ff}.field input,.field select,.wideSelect{width:100%;padding:11px;border:1px solid #ded1e9;border-radius:9px;background:white;color:#281b36}.primary{border:0;border-radius:9px;padding:12px 16px;background:#62258f;color:white;font-weight:700}.secondary{border:1px solid #ddcce9;background:#f7f0fb;color:#572084;border-radius:9px;padding:9px 12px}.danger{color:#b52e50!important}.table{overflow:auto}.table table{width:100%;border-collapse:collapse;min-width:650px;text-align:left}.table th,.table td{border-bottom:1px solid #eee7f3;padding:12px 9px;font-size:13px}.table th{color:#7e6d8b;background:#faf8fc}.table input{max-width:115px;padding:7px;border:1px solid #ddd;border-radius:7px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eee7f3}.row small{display:block;color:#897990;margin-top:4px}.actions{display:flex;gap:6px;flex-wrap:wrap}.check{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #eee7f3}.check input{width:20px;height:20px;accent-color:#64258e}.catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:13px}.item{border:1px solid #eee2f3;border-radius:12px;padding:15px;display:grid;gap:9px}.item .photo{background:#f5eff9;text-align:center;padding:18px;border-radius:10px;font-size:32px}.item small{color:#897a94}.total{display:grid;gap:8px;margin:20px 0 20px auto;max-width:330px}.total div{display:flex;justify-content:space-between}.total .big{font-size:22px;font-weight:800;border-top:1px solid #ddd;padding-top:12px;color:#5a2188}.notice{background:#f6edfc;border-radius:10px;padding:14px;font-size:13px;color:#684581;margin-top:16px}.badge{display:inline-block;background:#f1e7fa;border-radius:30px;padding:5px 10px;font-size:11px;color:#5c2187}.footer{font-size:12px;color:#9a8ba3;text-align:center;margin:28px}.labelPreview{border:1px dashed #b4a6bf;border-radius:10px;padding:20px;background:white;max-width:380px}.labelPreview h3{color:#572085}.labelPreview p{margin:7px 0;font-size:13px}.catalogHeading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}.catalogHeading h2{font-size:30px;letter-spacing:-.6px;margin:6px 0}.catalogSearch{width:100%;padding:16px;border-radius:12px;border:1px solid #e5dbea;background:#fbf9fc;font:inherit;margin-bottom:20px}.categoryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.categoryCard{border:1px solid #e8e0ed;background:white;border-radius:18px;padding:0;overflow:hidden;text-align:left;box-shadow:0 8px 20px #3c20510a;transition:transform .18s,box-shadow .18s}.categoryCard:hover{transform:translateY(-4px);box-shadow:0 12px 30px #3c205122}.categoryArt{height:155px;display:flex;align-items:center;justify-content:center;position:relative}.categoryArt>span{font-size:67px;filter:drop-shadow(0 8px 10px #42224c22)}.categoryArt small{position:absolute;bottom:12px;left:15px;color:#6c5d75;font-size:9px;font-weight:800;letter-spacing:1.2px}.categoryInfo{display:grid;gap:6px;padding:17px}.categoryInfo strong{font-size:18px;color:#2c1b39}.categoryInfo span{font-size:12px;color:#84778d}.categoryInfo small{font-size:12px;color:#6d278f;font-weight:700;margin-top:8px}.catalogProducts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}.catalogProduct{border:1px solid #eae1ee;border-radius:14px;overflow:hidden;background:white}.catalogPhoto{height:150px;background:#f6f1f8;display:grid;place-items:center}.catalogPhoto span{font-size:60px}.catalogPhoto img{height:100%;width:100%;object-fit:contain}.catalogDetails{display:grid;gap:8px;padding:16px}.catalogDetails small{font-size:11px;color:#85748e}.catalogDetails strong{min-height:36px}.catalogDetails b{color:#5d2185;font-size:20px}.backCat{display:block;border:0;background:none;color:#64258e;padding:0 0 20px;font-weight:700}.cartDock{position:sticky;bottom:12px;background:#4d1976;color:white;border-radius:15px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 10px 25px #2a104744;gap:12px}.cartDock div{display:grid;gap:4px}.cartDock span{font-size:13px;color:#e9d9f3}.cartDock button{background:white;border:0;color:#522078;padding:12px 17px;border-radius:9px;font-weight:800}@media(max-width:950px){.categoryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:530px){.categoryGrid{grid-template-columns:1fr 1fr;gap:9px}.categoryArt{height:105px}.categoryArt>span{font-size:44px}.categoryInfo{padding:11px}.categoryInfo strong{font-size:14px}.categoryInfo span{font-size:11px}.catalogHeading{align-items:flex-start;flex-direction:column}.catalogHeading h2{font-size:24px}}
 @media(max-width:800px){.layout{display:block}.sidebar{width:100%;padding:12px}.logo{padding:5px 10px 12px}.nav{display:flex;overflow:auto}.nav button{width:auto;white-space:nowrap}.sidebottom{display:none}.main{padding:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:22px}.isa{font-size:40px}}@media(max-width:530px){.grid{grid-template-columns:1fr}.cards{gap:7px}.card{padding:12px}.card b{font-size:22px}.hero h2{font-size:21px}.isa{display:none}.top h1{font-size:24px}.pill{font-size:10px}.row{align-items:flex-start;flex-direction:column}}
 
     .sidebar{background:linear-gradient(180deg,#35124e 0%,#4e1c70 58%,#321146 100%)!important}
@@ -878,7 +1357,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
     .primary:hover{background:#501970!important;transform:translateY(-1px)}
     .secondary{border:1px solid #e6d8ef!important;background:#f8f3fb!important;color:#58217c!important;border-radius:11px!important;min-height:39px}
     .secondary:hover{background:#efe3f6!important}
-    .field{font-size:12px!important;color:#55415e!important;gap:8px!important}
+    .field{font-size:12px!important;color:#f3e5ff!important;gap:8px!important}
     .field input,.field select,.wideSelect{border:1px solid #e4d9eb!important;border-radius:11px!important;background:white!important;min-height:44px!important;padding:11px 13px!important;font-size:14px!important}
     .grid{gap:16px!important}
     .sectionEyebrow{letter-spacing:2.3px!important;font-size:10px!important;color:#9664b1!important}
@@ -1189,7 +1668,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
 .jv-client-header{background:linear-gradient(105deg,#2a0b42,#562076,#31104e);color:#fff;padding:20px max(22px,5vw);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 5px 25px #4d1b7950}
 .jv-client-tab{padding:12px 20px;border-radius:12px;border:1px solid #dfcde9;background:#fff;color:#5d277b;font-weight:750;cursor:pointer}
 .jv-client-tab.active{background:linear-gradient(100deg,#a02fe0,#5b198c);color:#fff;border-color:transparent;box-shadow:0 6px 20px #8233b744}
-  `}</style><div className="layout" style={{ '--brand-primary': themeSettings.primary, '--brand-accent': themeSettings.accent, '--brand-surface': themeSettings.surface, '--brand-font': themeFont(themeSettings.font) } as React.CSSProperties}><aside className="sidebar"><div className="logo"><img className="brandLogo" src={JAIVISA_LOGO} alt="Jaivisa.com, logo oficial" /><small>PORTAL MAYORISTA <i>◆</i></small></div><nav className="nav">{menu.map(m => <button key={m} className={page === m ? 'on' : ''} onClick={() => setPage(m)}><NavIcon name={m} /> <span>{m}</span></button>)}</nav><div className="sidebottom"><span className="pulseDot" /> SISTEMA JAIVISA <small>Portal interno · Versión de pruebas</small></div></aside><main className="main"><header className="top"><div><div className="hint">CENTRO DE CONTROL <span className="crumbSep">/</span> JAIVISA</div><h1>{page}</h1></div><span className="pill"><NavIcon name="Permisos" /> Administrador <span className="onlineDot" /></span></header>
+  `}</style><div className="layout" style={{ '--brand-primary': 'var(--jv-studio-primary)', '--brand-accent': 'var(--jv-studio-accent)', '--brand-surface': 'var(--jv-studio-bg-gradient)', '--brand-font': 'var(--jv-studio-font)' } as React.CSSProperties}><aside className="sidebar"><div className="logo"><img className="brandLogo" src={JAIVISA_LOGO} alt="Jaivisa.com, logo oficial" /><small>PORTAL MAYORISTA <i>◆</i></small></div><nav className="nav">{menu.map(m => <button key={m} className={page === m ? 'on' : ''} onClick={() => setPage(m)}><NavIcon name={m} /> <span>{m}</span></button>)}</nav><div className="sidebottom"><span className="pulseDot" /> SISTEMA JAIVISA <small>Portal interno · Versión de pruebas</small></div></aside><main className="main"><header className="top"><div><div className="hint">CENTRO DE CONTROL <span className="crumbSep">/</span> JAIVISA</div><h1>{page}</h1></div><span className="pill"><NavIcon name="Permisos" /> Administrador <span className="onlineDot" /></span></header>
       <JaivisaHeroPanoramico portal="administracion" seccion={page} />
       <IsaEnSeccionJAIVISA portal="administracion" seccion={page} />
       {page === 'Inicio' && <div className="jvDashboard">
@@ -1216,24 +1695,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
         </section>
         <section className="jvFooterTools"><div><strong>Personaliza la portada de JAIVISA</strong><p>Puedes subir una imagen de campaña sin modificar tu información.</p></div><label className="bannerUpload">{bannerImage ? 'Cambiar imagen' : 'Subir imagen'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => { uploadBanner(e.target.files?.[0]); e.target.value = ''; }} /></label>{bannerImage && <button className="bannerRemove" onClick={removeBanner}>Quitar imagen</button>}{bannerError && <p role="alert">{bannerError}</p>}</section>
       </div>}
-      {page === 'Personalización' && <section className="panel themeEditor">
-        <div className="sectionEyebrow">IDENTIDAD VISUAL · ADMINISTRACIÓN</div>
-        <h3>Personaliza JAIVISA</h3>
-        <p className="muted">Elige colores, tipografía y estilo visual. Observa la vista previa y guarda los cambios cuando estés conforme.</p>
-        <div className="themeGrid">
-          <div className="themeControls">
-            {([['primary', 'Color principal'], ['accent', 'Color de acento'], ['surface', 'Color de fondo']] as const).map(([key, label]) => <label className="themeColor" key={key}><span>{label}</span><input type="color" value={themeDraft[key]} onChange={e => setThemeDraft({ ...themeDraft, [key]: e.target.value })} /><code>{themeDraft[key].toUpperCase()}</code></label>)}
-            <label className="field">Tipografía<select value={themeDraft.font} onChange={e => setThemeDraft({ ...themeDraft, font: e.target.value })}><option>Inter</option><option>Montserrat</option><option>Poppins</option><option>Arial</option></select></label>
-            <label className="field">Estilo visual<select value={themeDraft.style} onChange={e => setThemeDraft({ ...themeDraft, style: e.target.value })}><option>Moderno</option><option>Elegante</option><option>Futurista</option></select></label>
-            <div className="themeButtons"><button className="primary" type="button" onClick={saveTheme}>Guardar diseño</button><button className="secondary" type="button" onClick={resetTheme}>Restaurar original</button></div>
-          </div>
-          <div className="themePreview" style={{ background: themeDraft.surface, fontFamily: themeFont(themeDraft.font) }}>
-            <div className="themePreviewHeader" style={{ background: themeDraft.primary }}><span>JAIVISA</span><small>PORTAL MAYORISTA</small></div>
-            <div className="themePreviewBody"><span className="previewEyebrow" style={{ color: themeDraft.accent }}>VISTA PREVIA · {themeDraft.style.toUpperCase()}</span><h3>Tu negocio, en un solo lugar.</h3><p>Un portal diseñado para vender mejor.</p><button type="button" style={{ background: themeDraft.accent, color: '#fff', border: 0, padding: '11px 16px', borderRadius: 10 }}>Explorar catálogo →</button><div className="previewCards"><span>Catálogos</span><span>Pedidos</span><span>Clientes</span></div></div>
-          </div>
-        </div>
-        <p className="muted">Los cambios se guardan por ahora en este navegador. Para publicarlos para todos los usuarios será necesaria una base de datos y permisos reales.</p>
-      </section>}
+      {page === 'Personalización' && <EstudioVisualJAIVISA />}
       {page === 'Catálogo' && <>
         <section className="catalogHeading"><div><span className="hint">PORTAFOLIO MAYORISTA · JAIVISA</span><h2>{category || 'Explora nuestros catálogos'}</h2><p className="muted">{category ? 'Selecciona tus productos y agrégalos al pedido.' : 'Productos organizados por categorías. Precios base sin IVA.'}</p></div><button className="secondary" onClick={() => { setPage('Carrito'); }}>🛒 Ver carrito ({cart.reduce((a, l) => a + l.qty, 0)})</button></section>
         <section className="panel"><input className="catalogSearch" value={search} onChange={e => setSearch(e.target.value)} placeholder="🔎 Buscar por nombre, referencia o código de barras" />
@@ -3625,6 +4087,33 @@ export default function AppProtegida() {
   #root main.jv-future-bodega .jv-bodega-estructura * {transition:none!important}
 }
 
+/* JAIVISA NEXT AURORA · LEGIBILIDAD DEFINITIVA DE ETIQUETAS */
+/* Corrige el texto sobre las tarjetas moradas en los cuatro portales. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-future-bodega .jv-bodega-estructura
+) :is(label.field, .field:not(input):not(select):not(textarea),
+      .securityTitle, .sectionEyebrow) {
+  color: #f3e5ff !important;
+  -webkit-text-fill-color: #f3e5ff !important;
+}
+/* Los campos siguen blancos con caracteres oscuros: no afecta botones ni PDF. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-future-bodega .jv-bodega-estructura
+) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+      textarea, select) {
+  color: #29143c !important;
+  -webkit-text-fill-color: #29143c !important;
+  background-color: #ffffff !important;
+  caret-color: #60278a !important;
+  color-scheme: light;
+}
+
 `}</style>
 
         <style>{JV_PANORAMA_CSS}</style>
@@ -3831,7 +4320,7 @@ export default function AppProtegida() {
 }
 `}</style>
 
-        <JaivisaApp />
+        <JaivisaTemaGlobal><JaivisaApp /></JaivisaTemaGlobal>
       </SesionConInactividad>
     </JaivisaErrorBoundary>
   );
