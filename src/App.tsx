@@ -135,9 +135,12 @@ const AMBITOS: Array<{ id:PortalVisual; nombre:string; ayuda:string }> = [
   {id:'bodega',nombre:'Bodega',ayuda:'Preparación, inventario y despachos'},
 ];
 type RegistroTema = {
-  portal:PortalVisual; publicado:Record<string,unknown>|null;
-  borrador:Record<string,unknown>|null; version:number;
+  portal:PortalVisual; publicado:Record<string,unknown>|null; version:number;
   publicado_en:string|null; actualizado_en:string|null;
+};
+/** Solo Administración puede acceder a esta tabla de borradores, protegida por RLS. */
+type RegistroBorradorVisual = {
+  portal:PortalVisual; borrador:Record<string,unknown>;
 };
 type VersionTema = { id:number; portal:PortalVisual; version:number; publicado:Record<string,unknown>; fecha:string };
 function detectarPortal() : PortalVisual|null {
@@ -249,6 +252,7 @@ const MODOS: Array<[JaivisaDiseno['backgroundMode'],string]> = [
 export function EstudioVisualJAIVISA(){
   const [ambito,setAmbito]=useState<PortalVisual>('general');
   const [registros,setRegistros]=useState<RegistroTema[]>([]);
+  const [borradoresPrivados,setBorradoresPrivados]=useState<RegistroBorradorVisual[]>([]);
   const [versiones,setVersiones]=useState<VersionTema[]>([]);
   const [guardado,setGuardado]=useState<JaivisaDiseno>({...JAIVISA_DISENO_PREDETERMINADO});
   const [borrador,setBorrador]=useState<JaivisaDiseno>({...JAIVISA_DISENO_PREDETERMINADO});
@@ -263,8 +267,8 @@ export function EstudioVisualJAIVISA(){
 
   const registroActual=registros.find(r=>r.portal===ambito);
   const general=registros.find(r=>r.portal==='general');
-  const diseñoBase=(portal:PortalVisual,rs:RegistroTema[])=>(
-    rs.find(r=>r.portal===portal)?.borrador ||
+  const diseñoBase=(portal:PortalVisual,rs:RegistroTema[],bs:RegistroBorradorVisual[])=>(
+    bs.find(r=>r.portal===portal)?.borrador ||
     rs.find(r=>r.portal===portal)?.publicado ||
     (portal!=='general' ? rs.find(r=>r.portal==='general')?.publicado : null) ||
     JAIVISA_DISENO_PREDETERMINADO
@@ -272,23 +276,39 @@ export function EstudioVisualJAIVISA(){
   const aplicadoActual=registroActual?.publicado ?? (ambito==='general'?null:general?.publicado);
   const personalPendiente=JSON.stringify(borrador)!==JSON.stringify(guardado);
 
-  const cargar=async()=>{
+  const cargar=async():Promise<boolean>=>{
     setCargando(true);
-    const {data,error}=await supabase.from('jv_temas_portal').select('portal,publicado,borrador,version,publicado_en,actualizado_en');
-    setCargando(false);
-    if(error){
+    try {
+      // Las publicaciones son visibles para usuarios autenticados;
+      // los borradores se consultan SEPARADAMENTE y solo pasan RLS para Administración.
+      const [resultadoPublicados,resultadoBorradores]=await Promise.all([
+        supabase.from('jv_temas_portal').select('portal,publicado,version,publicado_en,actualizado_en'),
+        supabase.from('jv_temas_borradores').select('portal,borrador'),
+      ]);
+      if(resultadoPublicados.error||resultadoBorradores.error){
+        setProblema(true);
+        setMensaje('No se pudo cargar el Estudio Visual: '+
+          (resultadoPublicados.error?.message||resultadoBorradores.error?.message||'Error desconocido')+
+          '. Revisa las políticas de Supabase y el rol administrador aprobado.');
+        return false;
+      }
+      setProblema(false);
+      setRegistros((resultadoPublicados.data||[]) as RegistroTema[]);
+      setBorradoresPrivados((resultadoBorradores.data||[]) as RegistroBorradorVisual[]);
+      setMensaje('Diseños cargados desde Supabase. Solo lo publicado se muestra en los otros portales.');
+      return true;
+    } catch (error) {
       setProblema(true);
-      setMensaje('Sin conexión a la configuración central: '+error.message+'. Instala el archivo SQL del paquete en Supabase.');
-      return;
+      setMensaje('Error de conexión al cargar diseños: '+
+        (error instanceof Error ? error.message : 'Revisa la conexión a Supabase.'));
+      return false;
+    } finally {
+      setCargando(false);
     }
-    setProblema(false);
-    setRegistros((data||[]) as RegistroTema[]);
-    if(!data?.length)setMensaje('El Estudio Visual está listo. Empieza por Todos los portales y publica tu primera paleta.');
-    else setMensaje('Diseños consultados desde Supabase. Solo lo publicado es visible para los demás usuarios.');
   };
   useEffect(()=>{void cargar();},[]);
   useEffect(()=>{
-    const d=normalizarDiseno(diseñoBase(ambito,registros));
+    const d=normalizarDiseno(diseñoBase(ambito,registros,borradoresPrivados));
     setGuardado(d);
     setBorrador(d);
     setHistorialLocal([]);
@@ -303,7 +323,7 @@ export function EstudioVisualJAIVISA(){
     };
     void obtener();
     return()=>{activo=false;};
-  },[ambito,registros]);
+  },[ambito,registros,borradoresPrivados]);
 
   const cambiar=(datos:Partial<JaivisaDiseno>)=>{
     setHistorialLocal(prev=>[...prev.slice(-19),borrador]);
@@ -317,14 +337,30 @@ export function EstudioVisualJAIVISA(){
   };
   const guardarBorrador=async(d:JaivisaDiseno,mostrar=true):Promise<boolean>=>{
     setOcupado(true);
-    const limpio=normalizarDiseno(d);
-    const {error}=await supabase.from('jv_temas_portal').upsert({
-      portal:ambito,borrador:limpio,actualizado_en:new Date().toISOString(),
-    },{onConflict:'portal'});
-    setOcupado(false);
-    if(error){setMensaje('No se guardó: '+error.message+'. Verifica que tu perfil tenga rol administrador y esté aprobado.');return false;}
-    if(mostrar){await cargar();setMensaje('Borrador guardado en Supabase. Aún no se publicó para los demás usuarios.');}
-    return true;
+    try {
+      const limpio=normalizarDiseno(d);
+      // La tabla pública conserva SOLAMENTE los diseños publicados.
+      // La tabla privada exige rol administrador aprobado mediante RLS.
+      const {error}=await supabase.from('jv_temas_borradores').upsert({
+        portal:ambito,borrador:limpio,actualizado_en:new Date().toISOString(),
+      },{onConflict:'portal'});
+      if(error){
+        setMensaje('No se guardó el borrador: '+error.message+
+          '. Verifica el rol administrador y las políticas de la tabla privada.');
+        return false;
+      }
+      if(mostrar){
+        const actualizado=await cargar();
+        if(!actualizado)return false;
+        setMensaje('✓ Borrador privado guardado en Supabase. Todavía no está publicado.');
+      }
+      return true;
+    } catch (error) {
+      setMensaje('No se guardó el borrador: '+(error instanceof Error?error.message:'Error de conexión.'));
+      return false;
+    } finally {
+      setOcupado(false);
+    }
   };
   const publicar=async()=>{
     if(problema||ocupado||cargando)return;
@@ -332,12 +368,19 @@ export function EstudioVisualJAIVISA(){
     const listo=await guardarBorrador(borrador,false);
     if(!listo)return;
     setOcupado(true);
-    const {error}=await supabase.rpc('jv_publicar_tema',{p_portal:ambito});
-    setOcupado(false);
-    if(error){setMensaje('No se publicó: '+error.message);return;}
-    await cargar();
-    window.dispatchEvent(new Event('jv-tema-publicado'));
-    setMensaje('✓ Diseño publicado en Supabase. Los portales conectados actualizarán la apariencia.');
+    try {
+      // La RPC autorizada copia el borrador privado al publicado y registra su versión.
+      const {error}=await supabase.rpc('jv_publicar_tema',{p_portal:ambito});
+      if(error){setMensaje('No se publicó: '+error.message);return;}
+      const actualizado=await cargar();
+      window.dispatchEvent(new Event('jv-tema-publicado'));
+      if(actualizado)setMensaje('✓ Diseño publicado en Supabase. Los portales conectados actualizarán la apariencia.');
+      else setMensaje('Diseño publicado, pero no se pudo recargar la vista previa. Pulsa Actualizar.');
+    } catch (error) {
+      setMensaje('No se pudo confirmar la publicación: '+(error instanceof Error?error.message:'Error de conexión.'));
+    } finally {
+      setOcupado(false);
+    }
   };
   const restaurar=()=>{
     cambiar({...JAIVISA_DISENO_PREDETERMINADO});
@@ -465,7 +508,7 @@ export function EstudioVisualJAIVISA(){
       <div className="jv-studio-preview-area">
         <div className="jv-studio-preview-head"><div><strong>Vista previa · {AMBITOS.find(p=>p.id===ambito)?.nombre}</strong>
           <small>Al publicar, el diseño se aplicará a los usuarios de ese portal</small></div>
-          <span>{personalPendiente?'● Sin guardar':'✓ Borrador guardado'}</span></div>
+          <span>{personalPendiente?'● Cambios sin guardar':borradoresPrivados.some(x=>x.portal===ambito)?'✓ Borrador guardado':'Sin borrador guardado'}</span></div>
         <div className="jv-studio-preview" style={previewStyle}>
           <aside className="jv-studio-preview-sidebar"><strong>Jaivisa.com</strong>
             {['Inicio','Catálogos','Pedidos','Cuenta'].map((x,i)=><span key={x} className={i===0?'selected':''}>◈ {x}</span>)}
@@ -3276,7 +3319,7 @@ e.preventDefault(); setMensaje(''); if (!registro.ciudad.trim() || registro.ciud
       <img className="jaivisa-login-logo" src={JAIVISA_LOGO} alt="Logo original de JAIVISA" /><div style={{ fontSize: 12, letterSpacing: 2.5, fontWeight: 800, color: '#8750aa' }}>JAIVISA · PORTAL MAYORISTA</div>
       <h1 style={{ color: '#30123f', fontSize: 29, margin: '13px 0 8px' }}>{estado === 'cargando' ? 'Verificando acceso…' : estado === 'cambiar_clave' ? 'Crea una nueva contraseña' : estado === 'pendiente' ? 'Cuenta en preparación' : estado === 'equipo' ? 'Acceso de empleados' : estado === 'sin_permiso' ? 'Acceso restringido' : vista === 'registro' ? 'Crea tu cuenta mayorista' : vista === 'recuperar' ? 'Recupera tu contraseña' : '¡Te damos la bienvenida a JAIVISA!'}</h1>
       {estado === 'ingreso' && <>
-        <p style={{ color: '#75667f', lineHeight: 1.5, marginTop: 5 }}>{vista === 'registro' ? 'Registra los datos de tu negocio para acceder a nuestros catálogos mayoristas.' : vista === 'recuperar' ? 'Te enviaremos instrucciones a tu correo electrónico.' : 'Tu espacio para comprar, vender y gestionar tus pedidos.'}</p>
+        <p style={{ color: '#75667f', lineHeight: 1.5, marginTop: 5 }}>{vista === 'registro' ? 'Registra los datos de tu negocio para acceder a nuestros catálogos mayoristas.' : vista === 'recuperar' ? 'Te enviaremos instrucciones a tu correo electrónico.' : 'Todo lo que necesitas para tu negocio, en un solo lugar. Haz tus pedidos mayoristas fácilmente.'}</p>
         {vista === 'ingreso' && <><form onSubmit={entrar} style={{ display: 'grid', gap: 14, marginTop: 20 }}><label style={etiqueta}>Correo electrónico<input style={campo} type="email" required autoComplete="username" value={correo} onChange={e => setCorreo(e.target.value)} /></label><label style={etiqueta}>Contraseña<input style={campo} type="password" required autoComplete="current-password" value={clave} onChange={e => setClave(e.target.value)} /></label><button style={boton} disabled={procesando}>{procesando ? 'Ingresando…' : 'Iniciar sesión'}</button></form><div style={{ textAlign: 'center', marginTop: 12 }}><button style={enlace} onClick={() => { setVista('recuperar'); setMensaje('') }}>¿Olvidaste tu contraseña?</button></div><div style={{ borderTop: '1px solid #eee4f2', marginTop: 13, paddingTop: 17, textAlign: 'center' }}><div style={{ fontSize: 14, color: '#55415f' }}>¿Aún no tienes una cuenta?</div><button style={{ ...boton, marginTop: 12, width: '100%', background: '#fff', color: '#582075', border: '1px solid #9e76b7' }} onClick={() => { setVista('registro'); setMensaje('') }}>Crear cuenta mayorista</button></div></>}
         {vista === 'registro' && <form onSubmit={registrar} style={{ display: 'grid', gap: 11, marginTop: 16 }}><label style={etiqueta}>Nombre completo o razón social<input style={campo} required maxLength={120} value={registro.nombre} onChange={e => setRegistro({ ...registro, nombre: e.target.value })} /></label><label style={etiqueta}>NIT o cédula<input style={campo} required maxLength={30} value={registro.documento} onChange={e => setRegistro({ ...registro, documento: e.target.value })} /></label><label style={etiqueta}>País de la empresa<select style={campo} value={registro.pais} onChange={e => { const opciones: { [key: string]: string } = { 'Colombia': '+57', 'México': '+52', 'Perú': '+51', 'Ecuador': '+593', 'Estados Unidos': '+1', 'Panamá': '+507', 'Venezuela': '+58', 'Chile': '+56', 'Argentina': '+54', 'España': '+34' }; setRegistro({ ...registro, pais: e.target.value, indicativo: opciones[e.target.value] || '+57', ciudad: '' }); setDepartamentoRegistro(''); }}>{['Colombia', 'México', 'Perú', 'Ecuador', 'Estados Unidos', 'Panamá', 'Venezuela', 'Chile', 'Argentina', 'España'].map(p => <option key={p}>{p}</option>)}</select></label><label style={etiqueta}>Indicativo telefónico<input style={campo} value={registro.indicativo} onChange={e => setRegistro({ ...registro, indicativo: e.target.value })} required maxLength={6} /></label><label style={etiqueta}>Teléfono / WhatsApp<input style={campo} required maxLength={35} value={registro.telefono} onChange={e => setRegistro({ ...registro, telefono: e.target.value })} /></label><div style={{ display: "grid", gap: 11 }}><SelectorUbicacion pais={registro.pais} departamento={departamentoRegistro} ciudad={registro.ciudad} onDepartamento={setDepartamentoRegistro} onCiudad={v => setRegistro(old => ({ ...old, ciudad: v }))} estilo={{ ...etiqueta } as React.CSSProperties} /></div><label style={etiqueta}>Dirección comercial<input style={campo} required maxLength={200} value={registro.direccion} onChange={e => setRegistro({ ...registro, direccion: e.target.value })} /></label><label style={etiqueta}>Correo electrónico<input style={campo} type="email" required value={registro.correo} onChange={e => setRegistro({ ...registro, correo: e.target.value })} /></label><label style={etiqueta}>Contraseña (mínimo 8 caracteres)<input style={campo} type="password" required minLength={8} autoComplete="new-password" value={registro.clave} onChange={e => setRegistro({ ...registro, clave: e.target.value })} /></label><label style={etiqueta}>Confirmar contraseña<input style={campo} type="password" required minLength={8} autoComplete="new-password" value={registro.confirmar} onChange={e => setRegistro({ ...registro, confirmar: e.target.value })} /></label><button style={boton} disabled={procesando}>{procesando ? 'Enviando…' : 'Solicitar cuenta mayorista'}</button></form>}
         {vista === 'recuperar' && <form onSubmit={recuperar} style={{ display: 'grid', gap: 14, marginTop: 20 }}><label style={etiqueta}>Correo electrónico<input style={campo} type="email" required value={correo} onChange={e => setCorreo(e.target.value)} /></label><button style={boton} disabled={procesando}>{procesando ? 'Enviando…' : 'Enviar enlace de recuperación'}</button></form>}
