@@ -1,3 +1,10 @@
+/*
+  JAIVISA NEXT AURORA — src/index.css COMPLETO
+  Versión consolidada: fondos AURORA + cristal + botones + contraste.
+  Reemplaza el archivo completo (no pegues dos veces los parches).
+  La lógica de los cuatro portales y los datos permanecen en App.tsx/Supabase.
+*/
+
 /* JAIVISA NEXT AURORA — estilos globales sin limitar el ancho de la aplicación */
 :root {
   --text:#e9dff5; --text-h:#fff; --bg:#160825;
@@ -32,9 +39,418 @@ h1{font-size:clamp(28px,4vw,48px);line-height:1.15}
 h2{font-size:clamp(20px,2.5vw,28px);line-height:1.2}
 p{line-height:1.5}
 code{font-family:var(--mono);border-radius:6px;color:#f4e9ff;background:var(--code-bg);padding:4px 8px}
-input:not([type=checkbox]):not([type=radio]),textarea,select{color:#241331!important;-webkit-text-fill-color:#241331!important;background-color:#fff!important;caret-color:#592078!important;opacity:1!important;color-scheme:light}
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]),textarea,select{color:#241331!important;-webkit-text-fill-color:#241331!important;background-color:#fff!important;caret-color:#592078!important;opacity:1!important;color-scheme:light}
 input::placeholder,textarea::placeholder{color:#797080!important;-webkit-text-fill-color:#797080!important;opacity:1!important}
 input:focus,textarea:focus,select:focus{color:#241331!important;-webkit-text-fill-color:#241331!important;caret-color:#592078!important}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#241331!important;-webkit-box-shadow:0 0 0 1000px #fff inset!important;box-shadow:0 0 0 1000px #fff inset!important;caret-color:#592078!important}
 @media(max-width:768px){input,textarea,select{font-size:16px!important}body{background-attachment:scroll}}
 @media(prefers-reduced-motion:reduce){#root::after{animation:none}}
+
+/* ================================================================
+   JAIVISA NEXT AURORA · VIDRIO MORADO · CUATRO PORTALES
+   Solo apariencia: no altera pedidos, autenticacion ni Supabase.
+   Mantiene PDF, vistas previas y campos de escritura legibles.
+   ================================================================ */
+:root {
+  --jv-glass: linear-gradient(135deg, rgba(98, 43, 145, .44), rgba(43, 18, 73, .62));
+  --jv-glass-soft: rgba(86, 41, 131, .30);
+  --jv-glass-hover: linear-gradient(135deg, rgba(137, 64, 187, .46), rgba(59, 28, 96, .72));
+  --jv-glass-line: rgba(222, 178, 255, .31);
+  --jv-glass-text: #f9f0ff;
+  --jv-glass-subtext: #e7d2f6;
+  --jv-glass-shadow: 0 9px 28px rgba(12, 3, 29, .25), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* A. Superficies principales — Administracion, Clientes, Vendedores, Bodega. */
+#root#root .layout .main :is(
+  .panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,
+  .bannerManager,.categoryCard,.catalogProduct,.securityPanel,
+  .fusionAIMetric,.fusionAIWorkspace,.fusionAIAssistant,.fusionAIBannerManager,
+  .jvOrder,.accessTiles>div
+),
+#root#root .jv-client-shell .jv-portal-contenido :is(
+  .jv-catalog-card,.jv-card,.jv-client-tab:not(.active)
+),
+#root#root .jv-vendedor .jv-portal-contenido :is(
+  .jv-card,.jv-catalog-card,.jv-next-status
+),
+#root#root main.jv-future-bodega .jv-bodega-estructura :is(
+  .jv-bodega-inventario-card,.jv-catalog-card
+) {
+  background: var(--jv-glass) !important;
+  color: var(--jv-glass-text) !important;
+  border: 1px solid var(--jv-glass-line) !important;
+  box-shadow: var(--jv-glass-shadow) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  backdrop-filter: blur(12px) saturate(125%);
+}
+
+/* B. Filas del directorio: elimina la fila blanca sin ocultar sus datos. */
+#root#root .layout .main .panel .row,
+#root#root .layout .main .panel .row:nth-child(even),
+#root#root .layout .main .panel .row:nth-child(odd),
+#root#root .layout .main :is(.jvOrder,.jvOrderList) .row {
+  background: var(--jv-glass-soft) !important;
+  color: var(--jv-glass-text) !important;
+  border: 1px solid rgba(220, 170, 255, .27) !important;
+  border-radius: 13px !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+#root#root .layout .main .panel .row :is(strong,small,span,em,p),
+#root#root .layout .main .panel .row > div {
+  color: var(--jv-glass-text) !important;
+  -webkit-text-fill-color: var(--jv-glass-text) !important;
+}
+#root#root .layout .main .panel .row small {
+  color: var(--jv-glass-subtext) !important;
+  -webkit-text-fill-color: var(--jv-glass-subtext) !important;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* C. Tarjetas de PDF: se transparenta el contorno, NO el documento. */
+#root#root .jv-client-shell .jv-catalog-card,
+#root#root .jv-vendedor .jv-catalog-card,
+#root#root main.jv-future-bodega .jv-catalog-card {
+  overflow: hidden;
+}
+#root#root .jv-client-shell .jv-catalog-card :is(strong,small,p),
+#root#root .jv-vendedor .jv-catalog-card :is(strong,small,p),
+#root#root main.jv-future-bodega .jv-catalog-card :is(strong,small,p) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+#root#root .jv-client-shell .jv-catalog-card .jv-catalog-open,
+#root#root .jv-vendedor .jv-catalog-card .jv-catalog-open {
+  color: #f5e5ff !important;
+  -webkit-text-fill-color: #f5e5ff !important;
+}
+#root#root .jv-client-shell .jv-catalog-card .jv-catalog-open:hover,
+#root#root .jv-vendedor .jv-catalog-card .jv-catalog-open:hover {
+  background: rgba(194, 112, 255, .17) !important;
+}
+
+/* D. Componentes con fondo blanco declarado en linea: solo contenedores,
+   y nunca las superficies reales de PDF, imagen, editor de color o login. */
+#root#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+:is(section,article,div)[style*="background: rgb(255, 255, 255)"]:not(.jv-catalog-thumb):not(.jv-catalog-cover):not(.themePreview):not(.themePreviewBody),
+#root#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+:is(section,article,div)[style*="background: #fff"]:not(.jv-catalog-thumb):not(.jv-catalog-cover):not(.themePreview):not(.themePreviewBody),
+#root#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+:is(section,article,div)[style*="background: white"]:not(.jv-catalog-thumb):not(.jv-catalog-cover):not(.themePreview):not(.themePreviewBody) {
+  background: var(--jv-glass) !important;
+  color: #fff !important;
+  border-color: var(--jv-glass-line) !important;
+}
+
+/* E. Mantener formularios y documentos legibles; no volver transparentes
+   los inputs, selectores, areas de texto o paginas de documentos. */
+#root#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),textarea,select) {
+  background: #fff !important;
+  color: #29143c !important;
+  -webkit-text-fill-color: #29143c !important;
+  caret-color: #632588 !important;
+  color-scheme: light;
+}
+#root#root .jv-catalog-thumb,
+#root#root .jv-catalog-cover,
+#root#root .themePreview,
+#root#root .themePreviewBody,
+#root#root iframe,
+#root#root canvas {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* F. Hover discreto: solo tarjetas interactivas, sin movimiento invasivo. */
+@media (hover:hover) {
+  #root#root .layout .main .panel .row:hover,
+  #root#root .jv-client-shell .jv-catalog-card:hover,
+  #root#root .jv-vendedor :is(.jv-card,.jv-catalog-card):hover,
+  #root#root main.jv-future-bodega .jv-bodega-inventario-card:hover {
+    background: var(--jv-glass-hover) !important;
+    border-color: rgba(224, 178, 255, .58) !important;
+  }
+}
+@media (max-width:620px) {
+  #root#root .layout .main .panel .row {
+    gap: 12px;
+    overflow-wrap: anywhere;
+  }
+}
+@media (prefers-reduced-transparency:reduce) {
+  #root#root .layout .main .panel,
+  #root#root .jv-client-shell .jv-portal-contenido .jv-catalog-card,
+  #root#root .jv-vendedor .jv-portal-contenido .jv-card,
+  #root#root main.jv-future-bodega .jv-bodega-inventario-card {
+    background: #381b55 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+/* ===================================================================
+   JAIVISA NEXT AURORA — BOTONES ARMÓNICOS EN LOS 4 PORTALES
+   INSTALAR: pegar AL FINAL de src/index.css.
+   No cambia permisos, pedidos, autenticación ni lógica de los botones.
+   =================================================================== */
+
+:root {
+  --jv-boton-lavanda: linear-gradient(135deg, #713697 0%, #8751b0 100%);
+  --jv-boton-lavanda-hover: linear-gradient(135deg, #965bc5 0%, #ae70dd 100%);
+  --jv-boton-borde: rgba(224, 181, 255, .72);
+  --jv-boton-sombra: 0 5px 15px rgba(25, 3, 48, .19);
+}
+
+/* Las reglas solo se aplican dentro del contenido de los 4 portales.
+   NO afectan el menú lateral, el inicio de sesión, los campos de texto ni PDFs. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-bodega,
+  main.jv-future-bodega
+) :is(
+  button.secondary,
+  button[class~="secondary"],
+  button[style*="background: white"],
+  button[style*="background: #fff"],
+  button[style*="background-color: white"],
+  button[style*="background-color: #fff"],
+  button[style*="background: rgb(255, 255, 255)"],
+  button[style*="background-color: rgb(255, 255, 255)"]
+),
+/* En Administración, prioridad sobre el parche anterior de Editar/Suspender. */
+#root#root .layout .main .panel .row .actions button.secondary {
+  background: var(--jv-boton-lavanda) !important;
+  background-color: #793da2 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  border: 1px solid var(--jv-boton-borde) !important;
+  border-radius: 11px !important;
+  box-shadow: var(--jv-boton-sombra) !important;
+  font-weight: 750 !important;
+  text-shadow: none !important;
+  opacity: 1;
+  transition: background .20s ease, border-color .20s ease,
+              box-shadow .20s ease, transform .20s ease,
+              filter .20s ease !important;
+}
+
+/* Las etiquetas o iconos DENTRO de esos botones también han de ser blancos.
+   El parche de "efecto cristal" previo fuerza algunos textos a otro color. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-bodega,
+  main.jv-future-bodega
+) button.secondary :is(span,strong,small,b,svg),
+#root#root .layout .main .panel .row .actions button.secondary :is(span,strong,small,b,svg) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Suspender y otras acciones delicadas: variante ciruela/rosa sin blanco. */
+#root#root .layout .main button.secondary.danger,
+#root#root .layout .main .panel .row .actions button.secondary.danger {
+  background: linear-gradient(135deg, #713068, #97427f) !important;
+  border-color: rgba(255, 176, 213, .74) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* Efecto al pasar el ratón. Solo equipos con cursor real. */
+@media (hover: hover) and (pointer: fine) {
+  #root#root :is(
+    .layout .main,
+    .jv-client-shell .jv-portal-contenido,
+    .jv-vendedor .jv-portal-contenido,
+    main.jv-bodega,
+    main.jv-future-bodega
+  ) :is(
+    button.secondary,
+    button[style*="background: white"],
+    button[style*="background: #fff"],
+    button[style*="background-color: white"],
+    button[style*="background-color: #fff"],
+    button[style*="background: rgb(255, 255, 255)"],
+    button[style*="background-color: rgb(255, 255, 255)"]
+  ):not(:disabled):hover,
+  #root#root .layout .main .panel .row .actions button.secondary:not(:disabled):hover {
+    background: var(--jv-boton-lavanda-hover) !important;
+    background-color: #a264ce !important;
+    border-color: #f0d0ff !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    box-shadow: 0 7px 22px rgba(153, 73, 222, .35),
+                0 0 0 1px rgba(244, 207, 255, .22) !important;
+    filter: brightness(1.06);
+    transform: translateY(-2px);
+  }
+
+  #root#root .layout .main button.secondary.danger:not(:disabled):hover,
+  #root#root .layout .main .panel .row .actions button.secondary.danger:not(:disabled):hover {
+    background: linear-gradient(135deg, #934079, #b55796) !important;
+    border-color: #ffd0eb !important;
+  }
+
+  /* Botones principales existentes: conservar su color y dar respuesta sutil. */
+  #root#root :is(
+    .layout .main,
+    .jv-client-shell .jv-portal-contenido,
+    .jv-vendedor .jv-portal-contenido,
+    main.jv-bodega,
+    main.jv-future-bodega
+  ) button.primary:not(:disabled):hover {
+    filter: brightness(1.16);
+    box-shadow: 0 6px 20px rgba(155, 74, 220, .3) !important;
+    transform: translateY(-1px);
+  }
+}
+
+/* Accesibilidad: foco de teclado y botones deshabilitados. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-bodega,
+  main.jv-future-bodega
+) button:focus-visible {
+  outline: 3px solid #ead0ff !important;
+  outline-offset: 3px !important;
+}
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-bodega,
+  main.jv-future-bodega
+) button:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #root#root :is(
+    .layout .main,
+    .jv-client-shell .jv-portal-contenido,
+    .jv-vendedor .jv-portal-contenido,
+    main.jv-bodega,
+    main.jv-future-bodega
+  ) button {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* JAIVISA NEXT AURORA · LEGIBILIDAD DEFINITIVA DE ETIQUETAS */
+/* Corrige el texto sobre las tarjetas moradas en los cuatro portales. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-future-bodega .jv-bodega-estructura
+) :is(label.field, .field:not(input):not(select):not(textarea),
+      .securityTitle, .sectionEyebrow) {
+  color: #f3e5ff !important;
+  -webkit-text-fill-color: #f3e5ff !important;
+}
+/* Los campos siguen blancos con caracteres oscuros: no afecta botones ni PDF. */
+#root#root :is(
+  .layout .main,
+  .jv-client-shell .jv-portal-contenido,
+  .jv-vendedor .jv-portal-contenido,
+  main.jv-future-bodega .jv-bodega-estructura
+) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+      textarea, select) {
+  color: #29143c !important;
+  -webkit-text-fill-color: #29143c !important;
+  background-color: #ffffff !important;
+  caret-color: #60278a !important;
+  color-scheme: light;
+}
+
+/* ================================================================
+   JAIVISA NEXT — LEGIBILIDAD Y COMPATIBILIDAD CON ESTUDIO VISUAL
+   Solo los cuatro portales; no afecta el login ni el PDF original.
+   ================================================================ */
+:root {
+  --jv-label-en-fondo-oscuro: #f1e2ff;
+  --jv-button-text: #ffffff;
+}
+
+/* Etiquetas de productos, clientes y empleados en fondo morado. */
+#root#root .layout .main :is(
+  label.field,.field:not(input):not(select):not(textarea),
+  .securityTitle,.sectionEyebrow
+) {
+  color: var(--jv-label-en-fondo-oscuro) !important;
+  -webkit-text-fill-color: var(--jv-label-en-fondo-oscuro) !important;
+}
+#root#root .layout .main .panel :is(.securityTitle,h3,h4) {
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+}
+
+/* Evitar texto blanco invisible o gris oscuro en botones lavanda. */
+#root#root .layout .main button.secondary,
+#root#root .layout .main .panel .row .actions button.secondary {
+  color: var(--jv-button-text) !important;
+  -webkit-text-fill-color: var(--jv-button-text) !important;
+  background: var(--jv-boton-lavanda) !important;
+  border-color: var(--jv-boton-borde) !important;
+}
+#root#root .layout .main button.secondary :is(span,strong,small,b),
+#root#root .layout .main .panel .row .actions button.secondary :is(span,strong,small,b) {
+  color:var(--jv-button-text) !important;
+  -webkit-text-fill-color:var(--jv-button-text) !important;
+}
+
+/* Restaurar texto oscuro en controles, sin afectar selectores de colores. */
+#root#root :is(.layout .main,.jv-client-shell,.jv-vendedor,.jv-bodega)
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']):not([type='file']),textarea,select) {
+  color:#29143c!important;
+  -webkit-text-fill-color:#29143c!important;
+  background-color:#fff!important;
+  caret-color:#632588!important;
+  color-scheme:light;
+}
+
+/* Respeta la paleta que guarda el Estudio Visual en App.tsx.
+   No bloquea los tonos definidos por Administración. */
+html.jv-diseno-habilitado #root#root .layout .main :is(
+  label.field,.field:not(input):not(select):not(textarea),.securityTitle,.sectionEyebrow
+) {
+  color: var(--jv-studio-subtext, #f1e2ff) !important;
+  -webkit-text-fill-color: var(--jv-studio-subtext, #f1e2ff) !important;
+}
+html.jv-diseno-habilitado #root#root :is(.layout .main,.jv-client-shell,.jv-vendedor,.jv-bodega)
+  :is(button.secondary,button.primary,button.jv-next-card) {
+  background:var(--jv-studio-button,rgba(115,55,163,.88))!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-radius:var(--jv-studio-button-radius,12px)!important;
+}
+@media(hover:hover) and (pointer:fine) {
+  html.jv-diseno-habilitado #root#root :is(.layout .main,.jv-client-shell,.jv-vendedor,.jv-bodega)
+    :is(button.secondary,button.primary,button.jv-next-card):not(:disabled):hover {
+    background:var(--jv-studio-button-hover,rgba(179,108,222,1))!important;
+    box-shadow:0 8px 24px rgba(160,76,220,.33)!important;
+  }
+}
+/* El Estudio Visual usa inputs color/range y deben conservar su propia presentación. */
+#root#root .jv-studio input[type='color'],
+#root#root .jv-studio input[type='range'] {
+  background:initial!important;
+  -webkit-text-fill-color:initial!important;
+  color:initial!important;
+  color-scheme:normal;
+}
+@media (prefers-reduced-motion:reduce) {
+  #root#root :is(.layout .main,.jv-client-shell,.jv-vendedor,.jv-bodega) button {
+    transform:none!important;
+    transition:none!important;
+  }
+}
