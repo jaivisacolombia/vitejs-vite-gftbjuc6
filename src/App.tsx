@@ -1379,7 +1379,7 @@ let activo = true; (async () => {
           <span className="jv-portal-lateral-pie">JAIVISA NEXT · Clientes</span>
         </aside>
         <main className="jv-portal-contenido" style={{ maxWidth: 'none', width: '100%', margin: 0, padding: '32px 22px 65px' }}>
-        <JaivisaHeroPanoramico portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} nombre={perfil.nombre} />
+        <JaivisaHeroPanoramico portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} nombre={perfil.nombre ?? undefined} />
         <IsaEnSeccionJAIVISA portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} />
 
         <nav style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }} aria-label="Secciones del portal">
@@ -1649,7 +1649,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button aria-label="Abrir notificaciones" title="Notificaciones" onClick={tocarCampana} style={{ ...btn, background: '#fff', color: '#572077' }}><IconoNext nombre="campana" tamano={19} /> {notificaciones.length || ''}</button><button onClick={() => void salir()} style={{ ...btn, background: '#fff', color: '#572077' }}>Salir</button></div>
       </header>
       {campana && <aside style={{ ...panel, marginTop: 12 }}><strong>Centro de notificaciones</strong><p className="jv-muted" style={{ fontSize: 14 }}>Las alertas reales y su sonido se activarán cuando configuremos los pedidos persistentes, las autorizaciones y el servicio de avisos de JAIVISA. Esta pantalla no inventa pedidos.</p>{notificaciones.length === 0 && <p>No hay notificaciones registradas.</p>}<p style={{ fontSize: 12, color: '#786389' }}>El navegador puede requerir una interacción para permitir audio.</p></aside>}
-      <JaivisaHeroPanoramico portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} nombre={perfil.nombre} />
+      <JaivisaHeroPanoramico portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} nombre={perfil.nombre ?? undefined} />
       <IsaEnSeccionJAIVISA portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} />
       <aside className="jv-next-status" aria-label="Estado de la plataforma">
         <div className="jv-next-status-icon"><IconoNext nombre="escudo" tamano={21} /></div>
