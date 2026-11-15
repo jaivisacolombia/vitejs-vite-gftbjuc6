@@ -26,7 +26,7 @@ setCargando(true); const { data, error } = await supabase.from('jv_pedidos').sel
         const perfiles = await supabase.rpc('jv_nombres_vendedores', { p_ids: ids });
         if (perfiles.error) {
           setNombresVendedores({});
-          setMensaje('No se pudieron consultar los nombres de vendedores: ' + perfiles.error.message + '. Ejecuta el SQL JAIVISA_NEXT_02_VENDEDORES.sql en Supabase.');
+          setMensaje('No fue posible consultar los vendedores: ' + perfiles.error.message + '. Contacta a Administración para revisar el módulo de vendedores.');
         } else {
           setNombresVendedores(Object.fromEntries((perfiles.data || []).map((p: any) => [p.id, String(p.nombre || '').trim() || 'Sin vendedor identificado'])));
         }
@@ -48,7 +48,7 @@ setCargando(true); const { data, error } = await supabase.from('jv_pedidos').sel
     const marcarFactura = async () => { if (!borrador) return; const referencia = window.prompt('Referencia de factura YA emitida y validada fuera de JAIVISA (no emite DIAN):'); if (!referencia?.trim()) return; setGuardando(true); const { data, error } = await supabase.rpc('jv_actualizar_pedido', { p_id: borrador.id, p_version: borrador.version, p_datos: {}, p_estado: 'facturado', p_factura_referencia: referencia.trim() }); setGuardando(false); if (error) { setMensaje(error.message); return; } setMensaje('Referencia de factura externa registrada.'); await cargar(); if (data) await abrir(data as Pedido); };
     const imprimir = () => { if (!borrador) return; const w = window.open('', '_blank'); if (!w) { setMensaje('Permite ventanas emergentes para imprimir.'); return; } const safe = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c)); w.document.write(`<!doctype html><html lang="es"><meta charset="utf-8"><title>JAIVISA ${safe(borrador.numero)}</title><style>body{font:14px Arial;margin:30px;color:#321343}h1{color:#572080}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:10px;text-align:left}img{width:70px;height:70px;object-fit:contain}</style><h1>JAIVISA · Orden de preparación #${safe(borrador.numero)}</h1><p>Vendedor responsable: ${safe(nombreVendedor(borrador.vendedor_id))}</p><p>Cliente: ${safe(borrador.cliente_nombre)} · Documento: ${safe(borrador.cliente_documento)}</p><p>Tel: ${safe(borrador.cliente_telefono)} · ${safe(borrador.ciudad)}, ${safe(borrador.direccion)}</p><p>Observaciones: ${safe(borrador.observaciones)}</p><table><tr><th>Foto</th><th>Producto</th><th>SKU</th><th>Cantidad</th></tr>${borrador.lineas.map(l => `<tr><td>${l.imagen && /^https:\/\//.test(l.imagen) ? `<img src="${safe(l.imagen)}">` : ''}</td><td>${safe(l.nombre)}</td><td>${safe(l.sku)}</td><td>${safe(l.cantidad)}</td></tr>`).join('')}</table><p>Documento interno. NO es factura electrónica.</p><button onclick="window.print()">Imprimir</button>`); w.document.close(); };
     const editable = !!borrador && borrador.estado !== 'facturado' && borrador.estado !== 'despachado' && (rol !== 'vendedor' || borrador.estado !== 'facturado');
-    return <section style={{ fontFamily: 'Inter,system-ui,sans-serif', color: '#321343' }}><div style={{ ...panel, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><h2 style={{ margin: '0 0 5px' }}>📦 Centro de Pedidos JAIVISA</h2><small>Información compartida en Supabase · {rol}</small></div><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Cargando…' : '↻ Actualizar'}</button></div>
+    return <section style={{ fontFamily: 'Inter,system-ui,sans-serif', color: '#321343' }}><div style={{ ...panel, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}><div><h2 style={{ margin: '0 0 5px' }}>📦 Centro de Pedidos JAIVISA</h2><small>Información compartida en JAIVISA · {rol}</small></div><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Cargando…' : '↻ Actualizar'}</button></div>
       {rol !== 'vendedor' && <div style={{ ...panel, display: 'flex', flexWrap: 'wrap', gap: 18 }}>{[['Pedidos', pedidos.length], ['Por preparar', pedidos.filter(p => p.estado === 'nuevo').length], ['En preparación', pedidos.filter(p => p.estado === 'preparacion').length], ['Alertas pendientes', alertas.length], ['Facturados', pedidos.filter(p => p.estado === 'facturado').length]].map(([k, v]) => <div key={k} style={{ minWidth: 100 }}><strong style={{ fontSize: 24 }}>{v}</strong><div style={{ fontSize: 12 }}>{k}</div></div>)}</div>}
       {mensaje && <p role="status" style={{ ...panel, color: '#6a277f' }}>{mensaje}</p>}
       <div style={{ ...panel, overflowX: 'auto' }}><table style={{ width: '100%', minWidth: 670, borderCollapse: 'collapse', textAlign: 'left' }}><thead><tr>{['N.º', 'Cliente', 'Vendedor', 'Fecha', 'Estado', 'Total', 'Acción'].map(h => <th key={h} style={{ padding: 10, borderBottom: '1px solid #ddd' }}>{h}</th>)}</tr></thead><tbody>{pedidos.map(p => <tr key={p.id}>{[p.numero, p.cliente_nombre, nombreVendedor(p.vendedor_id), new Date(p.created_at).toLocaleString('es-CO'), p.estado, dinero(total(p))].map((x, i) => <td key={i} style={{ padding: 10, borderBottom: '1px solid #eee' }}>{x}</td>)}<td><button style={boton} onClick={() => void abrir(p)}>Abrir</button></td></tr>)}{!pedidos.length && <tr><td colSpan={7} style={{ padding: 20 }}>Todavía no hay pedidos visibles para tu cuenta.</td></tr>}</tbody></table></div>
@@ -57,7 +57,7 @@ setCargando(true); const { data, error } = await supabase.from('jv_pedidos').sel
         {alertas.some(a => a.pedido_id === borrador.id) && <div role="alert" style={{ background: '#fff3dc', padding: 12, borderRadius: 10, marginTop: 12 }}><strong>⚠ Pedido modificado durante preparación</strong><p>Revisa nuevamente cantidades y dirección antes de confirmar.</p>{rol !== 'vendedor' && <button style={boton} onClick={() => void resolverAlertas()}>He revisado los cambios</button>}</div>}
         <h4>Productos y cantidades</h4>{borrador.lineas.map((l, i) => <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', borderBottom: '1px solid #eee', padding: '9px 0', flexWrap: 'wrap' }}>{l.imagen && <img src={l.imagen} alt={l.nombre} style={{ width: 65, height: 65, objectFit: 'contain' }} />}<div style={{ flex: 1, minWidth: 140 }}><strong>{l.nombre}</strong><div style={{ fontSize: 12 }}>{l.sku} · {dinero(l.precio)} · IVA {l.iva}%</div></div><label>Cantidad <input type="number" min={1} step={1} style={{ ...input, width: 90 }} disabled={!editable} value={l.cantidad} onChange={e => editar({ lineas: borrador.lineas.map((x, j) => j === i ? { ...x, cantidad: Math.max(1, Math.floor(Number(e.target.value) || 1)) } : x) })} /></label></div>)}<p><strong>Total: {dinero(total(borrador))}</strong></p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{editable && <button style={boton} disabled={guardando} onClick={() => void guardar()}>Guardar cambios</button>}{rol !== 'vendedor' && <>{borrador.estado === 'nuevo' && <button style={boton} onClick={() => { if (window.confirm('¿Iniciar preparación del pedido?')) void guardar('preparacion') }}>Iniciar preparación</button>}{borrador.estado === 'preparacion' && <button style={boton} disabled={alertas.some(a => a.pedido_id === borrador.id)} onClick={() => { if (window.confirm('¿Confirmas que revisaste físicamente el pedido?')) void guardar('verificado') }}>Confirmar verificación</button>}{borrador.estado === 'verificado' && <button style={boton} onClick={() => void marcarFactura()}>Registrar factura externa</button>}{borrador.estado === 'facturado' && <button style={boton} onClick={() => { if (window.confirm('¿Confirmas que el pedido ya fue despachado?')) void guardar('despachado') }}>Marcar despachado</button>}</>}<button style={boton} onClick={imprimir}>Imprimir orden</button><button style={{ ...boton, background: '#776a80' }} onClick={() => { setBorrador(null) }}>Cerrar</button></div>
-        <h4>Historial de cambios</h4><p style={{ fontSize: 12, color: '#695775' }}>Los cambios se registran en Supabase. La edición de pedidos facturados queda restringida.</p>{historial.map(h => <p key={h.id} style={{ fontSize: 12, borderBottom: '1px solid #eee', paddingBottom: 7 }}>{new Date(h.created_at).toLocaleString('es-CO')} · {h.accion} · Usuario {h.actor_id.slice(0, 8)}</p>)}{!historial.length && <p>Sin cambios registrados todavía.</p>}
+        <h4>Historial de cambios</h4><p style={{ fontSize: 12, color: '#695775' }}>Los cambios quedan registrados en el historial de JAIVISA. La edición de pedidos facturados queda restringida.</p>{historial.map(h => <p key={h.id} style={{ fontSize: 12, borderBottom: '1px solid #eee', paddingBottom: 7 }}>{new Date(h.created_at).toLocaleString('es-CO')} · {h.accion} · Usuario {h.actor_id.slice(0, 8)}</p>)}{!historial.length && <p>Sin cambios registrados todavía.</p>}
       </div>}</section>;
   }
   async function crearPedidoCentral(payload: { cliente_nombre: string; cliente_telefono: string; cliente_correo?: string; cliente_documento?: string; ciudad: string; direccion: string; observaciones?: string; lineas: Linea[] }) {
@@ -86,14 +86,14 @@ const { IsaAsistente } = (() => {
  `}</style>
       {abierta && <div role="dialog" aria-label="Ayuda de Isa" style={{ width: 290, maxWidth: 'calc(100vw - 36px)', padding: 16, background: '#fff', border: '1px solid #e4d2ef', borderRadius: 16, boxShadow: '0 12px 35px #32134333', marginBottom: 8, color: '#321343' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <img src="/isa-original.png" alt="Isa, asistente original de JAIVISA" style={{ width: 88, height: 105, objectFit: 'contain', borderRadius: 12, background: '#faf5fd' }} />
+          <img src="/isa-ayuda.png" alt="Isa con audífonos, asistente de Ayuda JAIVISA" style={{ width: 122, height: 108, objectFit: 'contain', objectPosition: 'center center', borderRadius: 12, background: 'linear-gradient(135deg,#f3e5ff,#e9d6fd)' }} />
           <div><strong>¡Hola! Soy Isa</strong><p style={{ margin: '4px 0' }}>Tu guía de JAIVISA NEXT.</p></div>
         </div>
         <p style={{ fontSize: 13 }}>Para crear un pedido: abre el catálogo, agrega productos y guarda el pedido. En Bodega podrás revisarlo, imprimirlo y marcar su preparación.</p>
         <p style={{ fontSize: 12 }}>La facturación electrónica debe realizarse en el sistema autorizado. No compartas contraseñas ni datos bancarios conmigo.</p>
         <button onClick={() => setAbierta(false)} style={{ border: 0, borderRadius: 8, padding: 8, background: '#572080', color: 'white' }}>Cerrar</button>
       </div>}
-      <button aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-original.png" alt="" aria-hidden="true" style={{ width: 30, height: 30, objectFit: 'cover', objectPosition: 'center top', borderRadius: '50%', background: 'white', verticalAlign: 'middle', marginRight: 0 }} />Isa · Ayuda</button>
+      <button aria-expanded={abierta} onClick={() => setAbierta(x => !x)} style={{ background: '#572080', color: '#fff', border: 0, borderRadius: 28, padding: '13px 17px', fontWeight: 700, boxShadow: '0 6px 22px #32134355', cursor: 'pointer' }}><img src="/isa-ayuda.png" alt="" aria-hidden="true" style={{ width: 37, height: 37, objectFit: 'cover', objectPosition: '44% 33%', borderRadius: '50%', background: '#f2dfff', verticalAlign: 'middle', marginRight: 0, border: '2px solid #f0c6ff' }} />Isa · Ayuda</button>
     </aside>;
   }
   return { IsaAsistente };
@@ -136,7 +136,7 @@ const { ModulosEmpresa } = (() => {
         supabase.from('jv_inventario').select('sku,nombre,existencias,reservadas,minimo,updated_at').order('nombre').limit(1000)
       ]);
       setCargando(false);
-      if (r.error || i.error) { setMensaje('Falta instalar o autorizar el módulo en Supabase: ' + (r.error?.message || i.error?.message)); return; }
+      if (r.error || i.error) { setMensaje('Este módulo aún no está disponible. Contacta al administrador de JAIVISA. Detalle: ' + (r.error?.message || i.error?.message)); return; }
       setRegistros((r.data || []) as Registro[]); setInventario((i.data || []) as Inventario[]);
     }, []);
     useEffect(() => { void cargar() }, [cargar]);
@@ -145,7 +145,7 @@ const { ModulosEmpresa } = (() => {
       e.preventDefault(); if (!titulo.trim() || guardando) return;
       setGuardando(true); const { error } = await supabase.from('jv_registros_operativos').insert({ tipo, titulo: titulo.trim(), descripcion: descripcion.trim(), referencia: referencia.trim(), importe: Number(importe) || 0 }); setGuardando(false);
       if (error) { setMensaje('No se guardó: ' + error.message); return; }
-      setTitulo(''); setDescripcion(''); setReferencia(''); setImporte(''); setMensaje('Registro guardado en Supabase.'); await cargar();
+      setTitulo(''); setDescripcion(''); setReferencia(''); setImporte(''); setMensaje('Registro guardado correctamente en JAIVISA.'); await cargar();
     };
     const cambiarEstado = async (r: Registro) => {
       const siguiente = r.estado === 'abierto' ? 'cerrado' : 'abierto';
@@ -167,7 +167,7 @@ const { ModulosEmpresa } = (() => {
     };
     const datos = opciones.find(o => o.tipo === tipo)!;
     return <section style={{ color: '#341b43', fontFamily: 'Inter,system-ui,sans-serif' }}>
-      <div style={{ background: '#fff', borderRadius: 16, padding: 20, marginBottom: 15, border: '1px solid #e7daef' }}><h2 style={{ marginTop: 0 }}>💜 JAIVISA NEXT · Operaciones empresariales</h2><p style={{ color: '#74617e' }}>Registros centralizados, permisos en Supabase e inventario con movimientos auditados. Facturación DIAN, reservas automáticas y conciliación bancaria aún requieren integraciones.</p>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 20, marginBottom: 15, border: '1px solid #e7daef' }}><h2 style={{ marginTop: 0 }}>💜 JAIVISA NEXT · Operaciones empresariales</h2><p style={{ color: '#74617e' }}>Registros centralizados, permisos en JAIVISA e inventario con movimientos auditados. Facturación DIAN, reservas automáticas y conciliación bancaria aún requieren integraciones.</p>
         <button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Consultando…' : 'Actualizar datos'}</button>{mensaje && <p role="status" style={{ padding: 12, background: '#f4e9fa', borderRadius: 8 }}>{mensaje}</p>}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginBottom: 16 }}>{[['Registros visibles', registros.length], ['Pendientes', registros.filter(r => r.estado === 'abierto').length], ['Referencias de inventario', inventario.length], ['Stock bajo', inventario.filter(i => i.existencias - i.reservadas <= i.minimo).length]].map(([k, v]) => <div key={k} style={{ background: '#fff', border: '1px solid #e7daef', padding: 16, borderRadius: 13 }}><strong style={{ fontSize: 24 }}>{v}</strong><div style={{ fontSize: 12 }}>{k}</div></div>)}</div>
       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>{opciones.filter(o => rol === 'administrador' || !['precio_cliente', 'pago'].includes(o.tipo)).map(o => <button key={o.tipo} style={{ ...boton, background: tipo === o.tipo ? '#60278a' : '#eee3f5', color: tipo === o.tipo ? 'white' : '#562176' }} onClick={() => setTipo(o.tipo)}>{o.titulo}</button>)}</div>
@@ -367,7 +367,7 @@ function CatalogosVistaPrevia() {
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(true);
   const [subiendo, setSubiendo] = useState(false);
-  const actualizar = async () => { setCargando(true); try { setCatalogos(await listarCatalogosJAIVISA()); setMensaje(''); } catch (e: any) { setMensaje('No se pudieron cargar los catálogos. Configura el almacenamiento de Supabase: ' + e.message); } finally { setCargando(false) } };
+  const actualizar = async () => { setCargando(true); try { setCatalogos(await listarCatalogosJAIVISA()); setMensaje(''); } catch (e: any) { setMensaje('No fue posible consultar los catálogos de JAIVISA. Verifica la configuración del módulo: ' + e.message); } finally { setCargando(false) } };
   useEffect(() => { void actualizar() }, []);
   const subir = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -394,12 +394,132 @@ function CatalogosVistaPrevia() {
     <label className="field" style={{ maxWidth: 500 }}>Subir catálogos PDF (hasta 50 MB por archivo)
       <input type="file" accept=".pdf,application/pdf" multiple disabled={subiendo} onChange={e => { void subir(e.target.files); e.target.value = ''; }} />
     </label>
-    {subiendo && <p role="status">Subiendo catálogos a Supabase…</p>}
+    {subiendo && <p role="status">Cargando catálogos de JAIVISA…</p>}
     {mensaje && <p className="notice" role="status">{mensaje}</p>}
     {cargando ? <p>Cargando catálogos…</p> : <GaleriaCatalogos catalogos={catalogos} eliminar={eliminar} />}
-    <p className="muted" style={{ marginTop: 15 }}>Los PDF se almacenan en Supabase Storage. Requiere crear el bucket privado «jaivisa-catalogos» y aplicar las políticas SQL adjuntas. Los enlaces de consulta vencen después de una hora.</p>
+    <p className="muted" style={{ marginTop: 15 }}>Los catálogos se almacenan de forma segura en JAIVISA. Su publicación requiere que el módulo de documentos esté habilitado. Los enlaces de consulta vencen después de una hora.</p>
   </section>;
 }
+
+
+
+// JAIVISA AURORA · Portadas luminosas reutilizables para todas las páginas.
+type JaivisaPortalTipo = 'administracion' | 'clientes' | 'vendedores';
+function fondoSeccionJAIVISA(portal: JaivisaPortalTipo, seccion: string): string {
+  const clave = seccion.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (clave === 'inicio') return `/jv-fondo-${portal}.webp`;
+  const casos: [RegExp, string][] = [
+    [/nuevo pedido|crear pedido/, 'nuevo-pedido'],
+    [/mis pedidos|historial/, 'mis-pedidos'],
+    [/agenda/, 'agenda'],
+    [/resultado|comision/, 'resultados'],
+    [/etiqueta/, 'etiquetas'],
+    [/notific|alerta/, 'notificaciones'],
+    [/despach|envio/, 'despachos'],
+    [/preparac/, 'preparacion'],
+    [/inventario|bodega/, 'inventario'],
+    [/catalogos pdf|catalogospdf|catalogos/, 'catalogos'],
+    [/catalogo|productos/, 'productos'],
+    [/pedido|carrito|venta/, 'pedidos'],
+    [/cliente|cuenta|mis datos/, 'clientes'],
+    [/acceso|permiso|usuario|empleado/, 'usuarios'],
+    [/personalizacion|configuracion/, 'configuracion'],
+    [/reporte|operacion/, 'reportes'],
+  ];
+  const coincidencia = casos.find(([patron]) => patron.test(clave));
+  return coincidencia ? `/jv-fondo-${coincidencia[1]}.webp` : `/jv-fondo-${portal}.webp`;
+}
+// JAIVISA NEXT · Isa contextual por sección; solo usa imágenes dentro de /public.
+type PortalIsaJAIVISA = JaivisaPortalTipo | 'bodega';
+function imagenIsaModuloJAIVISA(portal: PortalIsaJAIVISA, seccion: string): string | null {
+  const clave = seccion.toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (clave === 'inicio') return null;
+  if (portal === 'bodega') {
+    const poses: Record<string, string> = {
+      pedidos: 'isa-bodega-pedidos.png',
+      inventario: 'isa-bodega-inventario.png',
+      preparacion: 'isa-bodega-preparacion.png',
+      despachos: 'isa-bodega-despachos.png',
+      etiquetas: 'isa-bodega-etiquetas.png',
+      notificaciones: 'isa-bodega-notificaciones.png',
+    };
+    return poses[clave] ? '/' + poses[clave] : '/isa-modulo-catalogos-pdf.png';
+  }
+  const opciones: [RegExp, string][] = [
+    [/catalogos pdf|catalogospdf|catalogos/, 'catalogos-pdf'],
+    [/nuevo pedido|crear pedido|carrito/, 'nuevo-pedido'],
+    [/mis pedidos|historial/, 'mis-pedidos'],
+    [/mis clientes|cartera comercial/, 'mis-clientes'],
+    [/mis resultados|comision/, 'resultados'],
+    [/agenda/, 'agenda'],
+    [/notificacion|alerta/, 'notificaciones'],
+    [/etiqueta/, 'etiquetas'],
+    [/despach|envio/, 'despachos'],
+    [/preparacion/, 'preparacion'],
+    [/inventario/, 'inventario'],
+    [/catalogo|productos/, 'catalogo'],
+    [/pedidos|pedido|venta|whatsapp/, 'pedidos'],
+    [/cliente|cuenta|mis datos/, portal === 'vendedores' ? 'mis-clientes' : 'clientes'],
+    [/usuarios|empleado|acceso|permiso/, 'usuarios'],
+    [/configuracion|personalizacion/, 'configuracion'],
+    [/reporte|operacion/, 'reportes'],
+    [/resultado/, 'resultados'],
+    [/ayuda|soporte/, 'ayuda'],
+  ];
+  const coincidencia = opciones.find(([patron]) => patron.test(clave));
+  return coincidencia ? '/isa-modulo-' + coincidencia[1] + '.png' : '/isa-modulo-' + portal + '.png';
+}
+function IsaEnSeccionJAIVISA({ portal, seccion }: { portal: PortalIsaJAIVISA; seccion: string }) {
+  const imagen = imagenIsaModuloJAIVISA(portal, seccion);
+  if (!imagen) return null;
+  return <aside className="jv-isa-en-seccion" aria-label={'Isa te acompaña en ' + seccion}>
+    <img src={imagen} alt={'Isa trabajando en ' + seccion} loading="lazy" />
+    <div><strong>Isa te acompaña en {seccion}</strong><small>Tu guía JAIVISA NEXT en esta sección.</small></div>
+  </aside>;
+}
+
+function JaivisaHeroPanoramico({ portal, seccion, nombre }: { portal: JaivisaPortalTipo; seccion: string; nombre?: string }) {
+  const esInicio = seccion.toLowerCase() === 'inicio';
+  const primeraPalabra = (nombre || '').trim().split(/\s+/)[0];
+  const tituloPortal = { administracion: 'Administración', clientes: 'Clientes', vendedores: 'Vendedores' }[portal];
+  const frase = {
+    administracion: 'Controla tu operación y gestiona JAIVISA desde un solo lugar.',
+    clientes: 'Explora el catálogo, consulta tus productos y encuentra lo que necesitas.',
+    vendedores: 'Organiza tus clientes, consulta productos y prepara tus pedidos.',
+  }[portal];
+  const srcIsa = `/isa-${portal}.png`;
+  return (
+    <section className={'jv-hero-panorama jv-hero-panorama-' + portal} aria-label={'Bienvenida a ' + tituloPortal}>
+      <div className="jv-hero-panorama-escena" aria-hidden="true" style={{ backgroundImage: `url('${fondoSeccionJAIVISA(portal, seccion)}')` }} />
+      <img className="jv-hero-panorama-isa" src={srcIsa} alt={'Isa te acompaña en el portal de ' + tituloPortal} />
+      <div className="jv-hero-panorama-texto">
+        <span className="jv-hero-panorama-etiqueta">JAIVISA NEXT · PORTAL {tituloPortal.toLocaleUpperCase('es')}</span>
+        <h1>{esInicio ? (primeraPalabra ? `¡Hola, ${primeraPalabra.toLocaleUpperCase('es')}!` : '¡Bienvenido!') : seccion}
+          {esInicio && <img className="jv-hero-panorama-mano" src="/isa-mano-saludo-1.png" alt="" aria-hidden="true" />}
+        </h1>
+        <h2>{esInicio ? 'Bienvenido al Portal de ' + tituloPortal : 'JAIVISA NEXT · ' + tituloPortal}</h2>
+        <p>{esInicio ? frase : 'Isa te acompaña mientras trabajas en esta sección.'}</p>
+      </div>
+    </section>
+  );
+}
+
+const JV_PANORAMA_CSS = `
+#root .jv-hero-panorama{box-sizing:border-box!important;isolation:isolate;display:flex!important;align-items:center!important;justify-content:flex-start!important;position:relative!important;overflow:hidden!important;width:100%!important;max-width:none!important;min-height:clamp(220px,23vw,330px)!important;margin:14px 0 22px!important;padding:15px clamp(18px,4vw,52px)!important;border:1px solid rgba(189,104,255,.58)!important;border-radius:22px!important;background:#230c3b!important;box-shadow:0 14px 35px rgba(12,2,30,.5),0 0 22px rgba(178,67,255,.15)!important;color:#fff!important}
+#root .jv-hero-panorama .jv-hero-panorama-escena{position:absolute!important;z-index:-1!important;inset:0!important;background-color:#240939!important;background-position:center center!important;background-size:cover!important;background-repeat:no-repeat!important}
+#root .jv-hero-panorama::after{content:"";position:absolute;bottom:0;left:5%;right:5%;height:3px;background:linear-gradient(90deg,transparent,#d24eff,#41bbff,transparent);box-shadow:0 0 14px #c34dff;pointer-events:none}
+#root .jv-hero-panorama-isa{display:block!important;position:relative!important;z-index:2!important;width:clamp(130px,19vw,230px)!important;height:clamp(195px,22vw,300px)!important;max-width:36%!important;flex-shrink:0!important;object-fit:contain!important;object-position:center bottom!important;filter:drop-shadow(0 4px 24px rgba(190,93,255,.52))!important;pointer-events:none}
+#root .jv-hero-panorama-texto{position:relative!important;z-index:3!important;flex:1!important;min-width:0!important;max-width:700px!important;margin:0 auto!important;padding:10px clamp(4px,1.5vw,20px)!important;text-align:center!important;text-shadow:0 2px 12px #11041eee!important}
+#root .jv-hero-panorama-etiqueta{display:block!important;font-size:clamp(9px,1vw,12px)!important;font-weight:850!important;letter-spacing:.17em!important;color:#e8c0ff!important;margin-bottom:10px!important}
+#root .jv-hero-panorama h1{font-size:clamp(25px,3.3vw,48px)!important;line-height:1.10!important;letter-spacing:-.035em!important;font-weight:900!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:5px 0 7px!important;text-shadow:0 3px 18px #8f33ff80!important;overflow-wrap:anywhere}
+#root .jv-hero-panorama h2{font-size:clamp(14px,1.8vw,23px)!important;font-weight:800!important;line-height:1.25!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:6px 0!important}
+#root .jv-hero-panorama p{font-size:clamp(12px,1.3vw,16px)!important;line-height:1.5!important;color:#f5e8ff!important;-webkit-text-fill-color:#f5e8ff!important;margin:8px auto!important;max-width:540px!important}
+#root .jv-hero-panorama-mano{width:clamp(23px,2.6vw,34px)!important;height:clamp(23px,2.6vw,34px)!important;object-fit:contain!important;display:inline-block!important;vertical-align:middle!important;margin-left:8px!important;transform:rotate(-12deg)}
+#root .jv-client-shell .jv-hero-panorama,#root .layout .jv-hero-panorama,#root .jv-vendedor .jv-hero-panorama{color:#fff!important}
+@media (max-width:720px){#root .jv-hero-panorama{min-height:190px!important;padding:10px 12px!important;margin:10px 0 15px!important;border-radius:16px!important}#root .jv-hero-panorama-isa{width:32%!important;max-width:32%!important;height:170px!important}#root .jv-hero-panorama-texto{width:68%!important;padding:5px!important}#root .jv-hero-panorama h1{font-size:clamp(19px,4.5vw,29px)!important}#root .jv-hero-panorama h2{font-size:clamp(12px,3vw,17px)!important}#root .jv-hero-panorama p{font-size:11px!important}#root .jv-hero-panorama-etiqueta{letter-spacing:.06em!important;font-size:8px!important}}
+@media (max-width:390px){#root .jv-hero-panorama{min-height:166px!important}#root .jv-hero-panorama-isa{height:145px!important}#root .jv-hero-panorama h1{font-size:19px!important}#root .jv-hero-panorama p{display:none!important}}
+@media (prefers-reduced-motion:reduce){#root .jv-hero-panorama-mano{animation:none!important}}
+`;
 
 function PortalAdministrador() {
   type ThemeSettings = { primary: string; accent: string; surface: string; font: string; style: string };
@@ -462,7 +582,7 @@ function PortalAdministrador() {
     setWaCargando(true);
     const { data, error } = await supabase.from('jaivisa_whatsapp_destinatarios').select('id,nombre,telefono,activo').order('id');
     setWaCargando(false);
-    if (error) { setWaMensaje('No se pudo consultar la configuración. Primero ejecuta el archivo SQL en Supabase.'); return; }
+    if (error) { setWaMensaje('No se pudo consultar la configuración. Solicita a Administración que revise la configuración del módulo.'); return; }
     setDestinatariosWA((data || []) as DestinatarioWA[]);
     setWaMensaje('');
   };
@@ -540,7 +660,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
       if (password.length < 8) { setWorkerNotice('La contraseña debe tener al menos 8 caracteres.'); return; }
       payload.password = password;
     }
-    setWorkerSaving(true); setWorkerNotice('Guardando en Supabase…');
+    setWorkerSaving(true); setWorkerNotice('Guardando información en JAIVISA…');
     try { const result = await administrarClientes(payload); setWorker(blankWorker()); await cargarEmpleados(); setWorkerNotice(result.mensaje || 'Empleado guardado.'); }
     catch (e: any) { setWorkerNotice('No se pudo guardar: ' + (e?.message || 'Error desconocido')); }
     finally { setWorkerSaving(false) }
@@ -573,7 +693,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
       headers: { Authorization: `Bearer ${token}` },
     });
     if (error) {
-      let message = error.message || 'No se pudo conectar con Supabase.';
+      let message = error.message || 'No fue posible conectar con los servicios de JAIVISA.';
       const context = (error as any).context;
       if (context && typeof context.json === 'function') {
         try { const details = await context.json(); message = details?.error || message; } catch { /* Respuesta no JSON */ }
@@ -595,7 +715,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
         enabled: r.aprobado === true,
         access: r.aprobado === true ? 'Activo' : 'Suspendido',
       })));
-    } catch (e: any) { setClientNotice('No se pudo consultar Supabase: ' + (e?.message || 'Error desconocido')); }
+    } catch (e: any) { setClientNotice('No fue posible consultar la información de JAIVISA: ' + (e?.message || 'Error desconocido')); }
     finally { setClientsLoading(false); }
   };
   useEffect(() => { if (page === 'Clientes') void cargarClientes(); }, [page]);
@@ -622,12 +742,12 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
       payload.password = password;
     }
     setClientSaving(true);
-    setClientNotice('Guardando en Supabase…');
+    setClientNotice('Guardando información en JAIVISA…');
     try {
       const result = await administrarClientes(payload);
       setClient(blankClient());
       await cargarClientes();
-      setClientNotice(result.mensaje || 'Cliente guardado correctamente en Supabase.');
+      setClientNotice(result.mensaje || 'Cliente guardado correctamente en JAIVISA.');
     } catch (e: any) { setClientNotice('No se pudo guardar: ' + (e?.message || 'Error desconocido')); }
     finally { setClientSaving(false); }
   };
@@ -649,7 +769,7 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
     if (!customer.customer.trim() || !cart.length) { alert('Indica el cliente y agrega productos.'); return; }
     try {
       const pedido = await crearPedidoCentral({ cliente_nombre: customer.customer, cliente_telefono: customer.phone, cliente_correo: customer.email, ciudad: customer.city, direccion: customer.address, lineas: cart.map(l => { const p = products.find(x => x.id === l.productId); return { productId: l.productId, sku: p?.sku || '', nombre: p?.name || 'Producto', imagen: p?.image || '', cantidad: l.qty, precio: l.price, iva: p?.iva || 0 }; }) });
-      setCart([]); setCustomer(blankCustomer()); setPage('Centro de Pedidos'); alert('Pedido #' + pedido.numero + ' guardado en Supabase.');
+      setCart([]); setCustomer(blankCustomer()); setPage('Centro de Pedidos'); alert('Pedido #' + pedido.numero + ' guardado correctamente en JAIVISA.');
     } catch (e: any) { alert('No se pudo guardar el pedido: ' + (e?.message || e)); }
   };
   const changeStatus = (id: string, status: string) => setOrders(old => old.map(o => o.id === id ? { ...o, status } : o));
@@ -1048,8 +1168,10 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
 .jv-client-tab{padding:12px 20px;border-radius:12px;border:1px solid #dfcde9;background:#fff;color:#5d277b;font-weight:750;cursor:pointer}
 .jv-client-tab.active{background:linear-gradient(100deg,#a02fe0,#5b198c);color:#fff;border-color:transparent;box-shadow:0 6px 20px #8233b744}
   `}</style><div className="layout" style={{ '--brand-primary': themeSettings.primary, '--brand-accent': themeSettings.accent, '--brand-surface': themeSettings.surface, '--brand-font': themeFont(themeSettings.font) } as React.CSSProperties}><aside className="sidebar"><div className="logo"><img className="brandLogo" src={JAIVISA_LOGO} alt="Jaivisa.com, logo oficial" /><small>PORTAL MAYORISTA <i>◆</i></small></div><nav className="nav">{menu.map(m => <button key={m} className={page === m ? 'on' : ''} onClick={() => setPage(m)}><NavIcon name={m} /> <span>{m}</span></button>)}</nav><div className="sidebottom"><span className="pulseDot" /> SISTEMA JAIVISA <small>Portal interno · Versión de pruebas</small></div></aside><main className="main"><header className="top"><div><div className="hint">CENTRO DE CONTROL <span className="crumbSep">/</span> JAIVISA</div><h1>{page}</h1></div><span className="pill"><NavIcon name="Permisos" /> Administrador <span className="onlineDot" /></span></header>
+      <JaivisaHeroPanoramico portal="administracion" seccion={page} />
+      <IsaEnSeccionJAIVISA portal="administracion" seccion={page} />
       {page === 'Inicio' && <div className="jvDashboard">
-        <section className="jvWelcome"><span className="jvCrown">♕</span><div><h2>Panel del Administrador</h2><p>Gestión general de JAIVISA · Resumen del portal</p></div><span className="jvAdminTag">● Administrador</span></section>
+
         <section className="jvStats">
           <button onClick={() => setPage('Pedidos')} className="jvStat"><span className="jvStatIcon">🛒</span><span><small>Pedidos</small><strong>{orders.length}</strong><em>Consultar pedidos</em></span></button>
           <button onClick={() => setPage('Productos')} className="jvStat"><span className="jvStatIcon">▧</span><span><small>Productos</small><strong>{products.length}</strong><em>Inventario registrado</em></span></button>
@@ -1099,18 +1221,18 @@ accion: worker.id ? 'actualizar_empleado' : 'crear_empleado',
         </section><div className="cartDock"><div><b>🛒 {cart.reduce((a, l) => a + l.qty, 0)} artículos</b><span>{money(subtotal + iva)}</span></div><button onClick={() => setPage('Carrito')}>Revisar pedido →</button></div>
       </>}
       {page === 'Productos' && <><section className="panel"><h3>{product.id ? 'Editar producto' : 'Crear producto'}</h3><form className="grid" onSubmit={saveProduct}><label className="field">Referencia SKU<input required value={product.sku} onChange={e => setProduct({ ...product, sku: e.target.value })} /></label><label className="field">Nombre<input required value={product.name} onChange={e => setProduct({ ...product, name: e.target.value })} /></label><label className="field">Categoría del catálogo<select value={product.category || 'Tecnología'} onChange={e => setProduct({ ...product, category: e.target.value })}>{categories.map(c => <option key={c.name}>{c.name}</option>)}</select></label><label className="field">URL de imagen (opcional)<input placeholder="https://..." value={product.image || ''} onChange={e => setProduct({ ...product, image: e.target.value })} /></label><label className="field">Código de barras<input value={product.barcode} onChange={e => setProduct({ ...product, barcode: e.target.value })} /></label><label className="field">Precio sin IVA<input type="number" min="0" value={product.price} onChange={e => setProduct({ ...product, price: Number(e.target.value) })} /></label><label className="field">IVA aplicable<select value={product.iva} onChange={e => setProduct({ ...product, iva: Number(e.target.value) })}><option value={0}>0%</option><option value={5}>5%</option><option value={19}>19%</option></select></label><label className="field">Existencias<input type="number" min="0" value={product.stock} onChange={e => setProduct({ ...product, stock: Number(e.target.value) })} /></label><button className="primary">{product.id ? 'Guardar cambios' : 'Agregar producto'}</button><button type="button" className="secondary" onClick={() => setProduct(blankProduct())}>Limpiar</button></form></section><section className="panel"><h3>Productos registrados</h3><div className="table"><table><thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Precio base</th><th>IVA</th><th>Stock</th><th>Acciones</th></tr></thead><tbody>{products.map(p => <tr key={p.id}><td>{p.sku}</td><td>{p.name}</td><td>{p.category || 'Tecnología'}</td><td>{money(p.price)}</td><td>{p.iva}%</td><td>{p.stock}</td><td><div className="actions"><button className="secondary" onClick={() => setProduct(p)}>Editar</button><button className="secondary danger" onClick={() => { if (confirm('¿Eliminar este producto?')) setProducts(old => old.filter(x => x.id !== p.id)); }}>Eliminar</button></div></td></tr>)}</tbody></table></div></section></>}
-      {page === 'Empleados' && <><section className="panel"><div className="sectionEyebrow">GESTIÓN DEL EQUIPO</div><h3>{worker.id ? 'Editar empleado' : 'Crear empleado'}</h3><p className="muted">Las cuentas se crean en Supabase. Los cargos disponibles son vendedor y bodega; los permisos del módulo de trabajo todavía requieren validación del servidor.</p>{workerNotice && <p className="notice" role="status">{workerNotice}</p>}<form className="grid" onSubmit={saveWorker}><label className="field">Nombre completo<input required value={worker.name} onChange={e => setWorker({ ...worker, name: e.target.value })} /></label><label className="field">Documento<input value={worker.document} onChange={e => setWorker({ ...worker, document: e.target.value })} /></label><label className="field">Teléfono<input value={worker.phone} onChange={e => setWorker({ ...worker, phone: e.target.value })} /></label><label className="field">Correo laboral<input required type="email" value={worker.email || ''} onChange={e => setWorker({ ...worker, email: e.target.value })} /></label><label className="field">Código de empleado<input value={worker.employeeCode || ''} onChange={e => setWorker({ ...worker, employeeCode: e.target.value })} placeholder="Opcional" /></label><label className="field">Cargo<select value={cargoSupabase(worker.role)} onChange={e => setWorker({ ...worker, role: e.target.value === 'bodega' ? 'Auxiliar de bodega' : 'Vendedor de ruta' })}><option value="vendedor">Vendedor</option><option value="bodega">Bodega</option></select></label><button className="primary" disabled={workerSaving}>{workerSaving ? 'Guardando…' : worker.id ? 'Guardar cambios' : 'Crear empleado'}</button><button type="button" className="secondary" onClick={() => setWorker(blankWorker())}>Limpiar</button></form><div className="securityPanel"><div className="securityTitle">🔐 Acceso y contraseña del empleado</div><p className="muted">Selecciona Editar en el directorio para cambiar una contraseña. No se almacena en el navegador.</p><button type="button" className="secondary" onClick={() => void cambiarClaveEmpleado()}>🔑 Cambiar contraseña</button></div></section><section className="panel"><h3>Equipo JAIVISA · {workers.length} empleados</h3><button type="button" className="secondary" disabled={workersLoading} onClick={() => void cargarEmpleados()}>{workersLoading ? 'Consultando…' : '🔄 Actualizar desde Supabase'}</button>{!workersLoading && workers.length === 0 && <p className="muted">Todavía no hay empleados registrados en Supabase.</p>}{workers.map(w => <div className="row" key={w.id}><div><strong>{w.name}</strong><small>{w.email} · {w.employeeCode || 'Sin código'} · {w.role} · {w.enabled ? 'Activo' : 'Suspendido'}</small></div><div className="actions"><button className="secondary" onClick={() => setWorker({ ...w })}>Editar</button><button className="secondary" onClick={() => void cambiarEstadoEmpleado(w)}>{w.enabled ? 'Suspender' : 'Activar'}</button></div></div>)}</section></>}
-      {page === 'Clientes' && <><section id="jaivisa-client-form" className="panel"><div className="sectionEyebrow">CLIENTES MAYORISTAS</div><h3>{client.id ? 'Editar cliente' : 'Registrar cliente'}</h3><p className="muted">Los clientes se guardan en Supabase. Al crear uno, se genera su cuenta de acceso con la contraseña inicial que establezcas.</p>{clientNotice && <p role="status" style={{ padding: '12px 16px', background: '#f3e7fb', borderRadius: 12, color: '#53216e' }}>{clientNotice}</p>}<form className="grid" onSubmit={saveClient}><label className="field">Nombre o razón social<input required value={client.name} onChange={e => setClient({ ...client, name: e.target.value })} /></label><label className="field">NIT / Documento<input value={client.document} onChange={e => setClient({ ...client, document: e.target.value })} /></label><label className="field">Correo de acceso<input required type="email" value={client.email} onChange={e => setClient({ ...client, email: e.target.value })} /></label><label className="field">País de la empresa<select value={client.country || 'Colombia'} onChange={e => { const indicativos: Record<string, string> = { 'Colombia': '+57', 'México': '+52', 'Perú': '+51', 'Ecuador': '+593', 'Estados Unidos': '+1', 'Panamá': '+507', 'Venezuela': '+58', 'Chile': '+56', 'Argentina': '+54', 'España': '+34' }; setClient({ ...client, country: e.target.value, dialCode: indicativos[e.target.value] || '+57', city: '' }); setDepartamentoCliente(''); }}>{['Colombia', 'México', 'Perú', 'Ecuador', 'Estados Unidos', 'Panamá', 'Venezuela', 'Chile', 'Argentina', 'España'].map(p => <option key={p} value={p}>{p}</option>)}</select></label><label className="field">Indicativo internacional<input value={client.dialCode || '+57'} onChange={e => setClient({ ...client, dialCode: e.target.value })} placeholder="+57" inputMode="tel" maxLength={6} /></label><label className="field">Teléfono / WhatsApp<input value={client.phone} onChange={e => setClient({ ...client, phone: e.target.value })} /></label><SelectorUbicacion pais={client.country || 'Colombia'} departamento={departamentoCliente} ciudad={client.city} onDepartamento={setDepartamentoCliente} onCiudad={v => setClient(old => ({ ...old, city: v }))} /><label className="field">Dirección<input value={client.address} onChange={e => setClient({ ...client, address: e.target.value })} /></label><button className="primary" disabled={clientSaving}>{clientSaving ? 'Guardando…' : client.id ? 'Guardar cambios' : 'Crear cliente'}</button><button type="button" className="secondary" onClick={() => { setClient(blankClient()); setDepartamentoCliente(''); setClientNotice(''); }}>Limpiar</button></form><div className="securityPanel"><div className="securityTitle">🔐 Acceso y contraseña del cliente</div><p className="muted">Las cuentas y contraseñas se gestionan de forma segura mediante Supabase. Para cambiar una clave directamente, selecciona primero Editar en el cliente. También puedes enviar un enlace de recuperación por correo.</p><div className="securityActions"><button className="secondary" type="button" onClick={async () => { const email = client.email.trim().toLowerCase(); if (!email) { setClientNotice('Selecciona un cliente con correo electrónico antes de enviar el enlace.'); return; } if (!window.confirm('¿Solicitar un enlace de recuperación para ' + email + '?')) return; try { const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }); if (error) throw error; setClientNotice('Solicitud enviada. Si existe una cuenta de acceso con ese correo, recibirá un enlace para establecer su contraseña. Revisa también la carpeta de spam.'); } catch (e: any) { setClientNotice('No fue posible solicitar el enlace: ' + (e?.message || 'Error desconocido') + '. Si hay límite de correos, inténtalo más tarde.'); } }}>✉️ Enviar enlace de contraseña</button><button className="secondary" type="button" onClick={() => void cambiarClaveCliente()}>🔑 Cambiar contraseña</button></div><small className="securityFoot">Por seguridad, las contraseñas se envían a la función protegida y no se guardan en el navegador. Evita usar contraseñas compartidas.</small></div></section><section className="panel"><h3>Directorio de clientes · {clients.length}</h3><button className="secondary" type="button" disabled={clientsLoading} onClick={() => void cargarClientes()}>{clientsLoading ? 'Consultando…' : '🔄 Actualizar desde Supabase'}</button>{clients.length === 0 && <p className="muted">Todavía no hay clientes registrados.</p>}{clients.map(c => <div className="row" key={c.id}><div><strong>{c.name}</strong><small>{c.email} · {c.document || 'Sin documento'} · {c.country || 'Colombia'} · {c.dialCode || '+57'} {c.phone} · {c.access}</small></div><div className="actions"><button className="secondary" onClick={() => editClient(c)}>Editar</button><button className="secondary" onClick={() => void cambiarEstadoCliente(c)}>{c.enabled ? 'Suspender' : 'Reactivar'}</button></div></div>)}</section></>}
+      {page === 'Empleados' && <><section className="panel"><div className="sectionEyebrow">GESTIÓN DEL EQUIPO</div><h3>{worker.id ? 'Editar empleado' : 'Crear empleado'}</h3><p className="muted">Las cuentas se registran en el sistema de JAIVISA. Los cargos disponibles son vendedor y bodega; los permisos del módulo de trabajo todavía requieren validación del servidor.</p>{workerNotice && <p className="notice" role="status">{workerNotice}</p>}<form className="grid" onSubmit={saveWorker}><label className="field">Nombre completo<input required value={worker.name} onChange={e => setWorker({ ...worker, name: e.target.value })} /></label><label className="field">Documento<input value={worker.document} onChange={e => setWorker({ ...worker, document: e.target.value })} /></label><label className="field">Teléfono<input value={worker.phone} onChange={e => setWorker({ ...worker, phone: e.target.value })} /></label><label className="field">Correo laboral<input required type="email" value={worker.email || ''} onChange={e => setWorker({ ...worker, email: e.target.value })} /></label><label className="field">Código de empleado<input value={worker.employeeCode || ''} onChange={e => setWorker({ ...worker, employeeCode: e.target.value })} placeholder="Opcional" /></label><label className="field">Cargo<select value={cargoSupabase(worker.role)} onChange={e => setWorker({ ...worker, role: e.target.value === 'bodega' ? 'Auxiliar de bodega' : 'Vendedor de ruta' })}><option value="vendedor">Vendedor</option><option value="bodega">Bodega</option></select></label><button className="primary" disabled={workerSaving}>{workerSaving ? 'Guardando…' : worker.id ? 'Guardar cambios' : 'Crear empleado'}</button><button type="button" className="secondary" onClick={() => setWorker(blankWorker())}>Limpiar</button></form><div className="securityPanel"><div className="securityTitle">🔐 Acceso y contraseña del empleado</div><p className="muted">Selecciona Editar en el directorio para cambiar una contraseña. No se almacena en el navegador.</p><button type="button" className="secondary" onClick={() => void cambiarClaveEmpleado()}>🔑 Cambiar contraseña</button></div></section><section className="panel"><h3>Equipo JAIVISA · {workers.length} empleados</h3><button type="button" className="secondary" disabled={workersLoading} onClick={() => void cargarEmpleados()}>{workersLoading ? 'Consultando…' : '🔄 Actualizar información'}</button>{!workersLoading && workers.length === 0 && <p className="muted">Todavía no hay empleados registrados en JAIVISA.</p>}{workers.map(w => <div className="row" key={w.id}><div><strong>{w.name}</strong><small>{w.email} · {w.employeeCode || 'Sin código'} · {w.role} · {w.enabled ? 'Activo' : 'Suspendido'}</small></div><div className="actions"><button className="secondary" onClick={() => setWorker({ ...w })}>Editar</button><button className="secondary" onClick={() => void cambiarEstadoEmpleado(w)}>{w.enabled ? 'Suspender' : 'Activar'}</button></div></div>)}</section></>}
+      {page === 'Clientes' && <><section id="jaivisa-client-form" className="panel"><div className="sectionEyebrow">CLIENTES MAYORISTAS</div><h3>{client.id ? 'Editar cliente' : 'Registrar cliente'}</h3><p className="muted">Los clientes se registran en JAIVISA. Al crear uno, se genera su cuenta de acceso con la contraseña inicial que establezcas.</p>{clientNotice && <p role="status" style={{ padding: '12px 16px', background: '#f3e7fb', borderRadius: 12, color: '#53216e' }}>{clientNotice}</p>}<form className="grid" onSubmit={saveClient}><label className="field">Nombre o razón social<input required value={client.name} onChange={e => setClient({ ...client, name: e.target.value })} /></label><label className="field">NIT / Documento<input value={client.document} onChange={e => setClient({ ...client, document: e.target.value })} /></label><label className="field">Correo de acceso<input required type="email" value={client.email} onChange={e => setClient({ ...client, email: e.target.value })} /></label><label className="field">País de la empresa<select value={client.country || 'Colombia'} onChange={e => { const indicativos: Record<string, string> = { 'Colombia': '+57', 'México': '+52', 'Perú': '+51', 'Ecuador': '+593', 'Estados Unidos': '+1', 'Panamá': '+507', 'Venezuela': '+58', 'Chile': '+56', 'Argentina': '+54', 'España': '+34' }; setClient({ ...client, country: e.target.value, dialCode: indicativos[e.target.value] || '+57', city: '' }); setDepartamentoCliente(''); }}>{['Colombia', 'México', 'Perú', 'Ecuador', 'Estados Unidos', 'Panamá', 'Venezuela', 'Chile', 'Argentina', 'España'].map(p => <option key={p} value={p}>{p}</option>)}</select></label><label className="field">Indicativo internacional<input value={client.dialCode || '+57'} onChange={e => setClient({ ...client, dialCode: e.target.value })} placeholder="+57" inputMode="tel" maxLength={6} /></label><label className="field">Teléfono / WhatsApp<input value={client.phone} onChange={e => setClient({ ...client, phone: e.target.value })} /></label><SelectorUbicacion pais={client.country || 'Colombia'} departamento={departamentoCliente} ciudad={client.city} onDepartamento={setDepartamentoCliente} onCiudad={v => setClient(old => ({ ...old, city: v }))} /><label className="field">Dirección<input value={client.address} onChange={e => setClient({ ...client, address: e.target.value })} /></label><button className="primary" disabled={clientSaving}>{clientSaving ? 'Guardando…' : client.id ? 'Guardar cambios' : 'Crear cliente'}</button><button type="button" className="secondary" onClick={() => { setClient(blankClient()); setDepartamentoCliente(''); setClientNotice(''); }}>Limpiar</button></form><div className="securityPanel"><div className="securityTitle">🔐 Acceso y contraseña del cliente</div><p className="muted">Las cuentas y contraseñas se administran de forma segura en JAIVISA. Para cambiar una clave directamente, selecciona primero Editar en el cliente. También puedes enviar un enlace de recuperación por correo.</p><div className="securityActions"><button className="secondary" type="button" onClick={async () => { const email = client.email.trim().toLowerCase(); if (!email) { setClientNotice('Selecciona un cliente con correo electrónico antes de enviar el enlace.'); return; } if (!window.confirm('¿Solicitar un enlace de recuperación para ' + email + '?')) return; try { const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin }); if (error) throw error; setClientNotice('Solicitud enviada. Si existe una cuenta de acceso con ese correo, recibirá un enlace para establecer su contraseña. Revisa también la carpeta de spam.'); } catch (e: any) { setClientNotice('No fue posible solicitar el enlace: ' + (e?.message || 'Error desconocido') + '. Si hay límite de correos, inténtalo más tarde.'); } }}>✉️ Enviar enlace de contraseña</button><button className="secondary" type="button" onClick={() => void cambiarClaveCliente()}>🔑 Cambiar contraseña</button></div><small className="securityFoot">Por seguridad, las contraseñas se envían a la función protegida y no se guardan en el navegador. Evita usar contraseñas compartidas.</small></div></section><section className="panel"><h3>Directorio de clientes · {clients.length}</h3><button className="secondary" type="button" disabled={clientsLoading} onClick={() => void cargarClientes()}>{clientsLoading ? 'Consultando…' : '🔄 Actualizar información'}</button>{clients.length === 0 && <p className="muted">Todavía no hay clientes registrados.</p>}{clients.map(c => <div className="row" key={c.id}><div><strong>{c.name}</strong><small>{c.email} · {c.document || 'Sin documento'} · {c.country || 'Colombia'} · {c.dialCode || '+57'} {c.phone} · {c.access}</small></div><div className="actions"><button className="secondary" onClick={() => editClient(c)}>Editar</button><button className="secondary" onClick={() => void cambiarEstadoCliente(c)}>{c.enabled ? 'Suspender' : 'Reactivar'}</button></div></div>)}</section></>}
       {page === 'Accesos' && <><section className="panel"><div className="sectionEyebrow">SEGURIDAD Y ACCESO</div><h3>Activación de cuentas</h3><p className="muted">Aquí se gestionarán las invitaciones, contraseñas temporales y recuperación de acceso por correo. Esta versión no almacena contraseñas ni simula un inicio de sesión seguro.</p><div className="accessTiles"><div><strong>👥 {workers.length} empleados</strong><p className="muted">Creados por administración</p></div><div><strong>🏬 {clients.length} clientes</strong><p className="muted">Registrados para el portal mayorista</p></div></div><div className="securityPanel"><div className="securityTitle">🛡️ Recuperación del administrador general</div><p className="muted">El administrador podrá recuperar su propia clave con un enlace seguro enviado a su correo registrado. Ningún empleado podrá consultar su contraseña.</p><button className="secondary" type="button" onClick={() => alert('La recuperación del administrador por correo se habilitará con autenticación segura.')}>Recuperar clave de administrador</button></div><div className="notice">🔒 Próxima integración: autenticación segura con invitación por correo, contraseña temporal, cambio obligatorio en el primer ingreso y recuperación mediante enlace de un solo uso. Los permisos se verificarán en el servidor.</div><button className="secondary" onClick={() => setPage('Empleados')}>Gestionar empleados</button> <button className="secondary" onClick={() => setPage('Clientes')}>Gestionar clientes</button></section><section className="panel"><h3>Vista prevista del acceso</h3><div className="accessDemo"><label className="field">Correo electrónico<input type="email" placeholder="usuario@empresa.com" autoComplete="off" /></label><label className="field">Contraseña<input type="password" placeholder="••••••••" autoComplete="off" /></label><button className="primary" type="button" onClick={() => alert('Vista de diseño. El acceso real se habilitará cuando conectemos el servicio de autenticación.')}>Iniciar sesión (demostración)</button><button className="secondary" type="button" onClick={() => alert('El restablecimiento por correo estará disponible al conectar la autenticación.')}>Olvidé mi contraseña</button></div></section></>}
-      {page === 'Permisos' && <section className="panel"><h3>Permisos personalizados</h3><p className="muted">El administrador podrá decidir qué puede hacer cada trabajador. Los permisos se guardan en Supabase, pero el servidor debe validarlos antes de autorizar cada operación.</p><select className="wideSelect" value={selectedWorker} onChange={e => setSelectedWorker(e.target.value)}><option value="">Seleccionar empleado</option>{workers.map(w => <option key={w.id} value={w.id}>{w.name} · {w.role}</option>)}</select>{selected && <div style={{ marginTop: 16 }}>{permissions.map(p => <label className="check" key={p}><span>{p}</span><input type="checkbox" checked={selected.permissions.includes(p)} onChange={() => void cambiarPermisoEmpleado(selected, p)} /></label>)}</div>}</section>}
+      {page === 'Permisos' && <section className="panel"><h3>Permisos personalizados</h3><p className="muted">El administrador podrá decidir qué puede hacer cada trabajador. Los permisos se registran en JAIVISA, pero el servidor debe validarlos antes de autorizar cada operación.</p><select className="wideSelect" value={selectedWorker} onChange={e => setSelectedWorker(e.target.value)}><option value="">Seleccionar empleado</option>{workers.map(w => <option key={w.id} value={w.id}>{w.name} · {w.role}</option>)}</select>{selected && <div style={{ marginTop: 16 }}>{permissions.map(p => <label className="check" key={p}><span>{p}</span><input type="checkbox" checked={selected.permissions.includes(p)} onChange={() => void cambiarPermisoEmpleado(selected, p)} /></label>)}</div>}</section>}
       {page === 'Centro de Pedidos' && <CentroPedidos rol="administrador" />}
       {page === 'Operaciones empresariales' && <ModulosEmpresa rol="administrador" />}
       {page === 'Carrito' && <><section className="panel"><h3>Datos del cliente</h3><div className="grid">{([['customer', 'Cliente o negocio'], ['phone', 'Teléfono / WhatsApp'], ['email', 'Correo electrónico'], ['city', 'Ciudad'], ['address', 'Dirección']] as const).map(([key, title]) => <label className="field" key={key}>{title}<input value={customer[key]} onChange={e => setCustomer({ ...customer, [key]: e.target.value })} /></label>)}</div></section><section className="panel"><h3>Productos por categoría</h3><p className="muted">Elige una categoría para ver sus productos. Puedes agregar artículos de varios catálogos al mismo pedido.</p><button className="primary" onClick={() => { setCategory(''); setSearch(''); setPage('Catálogo'); }}>🗂️ Explorar catálogos →</button></section><section className="panel"><h3>Carrito de compras</h3>{cart.length === 0 ? <p className="muted">El carrito está vacío.</p> : <><div className="table"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio negociado</th><th>IVA</th><th>Total</th><th></th></tr></thead><tbody>{cart.map(l => { const p = getProduct(l.productId); return <tr key={l.productId}><td>{p?.name || 'Producto retirado'}</td><td><input type="number" min="1" value={l.qty} onChange={e => updateLine(l.productId, { qty: Math.max(1, Number(e.target.value)) })} /></td><td><input type="number" min="0" value={l.price} onChange={e => updateLine(l.productId, { price: Math.max(0, Number(e.target.value)) })} /></td><td>{p?.iva || 0}%</td><td>{money(l.qty * l.price * (1 + (p?.iva || 0) / 100))}</td><td><button className="secondary danger" onClick={() => setCart(old => old.filter(x => x.productId !== l.productId))}>Quitar</button></td></tr>; })}</tbody></table></div><div className="total"><div>Subtotal sin IVA <strong>{money(subtotal)}</strong></div><div>IVA <strong>{money(iva)}</strong></div><div className="big">TOTAL <span>{money(subtotal + iva)}</span></div></div><button className="primary" onClick={saveOrder}>Guardar pedido</button></>}</section></>}
-      {page === 'Pedidos' && <><section className="panel"><h3>Estadísticas de cobros · prototipo local</h3><p className="muted">Las cifras siguientes se calculan sobre pedidos guardados en este navegador. No son todavía ventas sincronizadas con Supabase.</p><div className="grid"><div className="card"><small>Ventas efectivas (pagadas)</small><b>{money(orders.filter(esVentaEfectiva).reduce((t, o) => t + totalPedido(o), 0))}</b></div><div className="card"><small>Dinero recibido</small><b>{money(orders.reduce((t, o) => t + (o.montoPagado || 0), 0))}</b></div><div className="card"><small>Cartera pendiente</small><b>{money(orders.reduce((t, o) => t + Math.max(0, totalPedido(o) - (o.montoPagado || 0)), 0))}</b></div></div></section><section className="panel"><h3>Historial de pedidos</h3>{orders.length === 0 && <p className="muted">Todavía no hay pedidos.</p>}{orders.map(o => <div className="row" key={o.id}><div><strong>{o.id} · {o.customer}</strong><small>{o.created} · {o.city} · {o.lines.length} referencias · {money(totalPedido(o))}</small><small>Pago: {o.pago === 'pagado' ? 'PAGADO' : o.pago === 'parcial' ? 'PARCIAL' : 'PENDIENTE'}</small></div><div className="actions" style={{ flexWrap: 'wrap' }}><span className="badge">{o.status}</span><select aria-label="Estado de pago" value={o.pago || 'pendiente'} onChange={e => registrarPago(o, e.target.value as 'pendiente' | 'parcial' | 'pagado')}><option value="pendiente">Pago pendiente</option><option value="parcial">Pago parcial</option><option value="pagado">Pagado totalmente</option></select><button className="secondary" onClick={() => imprimirOrdenIlustrada(o)}>🖨️ Pedido con fotos / PDF</button><button className="secondary" onClick={() => { setSelectedOrder(o.id); setPage('Etiquetas'); }}>Etiquetas</button>{destinatariosWA.filter(d => d.activo).map(d => <button key={d.id} className="secondary" onClick={() => compartirWhatsApp(o, d)}>WhatsApp · {d.nombre}</button>)}</div></div>)}</section></>}
+      {page === 'Pedidos' && <><section className="panel"><h3>Estadísticas de cobros · prototipo local</h3><p className="muted">Las cifras siguientes se calculan sobre pedidos guardados en este navegador. No son todavía ventas sincronizadas con JAIVISA.</p><div className="grid"><div className="card"><small>Ventas efectivas (pagadas)</small><b>{money(orders.filter(esVentaEfectiva).reduce((t, o) => t + totalPedido(o), 0))}</b></div><div className="card"><small>Dinero recibido</small><b>{money(orders.reduce((t, o) => t + (o.montoPagado || 0), 0))}</b></div><div className="card"><small>Cartera pendiente</small><b>{money(orders.reduce((t, o) => t + Math.max(0, totalPedido(o) - (o.montoPagado || 0)), 0))}</b></div></div></section><section className="panel"><h3>Historial de pedidos</h3>{orders.length === 0 && <p className="muted">Todavía no hay pedidos.</p>}{orders.map(o => <div className="row" key={o.id}><div><strong>{o.id} · {o.customer}</strong><small>{o.created} · {o.city} · {o.lines.length} referencias · {money(totalPedido(o))}</small><small>Pago: {o.pago === 'pagado' ? 'PAGADO' : o.pago === 'parcial' ? 'PARCIAL' : 'PENDIENTE'}</small></div><div className="actions" style={{ flexWrap: 'wrap' }}><span className="badge">{o.status}</span><select aria-label="Estado de pago" value={o.pago || 'pendiente'} onChange={e => registrarPago(o, e.target.value as 'pendiente' | 'parcial' | 'pagado')}><option value="pendiente">Pago pendiente</option><option value="parcial">Pago parcial</option><option value="pagado">Pagado totalmente</option></select><button className="secondary" onClick={() => imprimirOrdenIlustrada(o)}>🖨️ Pedido con fotos / PDF</button><button className="secondary" onClick={() => { setSelectedOrder(o.id); setPage('Etiquetas'); }}>Etiquetas</button>{destinatariosWA.filter(d => d.activo).map(d => <button key={d.id} className="secondary" onClick={() => compartirWhatsApp(o, d)}>WhatsApp · {d.nombre}</button>)}</div></div>)}</section></>}
       {page === 'Bodega' && <><section className="panel"><h3>🔔 Centro de bodega</h3><p className="muted">Cuando conectemos una base de datos en tiempo real, los pedidos nuevos podrán activar una alerta en los equipos autorizados.</p><button className="primary" onClick={() => { setSound(true); beep(); }}>🔊 Probar alerta sonora</button>{sound && <span className="badge" style={{ marginLeft: 10 }}>Sonido probado</span>}</section><section className="panel"><h3>Pedidos por preparar</h3>{orders.length === 0 && <p className="muted">Crea un pedido desde el carrito para verlo aquí.</p>}{orders.map(o => <div className="row" key={o.id}><div><strong>{o.id} · {o.customer}</strong><small>{o.city} · {o.created}</small></div><div className="actions"><select value={o.status} onChange={e => changeStatus(o.id, e.target.value)}><option>Nuevo</option><option>En preparación</option><option>Empacado</option><option>En ruta</option><option>Entregado</option></select><button className="secondary" onClick={() => { setSelectedOrder(o.id); setPage('Etiquetas'); }}>Imprimir etiqueta</button></div></div>)}</section></>}
       {page === 'Etiquetas' && <section className="panel"><h3>🏷️ Etiquetas internas de despacho</h3><p className="muted">Sin precios. Cada caja recibe un identificador único vinculado al pedido. La impresión de esta versión es básica; el código escaneable y el ajuste exacto a las impresoras se implementarán en la siguiente etapa.</p><div className="grid"><label className="field">Pedido<select value={chosenOrder?.id || ''} onChange={e => setSelectedOrder(e.target.value)}>{orders.length === 0 && <option value="">Sin pedidos</option>}{orders.map(o => <option key={o.id} value={o.id}>{o.id} · {o.customer}</option>)}</select></label><label className="field">Impresora<select value={labelType} onChange={e => setLabelType(e.target.value)}><option>Brother QL-800 · Adhesiva</option><option>Epson TM-T88V · Térmica</option><option>Impresora normal · Hoja</option></select></label><label className="field">Cantidad de cajas / etiquetas<input type="number" min="1" max="100" value={labelCount} onChange={e => setLabelCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} /></label></div>{chosenOrder && <div className="labelPreview" style={{ marginTop: 20 }}><h3>JAIVISA · BODEGA</h3><strong>{chosenOrder.id}</strong><p>Cliente: {chosenOrder.customer}</p><p>Teléfono: {chosenOrder.phone}</p><p>Ciudad: {chosenOrder.city}</p><p>Dirección: {chosenOrder.address}</p><p>Caja 1 de {labelCount}</p><hr /><strong>{chosenOrder.id}-C01</strong><p className="muted">Identificador interno · Vista previa</p></div>}<button className="primary" style={{ marginTop: 16 }} onClick={printLabel}>🖨️ Imprimir etiquetas de prueba</button><p className="notice">Antes de imprimir en rollos adhesivos Brother, debemos adaptar el tamaño de página al rollo DK que utilicen. La Epson TM-T88V se usará para comprobantes térmicos.</p></section>}
       {page === 'Catálogos PDF' && <CatalogosVistaPrevia />}
-      {page === 'WhatsApp y pedidos' && <><section className="panel"><h3>📲 Destinatarios de pedidos por WhatsApp</h3><p className="muted">Solo administración. Números guardados en Supabase y protegidos por políticas RLS. Para compartir un pedido, abre Pedidos y pulsa el botón del destinatario. El PDF ilustrado se adjunta manualmente en WhatsApp.</p>{waMensaje && <p role="alert" className="notice">{waMensaje}</p>}<div className="grid"><label className="field">Nombre del destinatario<input value={waNombre} onChange={e => setWaNombre(e.target.value)} placeholder="Bodega principal" /></label><label className="field">Número internacional<input value={waTelefono} onChange={e => setWaTelefono(e.target.value)} placeholder="+573001234567" /></label></div><div className="actions"><button className="primary" onClick={() => void guardarDestinatarioWA()}>Guardar destinatario</button><button className="secondary" onClick={() => void cargarDestinatariosWA()} disabled={waCargando}>{waCargando ? 'Cargando…' : 'Actualizar lista'}</button></div></section><section className="panel"><h3>Números configurados</h3>{destinatariosWA.length === 0 && <p className="muted">No hay números configurados o no se ha conectado la tabla SQL.</p>}{destinatariosWA.map(d => <div className="row" key={d.id}><div><strong>{d.nombre}</strong><small>{d.telefono} · {d.activo ? 'Activo' : 'Inactivo'}</small></div><div className="actions" style={{ flexWrap: 'wrap' }}><button className="secondary" onClick={() => void actualizarDestinatarioWA(d, { activo: !d.activo })}>{d.activo ? 'Desactivar' : 'Activar'}</button><button className="secondary" onClick={() => { const nombre = window.prompt('Nombre del destinatario', d.nombre); if (nombre !== null && nombre.trim()) void actualizarDestinatarioWA(d, { nombre: nombre.trim() }); }}>Editar nombre</button><button className="secondary" onClick={() => { const telefono = window.prompt('Número internacional (+57...)', d.telefono); if (telefono === null) return; const limpio = telefono.replace(/[\s()\-]/g, ''); if (!/^\+[1-9][0-9]{7,14}$/.test(limpio)) { alert('Número inválido'); return; } void actualizarDestinatarioWA(d, { telefono: limpio }); }}>Editar número</button><button className="secondary danger" onClick={() => void eliminarDestinatarioWA(d)}>Eliminar</button></div></div>)}</section></>}
+      {page === 'WhatsApp y pedidos' && <><section className="panel"><h3>📲 Destinatarios de pedidos por WhatsApp</h3><p className="muted">Solo administración. Números registrados en JAIVISA y protegidos por políticas RLS. Para compartir un pedido, abre Pedidos y pulsa el botón del destinatario. El PDF ilustrado se adjunta manualmente en WhatsApp.</p>{waMensaje && <p role="alert" className="notice">{waMensaje}</p>}<div className="grid"><label className="field">Nombre del destinatario<input value={waNombre} onChange={e => setWaNombre(e.target.value)} placeholder="Bodega principal" /></label><label className="field">Número internacional<input value={waTelefono} onChange={e => setWaTelefono(e.target.value)} placeholder="+573001234567" /></label></div><div className="actions"><button className="primary" onClick={() => void guardarDestinatarioWA()}>Guardar destinatario</button><button className="secondary" onClick={() => void cargarDestinatariosWA()} disabled={waCargando}>{waCargando ? 'Cargando…' : 'Actualizar lista'}</button></div></section><section className="panel"><h3>Números configurados</h3>{destinatariosWA.length === 0 && <p className="muted">No hay números configurados o no se ha conectado la tabla SQL.</p>}{destinatariosWA.map(d => <div className="row" key={d.id}><div><strong>{d.nombre}</strong><small>{d.telefono} · {d.activo ? 'Activo' : 'Inactivo'}</small></div><div className="actions" style={{ flexWrap: 'wrap' }}><button className="secondary" onClick={() => void actualizarDestinatarioWA(d, { activo: !d.activo })}>{d.activo ? 'Desactivar' : 'Activar'}</button><button className="secondary" onClick={() => { const nombre = window.prompt('Nombre del destinatario', d.nombre); if (nombre !== null && nombre.trim()) void actualizarDestinatarioWA(d, { nombre: nombre.trim() }); }}>Editar nombre</button><button className="secondary" onClick={() => { const telefono = window.prompt('Número internacional (+57...)', d.telefono); if (telefono === null) return; const limpio = telefono.replace(/[\s()\-]/g, ''); if (!/^\+[1-9][0-9]{7,14}$/.test(limpio)) { alert('Número inválido'); return; } void actualizarDestinatarioWA(d, { telefono: limpio }); }}>Editar número</button><button className="secondary danger" onClick={() => void eliminarDestinatarioWA(d)}>Eliminar</button></div></div>)}</section></>}
       <footer className="footer">JAIVISA · Portal Mayorista · Portal de gestión · Documentos de bodega no equivalen a factura electrónica</footer></main></div></>;
 }
 
@@ -1248,10 +1370,18 @@ let activo = true; (async () => {
 .jv-client-shell .jv-catalog-card{border-radius:12px!important}
 .jv-client-shell .jv-catalog-open{border-radius:8px!important}
 `}</style><div className="jv-client-shell" style={{ minHeight: '100vh', fontFamily: 'Inter,system-ui,sans-serif', color: '#31183f' }}>
-      <header className="jv-client-header"><div><img src={JAIVISA_LOGO} alt="Jaivisa.com · Logo oficial" style={{ width: 190, maxWidth: "55vw", height: 72, objectFit: "contain", objectPosition: "left center", display: "block" }} /><div style={{ fontSize: 12, opacity: .85, letterSpacing: 1 }}>PORTAL MAYORISTA · CLIENTES</div></div><button style={{ ...boton, background: '#fff', color: '#4c1d69' }} onClick={salir}>Cerrar sesión</button></header>
-      <main style={{ maxWidth: 1200, margin: 'auto', padding: '32px 22px 65px' }}>
-        <h1 className="jv-client-greeting">Bienvenido, <span>{nombreClienteElegante(perfil.nombre)}</span><span className="jv-greeting-dot">.</span></h1>
-        <p style={{ color: '#746080', marginBottom: 20 }}>Descubre primero nuestros catálogos mayoristas y encuentra los productos para tu negocio.</p>
+      <div className="jv-client-estructura jv-portal-estructura">
+        <aside className="jv-portal-lateral" aria-label="Menú de Clientes">
+          <div className="jv-portal-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+          <nav aria-label="Secciones de Clientes">
+            {([['inicio', 'Inicio'], ['catalogos', 'Catálogos PDF'], ['productos', 'Productos'], ['cuenta', 'Mi cuenta']] as const).map(([id, titulo]) => <button key={id} type="button" className={seccion === id ? 'activo' : ''} aria-current={seccion === id ? 'page' : undefined} onClick={() => setSeccion(id)}><IconoClienteNext tipo={id} /> {titulo}</button>)}
+          </nav>
+          <span className="jv-portal-lateral-pie">JAIVISA NEXT · Clientes</span>
+        </aside>
+        <main className="jv-portal-contenido" style={{ maxWidth: 'none', width: '100%', margin: 0, padding: '32px 22px 65px' }}>
+        <JaivisaHeroPanoramico portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} nombre={perfil.nombre ?? undefined} />
+        <IsaEnSeccionJAIVISA portal="clientes" seccion={seccion === "inicio" ? "Inicio" : seccion === "catalogos" ? "Catálogos PDF" : seccion === "productos" ? "Productos" : "Mi cuenta"} />
+
         <nav style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }} aria-label="Secciones del portal">
           <button type="button" className={'jv-client-tab ' + (seccion === 'catalogos' ? 'active' : '')} onClick={() => setSeccion('catalogos')}><IconoClienteNext tipo="catalogos" /> Catálogos</button>
           <button type="button" className={'jv-client-tab ' + (seccion === 'productos' ? 'active' : '')} onClick={() => setSeccion('productos')}><IconoClienteNext tipo="productos" /> Productos</button>
@@ -1269,7 +1399,7 @@ let activo = true; (async () => {
         {seccion === 'cuenta' && <section style={{ background: '#fff', border: '1px solid #e9d9f2', borderRadius: 18, padding: 20 }}><h2>Mi cuenta</h2><p><strong>Nombre:</strong> {perfil.nombre || 'Cliente JAIVISA'}</p><p style={{ fontSize: 13, color: '#746080' }}>Para modificar tus datos de acceso, comunícate con JAIVISA.</p><button type="button" className="jv-client-tab" onClick={() => void salir()}>Cerrar sesión</button></section>}
       </main><nav className="jv-mobile-bottom" aria-label="Navegación móvil">
         {([['inicio', 'Inicio'], ['catalogos', 'Catálogos'], ['productos', 'Productos'], ['cuenta', 'Mi cuenta']] as const).map(([id, texto]) => <button key={id} type="button" aria-current={seccion === id ? 'page' : undefined} onClick={() => { setSeccion(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><span aria-hidden="true"><IconoClienteNext tipo={id} /></span>{texto}</button>)}
-      </nav></div></>;
+      </nav></div></div></>;
 }
 
 export function AprobacionesClientes() {
@@ -1385,7 +1515,7 @@ function PanelVendedor({ perfil, salir }: { perfil: PerfilAcceso; salir: () => P
   const [numeroBorrador, setNumeroBorrador] = useState(() => `BORRADOR-${Date.now().toString(36).toUpperCase()}`);
   const opciones: { id: Vista; titulo: string; descripcion: string; icono: string }[] = [
     { id: 'catalogosPDF', titulo: 'Catálogos PDF', descripcion: 'Consultar los catálogos publicados por JAIVISA', icono: 'libros' },
-    { id: 'catalogo', titulo: 'Catálogo', descripcion: 'Productos autorizados en Supabase', icono: 'caja' },
+    { id: 'catalogo', titulo: 'Catálogo', descripcion: 'Productos disponibles en JAIVISA', icono: 'caja' },
     { id: 'pedido', titulo: 'Nuevo pedido', descripcion: 'Preparar y compartir un borrador', icono: 'carrito' },
     { id: 'clientes', titulo: 'Mis clientes', descripcion: 'Cartera comercial asignada', icono: 'usuarios' },
     { id: 'historial', titulo: 'Mis pedidos', descripcion: 'Historial y seguimiento', icono: 'pedidos' },
@@ -1405,13 +1535,13 @@ function PanelVendedor({ perfil, salir }: { perfil: PerfilAcceso; salir: () => P
         stock: typeof (p.stock ?? p.existencia) === 'number' ? Number(p.stock ?? p.existencia) : null
       }));
       setProductos(normalizados);
-    } catch (e: any) { setError('No fue posible consultar productos: ' + (e?.message || 'Revisa los permisos de Supabase.')); }
+    } catch (e: any) { setError('No fue posible consultar productos: ' + (e?.message || 'Verifica los permisos de acceso de tu cuenta.')); }
     finally { setCargando(false); }
   };
   const cargarCatalogosPDF = async () => {
     setCargandoPDF(true); setErrorPDF('');
     try { setCatalogosPDF(await listarCatalogosJAIVISA()); }
-    catch (e: any) { setErrorPDF('No se pudieron consultar los catálogos: ' + (e?.message || 'Revisa los permisos de Supabase Storage.')); }
+    catch (e: any) { setErrorPDF('No se pudieron consultar los catálogos: ' + (e?.message || 'Verifica el acceso a los documentos de JAIVISA.')); }
     finally { setCargandoPDF(false); }
   };
   useEffect(() => { void cargarProductos(); void cargarCatalogosPDF(); }, []);
@@ -1501,21 +1631,26 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
   const btn: React.CSSProperties = { border: 0, borderRadius: 12, padding: '12px 17px', background: '#622582', color: '#fff', fontWeight: 750, cursor: 'pointer' };
   const panel: React.CSSProperties = { background: '#fff', border: '1px solid #e9ddef', borderRadius: 18, padding: 'clamp(16px,3vw,25px)', boxShadow: '0 8px 24px #431c5909' };
   const etiqueta = (t: string) => <span style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: '#5a3970' }}>{t}</span>;
-  return <main className="jv-vendedor jv-unified" style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#f6effb,#fff 55%,#f8f5fb)', fontFamily: 'Inter,system-ui,sans-serif', color: '#341943', padding: 'clamp(12px,3vw,30px)' }}>
+  return <main className="jv-vendedor jv-unified jv-vendedor-portal" style={{ minHeight: '100vh', background: 'linear-gradient(160deg,#f6effb,#fff 55%,#f8f5fb)', fontFamily: 'Inter,system-ui,sans-serif', color: '#341943', padding: 'clamp(12px,3vw,30px)' }}>
     <style>{jaivisaNextCSS}</style><style>{jaivisaNextPremiumCSS}</style><style>{`.jv-vendedor *{box-sizing:border-box}.jv-vendedor button{font:inherit;cursor:pointer}.jv-vendedor button:disabled{opacity:.5;cursor:not-allowed}.jv-vendedor button:focus-visible,.jv-vendedor input:focus-visible{outline:3px solid #bd77ea;outline-offset:2px}.jv-vendedor .jv-card{background:#fff;border:1px solid #e9ddef;border-radius:18px;padding:20px;text-align:left;min-height:145px;box-shadow:0 8px 22px #431c590d;transition:transform .15s}.jv-vendedor .jv-card:hover{transform:translateY(-2px)}.jv-vendedor .jv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}.jv-vendedor .jv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.jv-vendedor .jv-muted{color:#75667f;line-height:1.55}.jv-vendedor .jv-field{display:block;margin-bottom:13px}.jv-vendedor .jv-product{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid #f0e8f4;padding:15px 0}@media(max-width:520px){.jv-vendedor .jv-card{padding:16px;min-height:130px}}`}</style>
-    <div style={{ maxWidth: 1130, margin: '0 auto' }}>
+    <div className="jv-vendedor-estructura jv-portal-estructura" style={{ width: '100%', maxWidth: 'none', margin: 0 }}>
+      <aside className="jv-portal-lateral" aria-label="Menú de Vendedores">
+        <div className="jv-portal-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+        <nav aria-label="Secciones de Vendedores">
+          <button type="button" className={vista === 'inicio' ? 'activo' : ''} aria-current={vista === 'inicio' ? 'page' : undefined} onClick={() => setVista('inicio')}><IconoNext nombre="caja" tamano={18} /> Inicio</button>
+          {opciones.map(o => <button key={o.id} type="button" className={vista === o.id ? 'activo' : ''} aria-current={vista === o.id ? 'page' : undefined} onClick={() => setVista(o.id)}><IconoNext nombre={o.icono} tamano={18} /> {o.titulo}</button>)}
+        </nav>
+        <span className="jv-portal-lateral-pie">JAIVISA NEXT · Vendedores</span>
+      </aside>
+      <div className="jv-portal-contenido jv-vendedor-contenido">
+      
       <header className="jv-row" style={{ background: 'linear-gradient(110deg,#321047,#632a86)', color: '#fff', borderRadius: 20, padding: '15px 20px', boxShadow: '0 12px 30px #4c1d6930' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><img src={JAIVISA_LOGO} alt="JAIVISA" style={{ width: 100, height: 62, objectFit: 'contain' }} /><div><strong style={{ fontSize: 12, letterSpacing: 1 }}>JAIVISA · PORTAL MAYORISTA</strong><div style={{ fontSize: 14 }}>Centro comercial del vendedor</div></div></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button aria-label="Abrir notificaciones" title="Notificaciones" onClick={tocarCampana} style={{ ...btn, background: '#fff', color: '#572077' }}><IconoNext nombre="campana" tamano={19} /> {notificaciones.length || ''}</button><button onClick={() => void salir()} style={{ ...btn, background: '#fff', color: '#572077' }}>Salir</button></div>
       </header>
-      {campana && <aside style={{ ...panel, marginTop: 12 }}><strong>Centro de notificaciones</strong><p className="jv-muted" style={{ fontSize: 14 }}>Las alertas reales y su sonido se activarán cuando configuremos los pedidos persistentes, las políticas de acceso y Supabase Realtime. Esta pantalla no inventa pedidos.</p>{notificaciones.length === 0 && <p>No hay notificaciones registradas.</p>}<p style={{ fontSize: 12, color: '#786389' }}>El navegador puede requerir una interacción para permitir audio.</p></aside>}
-      <section className="jv-next-welcome" aria-label="Bienvenida al espacio comercial">
-        <div className="jv-next-welcome-copy"><span className="jv-next-eyebrow"><span className="jv-next-pulse" /> JAIVISA NEXT <span className="jv-next-eyebrow-divider">/</span> SALES WORKSPACE</span>
-          <h1>Bienvenido, <span>{perfil.nombre ? perfil.nombre.split(' ')[0].toLocaleUpperCase('es') : 'EQUIPO'}</span><span className="jv-next-period">.</span></h1>
-          <p>Tu espacio comercial, conectado a cada oportunidad.</p>
-        </div>
-        <div className="jv-next-hero-graphic" aria-hidden="true"><div className="jv-next-ring jv-next-ring-one" /><div className="jv-next-ring jv-next-ring-two" /><div className="jv-next-hero-core"><IconoNext nombre="grafico" tamano={33} /></div></div>
-      </section>
+      {campana && <aside style={{ ...panel, marginTop: 12 }}><strong>Centro de notificaciones</strong><p className="jv-muted" style={{ fontSize: 14 }}>Las alertas reales y su sonido se activarán cuando configuremos los pedidos persistentes, las autorizaciones y el servicio de avisos de JAIVISA. Esta pantalla no inventa pedidos.</p>{notificaciones.length === 0 && <p>No hay notificaciones registradas.</p>}<p style={{ fontSize: 12, color: '#786389' }}>El navegador puede requerir una interacción para permitir audio.</p></aside>}
+      <JaivisaHeroPanoramico portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} nombre={perfil.nombre ?? undefined} />
+      <IsaEnSeccionJAIVISA portal="vendedores" seccion={vista === "inicio" ? "Inicio" : (opciones.find(o => o.id === vista)?.titulo || vista)} />
       <aside className="jv-next-status" aria-label="Estado de la plataforma">
         <div className="jv-next-status-icon"><IconoNext nombre="escudo" tamano={21} /></div>
         <div className="jv-next-status-copy"><div className="jv-next-status-heading"><strong>Entorno de preparación</strong><span className="jv-next-status-label">VISTA DE PRUEBA</span></div><p>Consulta productos y prepara pedidos para compartir por WhatsApp. <b>Los borradores todavía no se registran como ventas.</b></p>
@@ -1537,7 +1672,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
           {!cargandoPDF && !errorPDF && catalogosPDF.length > 0 && catalogosPDF.every(c => !c.nombre.toLocaleLowerCase('es').includes(buscarPDF.toLocaleLowerCase('es'))) && <p>No se encontraron catálogos con ese nombre.</p>}
           <section aria-label="Vender desde catálogos PDF" style={{ marginTop: 22, padding: 18, border: '1px solid #e5d3ee', borderRadius: 16, background: '#fbf7fe' }}>
             <h3 style={{ marginTop: 0 }}>🛒 Vender desde el PDF</h3>
-            <p className="jv-muted">Abre el PDF, identifica la referencia del artículo y búscala aquí. El producto se verifica contra la lista de precios de Supabase y se agrega al mismo carrito que el catálogo interactivo.</p>
+            <p className="jv-muted">Abre el PDF, identifica la referencia del artículo y búscala aquí. El producto se verifica contra la lista de precios vigente de JAIVISA y se agrega al mismo carrito que el catálogo interactivo.</p>
             <label className="jv-field">{etiqueta('Catálogo que estás consultando (opcional)')}
               <select style={campo} value={catalogoOrigen} onChange={e => setCatalogoOrigen(e.target.value)}>
                 <option value="">Seleccionar catálogo</option>
@@ -1553,7 +1688,7 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
               </label>
             </div>
             {referenciaPDF.trim().length > 0 && referenciaPDF.trim().length < 2 && <p className="jv-muted">Escribe al menos dos caracteres.</p>}
-            {referenciaPDF.trim().length >= 2 && coincidenciasPDF.length === 0 && <p role="status">No encontramos esa referencia entre los productos autorizados. Verifica que esté registrada en Supabase.</p>}
+            {referenciaPDF.trim().length >= 2 && coincidenciasPDF.length === 0 && <p role="status">No encontramos esa referencia entre los productos autorizados. Verifica que esté registrada en el catálogo de JAIVISA.</p>}
             {coincidenciasPDF.map(p => <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 0', borderBottom: '1px solid #e9dded' }}>
               <div><strong>{p.nombre}</strong><div className="jv-muted">Ref. {p.codigo || 'Sin código'} · {p.precio === null ? 'Precio pendiente' : formato(p.precio)} {p.stock === null ? '' : ' · Stock informado: ' + p.stock}</div></div>
               <button type="button" style={btn} disabled={p.precio === null} onClick={() => agregarDesdePDF(p)}>+ Agregar al carrito</button>
@@ -1565,16 +1700,17 @@ const existe = actual.find(x => x.producto.id === p.id); return existe
           </section>
         </div>}
         {(vista === 'catalogo' || vista === 'pedido') && <>
-          {vista === 'catalogo' && <div style={{ marginTop: 20 }}><label className="jv-field">{etiqueta('Buscar productos')}<input style={campo} value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, código o categoría" /></label><button style={{ ...btn, marginBottom: 14 }} onClick={() => void cargarProductos()} disabled={cargando}>{cargando ? 'Consultando…' : '↻ Actualizar catálogo'}</button>{error && <p role="alert" style={{ color: '#a32645' }}>{error}</p>}{!cargando && !error && productos.length === 0 && <p className="jv-muted">No hay productos visibles para tu cuenta. Comprueba los permisos de lectura en Supabase.</p>}{encontrados.map(p => <div key={p.id} className="jv-product"><div style={{ flex: '1 1 240px' }}><strong>{p.nombre}</strong><div className="jv-muted" style={{ fontSize: 13 }}>{p.codigo || 'Sin código'} · {p.categoria || 'Sin categoría'}</div><div style={{ fontSize: 14, marginTop: 4 }}>{p.precio === null ? 'Precio no disponible' : formato(p.precio)} · {p.stock === null ? 'Inventario por verificar' : 'Existencias: ' + p.stock}</div></div><button style={btn} disabled={p.precio === null} onClick={() => agregar(p)}>+ Agregar</button></div>)}</div>}
-          {vista === 'pedido' && <div style={{ marginTop: 20 }}><p className="jv-muted">Referencia {numeroBorrador}. Guarda el pedido en Supabase antes de enviarlo a Bodega.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e => setCliente(v => ({ ...v, nombre: e.target.value }))} /></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e => setCliente(v => ({ ...v, telefono: e.target.value }))} /></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e => setCliente(v => ({ ...v, ciudad: e.target.value }))} /></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e => setCliente(v => ({ ...v, direccion: e.target.value }))} /></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{ ...campo, minHeight: 70 }} value={cliente.observaciones} onChange={e => setCliente(v => ({ ...v, observaciones: e.target.value }))} /></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={() => setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length === 0 ? <p className="jv-muted">Todavía no has agregado productos.</p> : carrito.map(x => <div key={x.producto.id} className="jv-product"><div style={{ flex: '1 1 200px' }}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio || 0)} por unidad</div></div><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button style={btn} aria-label="Restar unidad" onClick={() => setCarrito(v => v.map(z => z.producto.id === x.producto.id ? { ...z, cantidad: Math.max(0, z.cantidad - 1) } : z).filter(z => z.cantidad > 0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={() => agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio || 0) * x.cantidad)}</strong></div>)}<div style={{ textAlign: 'right', margin: '18px 0' }}><strong style={{ fontSize: 20 }}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{ fontSize: 12 }}>IVA y total definitivo requieren validación comercial.</p></div><button style={{ ...btn, width: '100%', marginBottom: 10 }} disabled={enviandoPedido || !carrito.length || !cliente.nombre.trim()} onClick={() => void confirmarPedido()}>{enviandoPedido ? 'Enviando pedido…' : '✓ Confirmar y enviar pedido a Bodega'}</button><button style={{ ...btn, background: '#128C51', width: '100%', fontSize: 16 }} onClick={compartir} disabled={!carrito.length || !cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{ fontSize: 12 }}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
+          {vista === 'catalogo' && <div style={{ marginTop: 20 }}><label className="jv-field">{etiqueta('Buscar productos')}<input style={campo} value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Nombre, código o categoría" /></label><button style={{ ...btn, marginBottom: 14 }} onClick={() => void cargarProductos()} disabled={cargando}>{cargando ? 'Consultando…' : '↻ Actualizar catálogo'}</button>{error && <p role="alert" style={{ color: '#a32645' }}>{error}</p>}{!cargando && !error && productos.length === 0 && <p className="jv-muted">No hay productos visibles para tu cuenta. Verifica con Administración el acceso al catálogo.</p>}{encontrados.map(p => <div key={p.id} className="jv-product"><div style={{ flex: '1 1 240px' }}><strong>{p.nombre}</strong><div className="jv-muted" style={{ fontSize: 13 }}>{p.codigo || 'Sin código'} · {p.categoria || 'Sin categoría'}</div><div style={{ fontSize: 14, marginTop: 4 }}>{p.precio === null ? 'Precio no disponible' : formato(p.precio)} · {p.stock === null ? 'Inventario por verificar' : 'Existencias: ' + p.stock}</div></div><button style={btn} disabled={p.precio === null} onClick={() => agregar(p)}>+ Agregar</button></div>)}</div>}
+          {vista === 'pedido' && <div style={{ marginTop: 20 }}><p className="jv-muted">Referencia {numeroBorrador}. Guarda el pedido en JAIVISA antes de enviarlo a Bodega.</p><div className="jv-grid"><label className="jv-field">{etiqueta('Nombre del cliente *')}<input style={campo} value={cliente.nombre} onChange={e => setCliente(v => ({ ...v, nombre: e.target.value }))} /></label><label className="jv-field">{etiqueta('WhatsApp del cliente')}<input style={campo} value={cliente.telefono} onChange={e => setCliente(v => ({ ...v, telefono: e.target.value }))} /></label><label className="jv-field">{etiqueta('Ciudad')}<input style={campo} value={cliente.ciudad} onChange={e => setCliente(v => ({ ...v, ciudad: e.target.value }))} /></label><label className="jv-field">{etiqueta('Dirección de entrega')}<input style={campo} value={cliente.direccion} onChange={e => setCliente(v => ({ ...v, direccion: e.target.value }))} /></label></div><label className="jv-field">{etiqueta('Observaciones')}<textarea style={{ ...campo, minHeight: 70 }} value={cliente.observaciones} onChange={e => setCliente(v => ({ ...v, observaciones: e.target.value }))} /></label><div className="jv-row"><h3>Productos del borrador</h3><button style={btn} onClick={() => setVista('catalogo')}>+ Buscar productos</button></div>{carrito.length === 0 ? <p className="jv-muted">Todavía no has agregado productos.</p> : carrito.map(x => <div key={x.producto.id} className="jv-product"><div style={{ flex: '1 1 200px' }}><strong>{x.producto.nombre}</strong><div className="jv-muted">{formato(x.producto.precio || 0)} por unidad</div></div><div style={{ display: 'flex', alignItems: 'center', gap: 9 }}><button style={btn} aria-label="Restar unidad" onClick={() => setCarrito(v => v.map(z => z.producto.id === x.producto.id ? { ...z, cantidad: Math.max(0, z.cantidad - 1) } : z).filter(z => z.cantidad > 0))}>−</button><strong>{x.cantidad}</strong><button style={btn} aria-label="Sumar unidad" onClick={() => agregar(x.producto)}>+</button></div><strong>{formato((x.producto.precio || 0) * x.cantidad)}</strong></div>)}<div style={{ textAlign: 'right', margin: '18px 0' }}><strong style={{ fontSize: 20 }}>Subtotal: {formato(subtotal)}</strong><p className="jv-muted" style={{ fontSize: 12 }}>IVA y total definitivo requieren validación comercial.</p></div><button style={{ ...btn, width: '100%', marginBottom: 10 }} disabled={enviandoPedido || !carrito.length || !cliente.nombre.trim()} onClick={() => void confirmarPedido()}>{enviandoPedido ? 'Enviando pedido…' : '✓ Confirmar y enviar pedido a Bodega'}</button><button style={{ ...btn, background: '#128C51', width: '100%', fontSize: 16 }} onClick={compartir} disabled={!carrito.length || !cliente.nombre.trim()}>🟢 Enviar borrador a WhatsApp</button><p className="jv-muted" style={{ fontSize: 12 }}>WhatsApp abre el mensaje para revisión y envío manual. No genera una venta ni una notificación de bodega.</p></div>}
         </>}
         {vista === 'historial' && <CentroPedidos rol="vendedor" />}
-        {['clientes', 'agenda', 'reportes'].includes(vista) && <div style={{ marginTop: 25, padding: 20, borderRadius: 14, background: '#f8f3fb' }}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo se conectará a las tablas y políticas de Supabase correspondientes. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
+        {['clientes', 'agenda', 'reportes'].includes(vista) && <div style={{ marginTop: 25, padding: 20, borderRadius: 14, background: '#f8f3fb' }}><h3>Conexión segura pendiente</h3><p className="jv-muted">Este módulo estará disponible cuando finalice su configuración en JAIVISA. No mostramos clientes, pedidos ni resultados inventados y no permitimos modificaciones sin verificar los permisos.</p></div>}
       </section>}
       <nav className="jv-mobile-nav" aria-label="Navegación del vendedor">
         {([{ id: 'inicio', titulo: 'Inicio', icono: 'caja' }, { id: 'clientes', titulo: 'Clientes', icono: 'usuarios' }, { id: 'catalogosPDF', titulo: 'Catálogos', icono: 'libros' }, { id: 'catalogo', titulo: 'Productos', icono: 'caja' }, { id: 'pedido', titulo: 'Pedido', icono: 'carrito' }] as const).map(item => <button key={item.id} type="button" aria-current={vista === item.id ? 'page' : undefined} onClick={() => { setVista(item.id); setAviso(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><IconoNext nombre={item.icono} tamano={21} /><span>{item.titulo}</span></button>)}
       </nav>
       <footer style={{ textAlign: 'center', padding: 25, fontSize: 12, color: '#887293' }}>JAIVISA · Portal Mayorista · Panel comercial</footer>
+      </div>
     </div>
   </main>;
 }
@@ -1660,10 +1796,10 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         ? await supabase.from('productos').insert(cambios).select('*')
         : await supabase.from('productos').update(cambios).eq('id', productoEditando.id).select('*');
       if (resultado.error) throw new Error('No se pudo guardar el producto: ' + resultado.error.message);
-      if (!resultado.data?.length) throw new Error('Supabase no confirmó la actualización. Revisa los permisos de la tabla productos (RLS).');
+      if (!resultado.data?.length) throw new Error('JAIVISA no pudo confirmar la actualización del producto. Solicita revisar los permisos de acceso.');
       fichaGuardada = true;
       const guardado = resultado.data[0] as Record<string, unknown>;
-      if (foto && String(guardado.imagen_url ?? '') !== foto) throw new Error('Supabase no confirmó la dirección de la fotografía en el producto.');
+      if (foto && String(guardado.imagen_url ?? '') !== foto) throw new Error('JAIVISA no pudo confirmar la fotografía del producto.');
       const eraNuevo = crearNuevo;
       setProductoEditando(null); setFotoPendiente(null); setCrearNuevo(false);
       await cargar();
@@ -1755,41 +1891,53 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
       }).subscribe();
     return () => { activo = false; habilitadoRef.current = false; void supabase.removeChannel(canal); void audioRef.current?.close(); audioRef.current = null; vozIsaRef.current?.pause(); vozIsaRef.current = null; };
   }, []);
-  const cards: { id: Seccion; icono: string; titulo: string; detalle: string }[] = [
-    { id: 'pedidos', icono: 'pedidos', titulo: 'Pedidos recibidos', detalle: 'Pendientes de preparación' },
-    { id: 'inventario', icono: 'caja', titulo: 'Inventario', detalle: 'Productos y existencias' },
-    { id: 'despachos', icono: 'camion', titulo: 'Despachos', detalle: 'Seguimiento de entregas' },
-    { id: 'etiquetas', icono: 'etiqueta', titulo: 'Etiquetas', detalle: 'Impresión y empaque' },
-    { id: 'catalogos', icono: 'libros', titulo: 'Catálogos PDF', detalle: 'Documentos publicados' },
-    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Avisos de nuevos pedidos' }
+  // Accesos visuales: las secciones adicionales conducen a módulos existentes.
+  const cards: { id: Seccion; icono: string; titulo: string; detalle: string; tono: string }[] = [
+    { id: 'pedidos', icono: 'pedidos', titulo: 'Pedidos', detalle: 'Revisa los pedidos recibidos', tono: 'violeta' },
+    { id: 'inventario', icono: 'caja', titulo: 'Inventario', detalle: 'Consulta productos y existencias', tono: 'azul' },
+    { id: 'pedidos', icono: 'caja', titulo: 'Preparación', detalle: 'Organiza pedidos por preparar', tono: 'verde' },
+    { id: 'despachos', icono: 'camion', titulo: 'Despachos', detalle: 'Consulta el estado del módulo', tono: 'naranja' },
+    { id: 'catalogos', icono: 'libros', titulo: 'Catálogos PDF', detalle: 'Consulta documentos vigentes', tono: 'azul' },
+    { id: 'etiquetas', icono: 'etiqueta', titulo: 'Etiquetas', detalle: 'Consulta el módulo de impresión', tono: 'rosa' },
+    { id: 'notificaciones', icono: 'campana', titulo: 'Notificaciones', detalle: 'Revisa avisos y pedidos nuevos', tono: 'rosa' }
   ];
   const boton: React.CSSProperties = { border: 0, borderRadius: 11, padding: '11px 15px', background: '#64258e', color: '#fff', fontWeight: 750, cursor: 'pointer' };
-  return <main className="jv-bodega jv-unified" style={{ minHeight: '100vh', background: '#faf7fc', padding: '18px clamp(12px,3vw,35px)', fontFamily: 'Inter,system-ui,sans-serif', color: '#351448' }}>
-    <style>{jaivisaNextCSS}</style><div style={{ maxWidth: 1160, margin: 'auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'linear-gradient(110deg,#321047,#67278b)', padding: 18, borderRadius: 20, color: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><img src={JAIVISA_LOGO} alt="JAIVISA" style={{ width: 105, height: 65, objectFit: 'contain' }} /><div><strong>JAIVISA · BODEGA</strong><div style={{ fontSize: 13 }}>Centro operativo del equipo</div></div></div>
-        <div style={{ display: 'flex', gap: 9 }}><button style={{ ...boton, background: 'white', color: '#5d247f' }} onClick={() => setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={19} /> {notificaciones.length || ''}</button><button style={{ ...boton, background: 'white', color: '#5d247f' }} onClick={() => void salir()}>Salir</button></div>
+  return <main className="jv-bodega jv-unified jv-future-bodega" style={{ minHeight: '100vh', width: '100%', background: 'linear-gradient(145deg,#160825,#2b1051 55%,#10071e)', padding: '18px clamp(12px,2vw,32px)', fontFamily: 'Inter,system-ui,sans-serif', color: '#f7eaff' }}>
+    <style>{jaivisaNextCSS}</style><div className="jv-bodega-estructura" style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
+      <aside className="jv-bodega-lateral" aria-label="Menú de Bodega">
+        <div className="jv-bodega-lateral-marca"><img src={JAIVISA_LOGO} alt="JAIVISA" /><small>PORTAL MAYORISTA</small></div>
+        <nav aria-label="Secciones de Bodega">
+          <button type="button" className={seccion === 'inicio' ? 'activo' : ''} onClick={() => setSeccion('inicio')}>⌂ Inicio</button>
+          {cards.map(c => <button type="button" key={c.titulo} className={seccion === c.id && c.titulo !== 'Preparación' ? 'activo' : ''} onClick={() => setSeccion(c.id)}><IconoNext nombre={c.icono} tamano={17} /> {c.titulo}</button>)}
+        </nav>
+        <span className="jv-bodega-lateral-pie">JAIVISA NEXT · Bodega</span>
+      </aside>
+      <header className="jv-future-header">
+        <div className="jv-future-brand"><img src={JAIVISA_LOGO} alt="JAIVISA" /><div><strong>JAIVISA NEXT · BODEGA</strong><small>Centro Operativo del Equipo</small></div></div>
+        <div className="jv-future-actions"><button type="button" aria-label={'Abrir notificaciones, ' + notificaciones.length + ' avisos'} onClick={() => setSeccion('notificaciones')}><IconoNext nombre="campana" tamano={21} />{notificaciones.length > 0 && <span className="jv-future-bubble">{notificaciones.length}</span>}</button><button type="button" onClick={() => void salir()}>Salir</button></div>
       </header>
-      <h1 style={{ fontSize: 'clamp(24px,4vw,34px)', marginBottom: 5 }}>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! 👋</h1>
-      <p style={{ color: '#766384' }}>Consulta productos, catálogos y prepara tu centro de trabajo.</p>
-      <section aria-label="Centro Operativo de Bodega" className="jv-warehouse-status">
-        <div className="jv-warehouse-status-icon"><IconoNext nombre="caja" tamano={22} /></div>
-        <div className="jv-warehouse-status-copy">
-          <div className="jv-warehouse-status-eyebrow">JAIVISA NEXT · BODEGA</div>
-          <div className="jv-warehouse-status-title">Centro Operativo de Bodega</div>
-          <p>Gestiona los pedidos recibidos, organiza la preparación de productos, consulta las existencias y coordina los despachos desde un solo lugar.</p>
-          <p>Isa te acompañará con avisos y notificaciones para facilitar el trabajo diario.</p>
+      <section className="jv-future-hero" aria-label="Bienvenida al Centro Operativo de Bodega">
+        <img className="jv-future-isa" src={seccion === 'inicio' ? '/isa-bodega.png' : (imagenIsaModuloJAIVISA('bodega', seccion)?.startsWith('/isa-bodega-') ? imagenIsaModuloJAIVISA('bodega', seccion)! : '/isa-bodega.png')} alt={'Isa te acompaña en Bodega: ' + seccion} />
+        <div className="jv-future-hero-copy">
+          <div className="jv-future-eyebrow">JAIVISA NEXT · CENTRO OPERATIVO</div>
+          <h1>¡Hola{perfil.nombre ? ', ' + perfil.nombre.split(' ')[0] : ''}! <img className="jv-isa-mano-saludo" src="/isa-mano-saludo-1.png" alt="Isa te saluda" /></h1>
+          <h2>Bienvenida al Centro Operativo de Bodega</h2>
+          <p>Gestiona pedidos, consulta existencias y coordina despachos desde un solo lugar.</p>
+          <p className="jv-future-hero-hint">Isa te acompaña durante tu jornada.</p>
         </div>
+        <div className="jv-future-warehouse" aria-hidden="true" style={seccion === 'inicio' ? undefined : { backgroundImage: `linear-gradient(90deg,rgba(50,16,80,.95),rgba(50,16,80,.05) 62%), url('/jv-fondo-${seccion === 'catalogos' ? 'catalogos' : seccion}.webp')` }} />
       </section>
       {mensaje && <p role="status" style={{ padding: 12, background: '#f1e7f9', borderRadius: 12 }}>{mensaje}</p>}
       {seccion === 'inicio' ? <>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 16 }}>
-          {([['caja', String(productos.length), 'Productos cargados (máx. 500)', 'inventario'], ['libros', String(catalogos.length), 'Catálogos PDF', 'catalogos'], ['campana', String(notificaciones.length), 'Avisos recibidos', 'notificaciones']] as const).map(([ico, nombre, detalle, destino]) => <button type="button" key={detalle} onClick={() => setSeccion(destino)} aria-label={'Abrir ' + detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center', cursor: 'pointer', color: '#351448', fontFamily: 'inherit', width: '100%' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p><span style={{ fontSize: 12, color: '#64258e', fontWeight: 700 }}>Ver sección →</span></button>)}
+        <div className="jv-future-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 12, marginBottom: 16 }}>
+          {([['caja', String(productos.length), 'Productos cargados (máx. 500)', 'inventario'], ['libros', String(catalogos.length), 'Catálogos PDF', 'catalogos'], ['campana', String(notificaciones.length), 'Avisos recibidos', 'notificaciones']] as const).map(([ico, nombre, detalle, destino]) => <button type="button" className="jv-future-stat" key={detalle} onClick={() => setSeccion(destino)} aria-label={'Abrir ' + detalle} style={{ background: 'white', padding: 20, border: '1px solid #e7dced', borderRadius: 17, textAlign: 'center', cursor: 'pointer', color: '#351448', fontFamily: 'inherit', width: '100%' }}><div style={{ fontSize: 28 }}><IconoNext nombre={ico} tamano={25} /></div><strong style={{ fontSize: 24 }}>{nombre}</strong><p style={{ color: '#766384', fontSize: 13 }}>{detalle}</p><span style={{ fontSize: 12, color: '#64258e', fontWeight: 700 }}>Ver sección →</span></button>)}
         </div>
-        <div className="jv-bodega-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>{cards.map(c => <button className="jv-next-card jv-bodega-menu-card" key={c.id} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22, minHeight: 145, cursor: 'pointer' }}><span style={{ fontSize: 30 }}><IconoNext nombre={c.icono} tamano={28} /></span><h3 style={{ margin: '10px 0 6px', color: '#351448' }}>{c.titulo}</h3><div style={{ color: '#756682', fontSize: 13 }}>{c.detalle}</div><strong style={{ color: '#64258e', display: 'block', marginTop: 12 }}>Abrir sección →</strong></button>)}</div>
+        <div className="jv-bodega-menu-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 14 }}>{cards.map(c => <button type="button" className={'jv-next-card jv-bodega-menu-card jv-tone-' + c.tono} key={c.titulo} onClick={() => setSeccion(c.id)} style={{ textAlign: 'left', background: '#351258', border: '1px solid #a957ec', borderRadius: 20, padding: 19, minHeight: 145, cursor: 'pointer' }}><span className="jv-menu-symbol"><IconoNext nombre={c.icono} tamano={30} /></span><span className="jv-menu-copy"><h3>{c.titulo}</h3><span className="jv-menu-detail">{c.detalle}</span><strong>Abrir sección →</strong></span></button>)}</div>
+        <button type="button" className="jv-future-activity" onClick={() => setSeccion('notificaciones')}><span><IconoNext nombre="campana" tamano={25} /> <strong>Actividad reciente</strong><small>Consulta los últimos avisos recibidos por Bodega</small></span><b>Ver avisos →</b></button>
       </> : <section style={{ background: 'white', border: '1px solid #e8deef', borderRadius: 18, padding: 22 }}>
         <button style={boton} onClick={() => setSeccion('inicio')}>← Inicio</button>
         <h2><IconoNext nombre={cards.find(c => c.id === seccion)?.icono || "chispa"} /> {cards.find(c => c.id === seccion)?.titulo}</h2>
+        <IsaEnSeccionJAIVISA portal="bodega" seccion={seccion} />
         {seccion === 'inventario' && <>
           <input aria-label="Buscar producto" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, referencia o categoría" style={{ width: '100%', padding: 13, border: '1px solid #d8c8e4', borderRadius: 10, marginBottom: 15 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}><button style={boton} onClick={() => void cargar()} disabled={cargando}>{cargando ? 'Actualizando…' : '↻ Actualizar'}</button><span style={{ fontSize: 13, color: '#766384' }}>{productos.length} producto(s) consultados (máximo 500) en JAIVISA · {productos.reduce((n, p) => n + (p.stock ?? 0), 0)} unidades registradas</span></div>
@@ -1840,7 +1988,7 @@ setColumnasProductos(resultado.data?.[0] ? Object.keys(resultado.data[0]) : []);
         {seccion === 'catalogos' && <><button style={boton} onClick={() => void cargar()}>Actualizar catálogos</button><GaleriaCatalogos catalogos={catalogos} /></>}
         {seccion === 'notificaciones' && <><p>🔔 {notificaciones.length === 0 ? 'No hay notificaciones reales recibidas.' : 'Notificaciones recibidas:'}</p><button style={boton} onClick={() => void probarSonido()}>🔊 Activar y probar campana + voz de Isa</button><label style={{ display: 'block', marginTop: 14 }}>Volumen de la alerta: {volumenAlerta}% <input type="range" min="10" max="100" step="5" value={volumenAlerta} onChange={e => setVolumenAlerta(Number(e.target.value))} style={{ display: 'block', width: 'min(340px,100%)', marginTop: 6 }} /></label><p style={{ color: '#756682', fontSize: 13 }}>Campana y mensaje grabado de Isa para pedidos nuevos mientras la aplicación esté abierta. {sonidoHabilitado ? 'Audio habilitado en esta sesión.' : 'Pulsa para habilitar el audio en este navegador.'}</p>{notificaciones.map(n => <button type="button" key={n.id} onClick={() => { setPedidoDestinoId(n.id); setSeccion('pedidos'); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: 13, marginTop: 9, background: '#faf6fd', border: '1px solid #e7dced', borderRadius: 10, cursor: 'pointer', color: '#351448' }}><strong>{n.titulo}</strong><span style={{ display: 'block', fontSize: 12, marginTop: 4 }}>{n.fecha}</span><span style={{ display: 'block', color: '#64258e', fontWeight: 700, marginTop: 5 }}>Ver pedido →</span></button>)}</>}
         {seccion === 'pedidos' && <><CentroPedidos rol="bodega" pedidoInicialId={pedidoDestinoId} /><ModulosEmpresa rol="bodega" /></>}
-        {['despachos', 'etiquetas'].includes(seccion) && <p style={{ padding: 18, background: '#f8f3fb', borderRadius: 12 }}>Esta sección se activará con pedidos reales sincronizados en Supabase. No se muestran pedidos ficticios ni se modifican estados.</p>}
+        {['despachos', 'etiquetas'].includes(seccion) && <p style={{ padding: 18, background: '#f8f3fb', borderRadius: 12 }}>Esta función estará disponible cuando finalicemos la activación de los despachos y etiquetas de JAIVISA. Por ahora no se realizan cambios en los pedidos.</p>}
       </section>}
       <footer style={{ textAlign: 'center', padding: 25, fontSize: 12, color: '#8a7894' }}>JAIVISA · Portal Mayorista · Bodega</footer>
     </div>
@@ -1980,6 +2128,576 @@ const JAIVISA_SHARED_CSS = `
  .jv-bodega input,.jv-bodega button{max-width:100%}
 }
 @media(prefers-reduced-motion:reduce){.jv-unified *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* JAIVISA NEXT | Identidad futurista compartida, sin alterar lógica ni permisos */
+.jv-unified{--jv-future-ink:#210d37;--jv-future-purple:#7026a8;--jv-future-glow:#a96cf5;background-image:radial-gradient(ellipse at 90% 4%,rgba(151,72,220,.18),transparent 38%),linear-gradient(145deg,#f8f4fc,#f0e9fa 72%,#faf7ff)!important}
+.jv-unified .jv-global-header{background:radial-gradient(circle at 75% -30%,rgba(187,108,255,.48),transparent 48%),linear-gradient(112deg,#190925,#381052 62%,#60218b)!important;border-bottom:1px solid rgba(225,173,255,.4);box-shadow:0 14px 34px rgba(38,11,67,.22)}
+.jv-unified .jv-global-brand img{filter:drop-shadow(0 2px 10px rgba(204,140,255,.4))}
+.jv-unified .jv-global-exit{transition:background .18s,transform .18s}
+.jv-unified .jv-global-exit:hover{background:#ffffff30;transform:translateY(-1px)}
+.jv-unified :is(.panel,.jv-card,.jv-catalog-card){border:1px solid rgba(119,62,166,.15);box-shadow:0 12px 28px rgba(59,21,91,.09)}
+.jv-unified :is(.panel,.jv-card,.jv-catalog-card):focus-within{border-color:rgba(155,88,218,.45)}
+.jv-unified :is(.primary,.secondary,.jv-catalog-open){transition:filter .18s,transform .18s,box-shadow .18s}
+.jv-unified :is(.primary,.secondary,.jv-catalog-open):not(:disabled):hover{filter:brightness(1.07);transform:translateY(-1px);box-shadow:0 8px 18px rgba(95,36,149,.16)}
+.jv-bodega .jv-warehouse-status{background:radial-gradient(circle at 90% 12%,rgba(161,74,255,.32),transparent 40%),linear-gradient(116deg,#190927,#391153 70%,#672494)!important;border:1px solid rgba(199,136,255,.5)!important;box-shadow:0 14px 35px rgba(60,17,92,.22),inset 0 1px rgba(255,255,255,.13)!important}
+.jv-bodega .jv-bodega-menu-card{background:linear-gradient(140deg,#2d1046,#4d1a75)!important;border:1px solid rgba(185,112,255,.55)!important;box-shadow:0 10px 28px rgba(50,13,78,.18)!important;color:#fff!important}
+.jv-bodega .jv-bodega-menu-card h3{color:#fff!important}
+.jv-bodega .jv-bodega-menu-card>div{color:#e5d3f3!important}
+.jv-bodega .jv-bodega-menu-card strong{color:#e9baff!important}
+.jv-bodega .jv-bodega-menu-card>span:first-child{color:#eecbff!important;background:linear-gradient(135deg,rgba(168,68,255,.42),rgba(48,154,255,.24))!important;border:1px solid rgba(211,153,255,.4)!important}
+.jv-bodega .jv-bodega-menu-card:hover{transform:translateY(-3px)!important;border-color:#d6a7ff!important;box-shadow:0 14px 30px rgba(67,17,103,.29)!important}
+.jv-vendedor .jv-card{background:linear-gradient(145deg,#fff,#f4eafa)!important;border:1px solid #dfc9ef!important}
+.jv-unified :is(button,a):focus-visible{outline:3px solid #bf80ff!important;outline-offset:3px}
+@media(max-width:650px){
+ .jv-bodega .jv-bodega-menu-card{padding:9px 5px!important;min-height:94px!important;border-radius:13px!important}
+ .jv-bodega .jv-bodega-menu-card h3{font-size:10px!important;overflow-wrap:anywhere!important;line-height:1.2!important}
+ .jv-bodega .jv-bodega-menu-card>div,.jv-bodega .jv-bodega-menu-card strong{display:none!important}
+ .jv-bodega .jv-bodega-menu-card>span:first-child{width:34px!important;height:34px!important;margin-bottom:6px!important}
+ .jv-unified .jv-global-header{padding:10px 12px!important}
+}
+@media(prefers-reduced-motion:reduce){.jv-unified :is(button,a,.jv-card,.jv-next-card){transition:none!important;transform:none!important}}
+
+/* JAIVISA NEXT · Bodega futurista V2: apariencia visual, sin modificar permisos ni consultas */
+.jv-future-bodega{background:radial-gradient(ellipse at 5% 0%,#552090 0%,transparent 48%),linear-gradient(150deg,#160922,#281043 55%,#190a2c)!important;color:#f7eaff!important}
+.jv-future-bodega>div{max-width:1400px!important}
+.jv-future-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:13px 22px!important;border:1px solid #b35df255;border-radius:18px 18px 0 0!important;background:linear-gradient(105deg,#1b092c,#371051 70%,#4e1972)!important;color:#fff;box-shadow:0 10px 28px #09021355}
+.jv-future-brand{display:flex;align-items:center;gap:20px}.jv-future-brand img{width:160px;height:64px;object-fit:contain;filter:drop-shadow(0 0 9px #a43fff88)}.jv-future-brand strong{display:block;font-size:21px;letter-spacing:.4px}.jv-future-brand small{display:block;font-size:12px;color:#e3c9ff;margin-top:3px}
+.jv-future-actions{display:flex;align-items:center;gap:10px}.jv-future-actions button{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 17px;background:#57217a;color:#fff;border:1px solid #bc7ce9;border-radius:12px;font-weight:800;cursor:pointer}.jv-future-actions button:hover{background:#7834a5}.jv-future-bubble{position:absolute;right:-7px;top:-8px;border-radius:100px;background:#ef3f7e;color:#fff;font-size:11px;padding:3px 7px}
+.jv-future-hero{position:relative;display:flex;align-items:center;justify-content:center;min-height:270px;overflow:hidden;border:1px solid #9e49d17a;border-top:0;border-radius:0 0 22px 22px;background:radial-gradient(circle at 30% 60%,#7520bb77,transparent 45%),linear-gradient(120deg,#200b39,#40106b 68%,#221039);box-shadow:inset 0 -3px #b340f8,0 16px 30px #0b061a66}
+.jv-future-hero:after{content:'';position:absolute;bottom:4px;left:7%;width:85%;height:2px;background:linear-gradient(90deg,transparent,#dc65ff,#4aafff,transparent);box-shadow:0 0 14px #ae43ff}
+.jv-future-isa{position:absolute;z-index:1;bottom:0;left:0;width:26%;height:100%;object-fit:cover;object-position:35% center;mask-image:linear-gradient(to right,#000 78%,transparent 100%)}
+.jv-future-warehouse{position:absolute;inset:0 0 0 auto;width:31%;background:linear-gradient(90deg,#321050 0%,transparent 42%),url('/jaivisa-bodega-hero.png') center/cover no-repeat;opacity:.85;mask-image:linear-gradient(to right,transparent,#000 32%)}
+.jv-future-hero-copy{position:relative;z-index:2;width:62%;padding:26px 22px;text-align:center;text-shadow:0 2px 12px #1a052a}.jv-future-eyebrow{font-size:11px;letter-spacing:2px;color:#e2b8ff;font-weight:900}.jv-future-hero h1{font-size:clamp(24px,3.6vw,44px);margin:9px 0;color:white}.jv-future-hero h2{font-size:clamp(15px,2.1vw,24px);margin:8px 0;color:#fff}.jv-future-hero p{font-size:clamp(12px,1.4vw,16px);line-height:1.55;color:#f1e3ff;margin:10px auto;max-width:560px}.jv-future-hero-hint{font-size:12px!important;color:#d6a9ff!important}
+.jv-future-stats{margin-top:18px!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}.jv-future-stat{min-width:0!important;background:linear-gradient(125deg,#512078,#28104e 75%)!important;color:#fff!important;border:1px solid #bd6df4!important;border-radius:19px!important;box-shadow:inset 0 -2px #bc50fa,0 10px 25px #08041577!important;transition:transform .18s,box-shadow .18s}.jv-future-stat strong{color:#fff!important}.jv-future-stat p{color:#e8cafa!important}.jv-future-stat span{color:#d9a6ff!important}.jv-future-stat:hover{transform:translateY(-3px);box-shadow:0 10px 30px #bd4dff66!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}.jv-future-bodega .jv-bodega-menu-card{background:linear-gradient(140deg,#4b1774,#2d1054)!important;border-color:#b960f4!important;min-height:128px!important;border-radius:20px!important;box-shadow:inset 0 -2px #963cdb,0 8px 24px #0b041a77!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:18px!important}.jv-future-bodega .jv-bodega-menu-card>span{color:#f3ccff!important}
+.jv-future-activity{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding:17px 23px;border:1px solid #ae6cf3;border-radius:18px;background:linear-gradient(110deg,#51227f,#271044);color:#fff;cursor:pointer;text-align:left}.jv-future-activity>span{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.jv-future-activity strong{font-size:18px}.jv-future-activity small{color:#dec6f5}.jv-future-activity b{white-space:nowrap;border:1px solid #bb80ee;border-radius:10px;padding:9px}
+.jv-future-bodega>div>section:not(.jv-future-hero){color:#341346}
+@media(max-width:680px){.jv-future-header{padding:8px 10px!important;flex-wrap:nowrap!important}.jv-future-brand{gap:7px}.jv-future-brand img{width:70px!important;height:45px!important}.jv-future-brand strong{font-size:12px}.jv-future-brand small{font-size:9px}.jv-future-actions{gap:5px}.jv-future-actions button{padding:7px!important;min-height:39px!important;font-size:11px}.jv-future-hero{min-height:174px}.jv-future-isa{width:29%;object-position:38% center}.jv-future-warehouse{width:24%}.jv-future-hero-copy{width:74%;margin-left:12%;padding:13px 2px}.jv-future-eyebrow{font-size:8px;letter-spacing:.7px}.jv-future-hero h1{font-size:clamp(17px,5vw,23px);margin:4px 0}.jv-future-hero h2{font-size:12px;margin:5px 0}.jv-future-hero p{font-size:10px;line-height:1.35;margin:5px auto}.jv-future-hero-hint{display:none}.jv-future-stats{gap:6px!important}.jv-future-stat{padding:9px 4px!important;border-radius:12px!important}.jv-future-stat strong{font-size:17px!important}.jv-future-stat p{font-size:9px!important;margin:4px 0!important}.jv-future-stat svg{width:20px!important}.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}.jv-future-bodega .jv-bodega-menu-card{min-height:80px!important;padding:9px 3px!important;border-radius:12px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:10px!important}.jv-future-activity{padding:12px;flex-wrap:wrap}.jv-future-activity strong{font-size:14px}.jv-future-activity small{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega *{transition:none!important}}
+/* JAIVISA NEXT Premium V3 · Diseño de Bodega inspirado en la referencia visual.
+   No altera los datos, las políticas ni el flujo de pedidos. */
+.jv-future-bodega{background:radial-gradient(ellipse at 10% 25%,rgba(126,40,208,.48),transparent 48%),radial-gradient(ellipse at 95% 65%,rgba(78,33,168,.38),transparent 46%),linear-gradient(145deg,#18082d,#2b1051 48%,#160923)!important;color:#fff!important}
+.jv-future-bodega .jv-future-header{border-radius:22px 22px 0 0!important;border-bottom:2px solid #a541f3!important;background:linear-gradient(105deg,#250a43,#341055 60%,#220b42)!important}
+.jv-future-bodega .jv-future-hero{min-height:305px;background:radial-gradient(ellipse at 48% 55%,#5e168f,#240a41 78%)!important}
+.jv-future-bodega .jv-future-isa{width:32%;object-fit:contain;object-position:left bottom;mask-image:linear-gradient(to right,#000 80%,transparent 100%);filter:drop-shadow(0 0 18px #ad54fa77)}
+.jv-future-bodega .jv-future-warehouse{width:37%;opacity:.96}
+.jv-future-bodega .jv-future-hero-copy{width:58%;margin-left:4%;padding:26px 16px}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(27px,3.7vw,52px);font-weight:900;text-shadow:0 0 24px #f58aff88}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(16px,2vw,26px)}
+.jv-future-bodega .jv-future-stats{gap:14px!important;margin-top:14px!important;margin-bottom:28px!important}
+.jv-future-bodega .jv-future-stat{min-height:122px!important;position:relative;overflow:hidden;text-align:left!important;display:grid;grid-template-columns:64px 1fr;grid-template-rows:auto auto auto;column-gap:15px;align-content:center;padding:20px!important;background:linear-gradient(125deg,#5a2489,#29134f 75%)!important;border:1px solid #bf71fb!important;box-shadow:inset 0 -2px #d24cff,0 12px 25px #0d041f77!important}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(120deg,#273a9c,#40116f)!important;border-color:#6b9cff!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(120deg,#833068,#34135b)!important;border-color:#ff9b73!important}
+.jv-future-bodega .jv-future-stat>div{grid-column:1;grid-row:1/4;align-self:center;justify-self:center;filter:drop-shadow(0 0 10px #ffffff55)}
+.jv-future-bodega .jv-future-stat>div svg{width:44px!important;height:44px!important}
+.jv-future-bodega .jv-future-stat strong{grid-column:2;grid-row:2;font-size:30px!important;line-height:1.1}
+.jv-future-bodega .jv-future-stat p{grid-column:2;grid-row:1;margin:0 0 4px!important;font-size:13px!important;font-weight:750}
+.jv-future-bodega .jv-future-stat>span{grid-column:2;grid-row:3;font-size:11px!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
+.jv-future-bodega .jv-bodega-menu-card{display:flex!important;align-items:center!important;gap:13px!important;min-width:0!important;min-height:152px!important;padding:17px!important;background:linear-gradient(135deg,#592083,#311257)!important;border:1px solid #b75bfa!important;border-radius:25px!important;box-shadow:inset 0 1px #ffffff33,inset 0 -2px #b746f4,0 13px 24px #09021677!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(130deg,#283e9a,#35145c)!important;border-color:#769bff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(130deg,#194d6d,#37145d)!important;border-color:#64e6cb!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(130deg,#794080,#391456)!important;border-color:#ffae66!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(130deg,#822477,#371052)!important;border-color:#f575d5!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex:0 0 60px;display:grid!important;place-items:center!important;width:60px!important;height:60px!important;margin:0!important;border-radius:18px!important;background:linear-gradient(135deg,#a93ff1,#5a1aab)!important;color:#fff!important;border:1px solid #d99affaa!important;box-shadow:inset 0 1px #ffffff55,0 7px 18px #14052566!important}
+.jv-future-bodega .jv-tone-azul .jv-menu-symbol{background:linear-gradient(135deg,#08c9e9,#2851a8)!important}
+.jv-future-bodega .jv-tone-verde .jv-menu-symbol{background:linear-gradient(135deg,#14d9a4,#087a6e)!important}
+.jv-future-bodega .jv-tone-naranja .jv-menu-symbol{background:linear-gradient(135deg,#ffb31c,#bd5a0a)!important}
+.jv-future-bodega .jv-tone-rosa .jv-menu-symbol{background:linear-gradient(135deg,#f33ca3,#90216c)!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol svg{width:31px!important;height:31px!important}
+.jv-future-bodega .jv-menu-copy{display:block;min-width:0}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(13px,1.25vw,19px)!important;margin:0 0 8px!important;color:#fff!important;line-height:1.2!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{display:block;color:#f0dfff!important;font-size:12px;line-height:1.45}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:block!important;margin-top:8px!important;font-size:11px;color:#eac8ff!important}
+.jv-future-bodega .jv-future-activity{margin-top:30px;margin-bottom:16px;padding:22px!important;background:linear-gradient(100deg,#5a2192,#23113f)!important;box-shadow:0 8px 28px #11051f88,inset 0 -2px #b850f8}
+.jv-future-bodega .jv-future-activity strong{color:#fff}
+.jv-future-bodega>div>footer{color:#c9a9e9!important}
+@media(max-width:1050px) and (min-width:681px){.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}.jv-future-bodega .jv-bodega-menu-card{flex-direction:column;align-items:flex-start!important;padding:13px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex-basis:auto}}
+@media(max-width:680px){
+ .jv-future-bodega .jv-future-hero{min-height:182px!important}
+ .jv-future-bodega .jv-future-isa{width:35%!important;object-fit:contain!important;object-position:left bottom!important}
+ .jv-future-bodega .jv-future-warehouse{width:28%!important}
+ .jv-future-bodega .jv-future-hero-copy{width:71%!important;margin-left:19%!important;padding:12px 3px!important}
+ .jv-future-bodega .jv-future-stats{gap:6px!important;margin-bottom:16px!important}
+ .jv-future-bodega .jv-future-stat{min-height:86px!important;display:flex;flex-direction:column;align-items:center;text-align:center!important;gap:2px;padding:8px 3px!important}
+ .jv-future-bodega .jv-future-stat>div svg{width:23px!important;height:23px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:20px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:9px!important;line-height:1.2!important}
+ .jv-future-bodega .jv-future-stat>span{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:98px!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:8px 3px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{width:40px!important;height:40px!important;flex:0 0 40px!important;border-radius:12px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol svg{width:23px!important;height:23px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:10px!important;text-align:center!important;margin:0!important;line-height:1.2!important;overflow-wrap:anywhere}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+ .jv-future-bodega .jv-future-activity{padding:13px!important;margin-top:17px}
+}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-bodega-menu-card,.jv-future-bodega .jv-future-stat{transition:none!important}}
+/* V4 · Full-bleed nocturno, contraste y legibilidad. Solo Bodega. */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{margin:0!important;min-height:100%!important;background:#150720!important}
+body:has(.jv-future-bodega){overflow-x:hidden!important}
+.jv-future-bodega{box-sizing:border-box!important;min-height:100dvh!important;width:100%!important;margin:0!important;padding:0 clamp(12px,3vw,48px) 44px!important;background:radial-gradient(ellipse 65% 48% at 5% 28%,#60209c99,transparent 75%),radial-gradient(ellipse 65% 40% at 94% 88%,#3c1b8999,transparent 75%),linear-gradient(140deg,#19072e 0%,#2a0c4d 50%,#130621 100%)!important;color:#fff!important;font-family:Inter,'Segoe UI',system-ui,sans-serif!important}
+.jv-future-bodega>div{max-width:1480px!important;width:100%!important;margin-inline:auto!important}
+.jv-future-bodega .jv-future-header{margin:0!important;padding:15px clamp(14px,2.3vw,32px)!important;border-radius:0 0 18px 18px!important;border-color:#9c4de777!important;box-shadow:0 12px 35px #0d031a88!important}
+.jv-future-bodega .jv-future-brand strong{font-size:clamp(15px,1.6vw,23px)!important;font-weight:850!important;letter-spacing:.02em!important;color:#fff!important}
+.jv-future-bodega .jv-future-brand small{font-size:clamp(11px,1vw,14px)!important;color:#e6caff!important}
+.jv-future-bodega .jv-future-hero{border-radius:0 0 24px 24px!important;min-height:clamp(260px,27vw,370px)!important;box-shadow:0 16px 40px #0c021d99!important}
+.jv-future-bodega .jv-future-hero-copy{width:61%!important;max-width:740px!important;margin-left:3%!important}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(32px,4.1vw,64px)!important;line-height:1.06!important;letter-spacing:-.04em!important;color:#fff!important}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(18px,2.2vw,30px)!important;line-height:1.2!important;font-weight:800!important;color:#fff!important}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.25vw,17px)!important;line-height:1.6!important;color:#f2e4ff!important}
+.jv-future-bodega .jv-future-eyebrow{font-size:clamp(10px,.85vw,13px)!important;letter-spacing:.16em!important}
+.jv-future-bodega .jv-future-stats{margin:18px 0 28px!important;gap:16px!important}
+.jv-future-bodega .jv-future-stat{min-height:138px!important;border-radius:23px!important;background:linear-gradient(120deg,#60219b,#271049)!important;border:1.5px solid #b85dff!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #bc52ff!important;transition:transform .2s,box-shadow .2s!important}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(120deg,#2445a5,#381064)!important;border-color:#70baff!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #4bafff!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(120deg,#873467,#37104e)!important;border-color:#ffab8a!important;box-shadow:0 13px 32px #0c031e99,inset 0 -3px #ff8d9b!important}
+.jv-future-bodega .jv-future-stat :is(p,strong,span,svg){color:#fff!important;text-shadow:none!important}
+.jv-future-bodega .jv-future-stat p{font-size:clamp(12px,1.1vw,16px)!important;font-weight:750!important;line-height:1.25!important}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(27px,2.7vw,40px)!important;font-weight:900!important}
+.jv-future-bodega .jv-future-stat>span{font-size:12px!important;color:#e8d4ff!important}
+.jv-future-bodega .jv-bodega-menu-grid{gap:18px!important}
+.jv-future-bodega .jv-bodega-menu-card{background:linear-gradient(140deg,#67249a 0%,#321054 100%)!important;border:1.5px solid #b855ff!important;border-radius:23px!important;min-height:166px!important;box-shadow:0 12px 27px #0b031d88,inset 0 1px #ffffff24!important;transition:transform .2s,box-shadow .2s!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(135deg,#264ba6,#2d1056)!important;border-color:#5ea5ff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(135deg,#086f79,#2e1256)!important;border-color:#45e9c5!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(135deg,#97531c,#3b1258)!important;border-color:#ffad51!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(135deg,#8d1d75,#351052)!important;border-color:#ff67d1!important}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong,svg){color:#fff!important;opacity:1!important;text-shadow:none!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(15px,1.3vw,21px)!important;font-weight:850!important;letter-spacing:-.025em!important;line-height:1.2!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(11px,.9vw,14px)!important;line-height:1.5!important;color:#f0e4ff!important;font-weight:500!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{font-size:12px!important;color:#e7c9ff!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{box-shadow:0 7px 18px #14032377,inset 0 1px #ffffff66!important;color:#fff!important}
+.jv-future-bodega .jv-future-activity{border-radius:23px!important;min-height:96px!important;background:linear-gradient(105deg,#62219c,#23103f)!important;color:#fff!important}
+.jv-future-bodega .jv-future-activity :is(strong,small,b,svg){color:#fff!important}
+.jv-future-bodega .jv-future-activity strong{font-size:clamp(17px,1.5vw,24px)!important}
+.jv-future-bodega .jv-future-activity small{font-size:clamp(11px,1vw,15px)!important;color:#e7d6ff!important}
+.jv-future-bodega .jv-future-stat:hover,.jv-future-bodega .jv-bodega-menu-card:hover{transform:translateY(-4px)!important;box-shadow:0 20px 42px #080216cc!important}
+.jv-future-bodega :is(button,a):focus-visible{outline:3px solid #6ae8ff!important;outline-offset:3px!important}
+/* Los paneles de trabajo siguen claros para leer formularios y tablas. */
+.jv-future-bodega>div>section:not(.jv-future-hero){color:#341346}
+@media(min-width:1450px){.jv-future-bodega{padding-inline:max(24px,calc((100vw - 1500px)/2))!important}}
+@media(max-width:1050px) and (min-width:681px){.jv-future-bodega .jv-bodega-menu-card{min-height:154px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:15px!important}}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 10px 35px!important}
+ .jv-future-bodega .jv-future-header{border-radius:0 0 13px 13px!important;padding:9px 11px!important}
+ .jv-future-bodega .jv-future-hero{min-height:200px!important}
+ .jv-future-bodega .jv-future-hero-copy{width:74%!important;margin-left:18%!important;padding:10px 5px!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(23px,6vw,35px)!important}
+ .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3.6vw,18px)!important}
+ .jv-future-bodega .jv-future-hero p{font-size:11px!important;line-height:1.35!important}
+ .jv-future-bodega .jv-future-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:12px 0 17px!important}
+ .jv-future-bodega .jv-future-stat{min-height:100px!important;padding:9px 3px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:10px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+ .jv-future-bodega .jv-future-stat>span{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:106px!important;padding:8px 3px!important;gap:7px!important;border-radius:14px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.5vw,12px)!important;line-height:1.15!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{width:41px!important;height:41px!important;flex-basis:41px!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+ .jv-future-bodega .jv-future-activity{min-height:70px!important;padding:12px!important}
+}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card{transition:none!important;transform:none!important}}
+
+/* V5 · Corrección final de anchura, contraste y diseño inmersivo */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega){
+  width:100%!important;max-width:none!important;margin:0!important;
+  background:#160722!important;overflow-x:hidden!important
+}
+body:has(.jv-future-bodega) #root{
+  width:100%!important;max-width:none!important;min-width:0!important;
+  margin:0!important;padding:0!important;background:#160722!important
+}
+.jv-future-bodega{
+  width:100%!important;max-width:none!important;min-height:100dvh!important;
+  padding:0 clamp(14px,3vw,52px) 55px!important;
+  background:radial-gradient(ellipse at 8% 22%,#6e23916b,transparent 52%),
+  radial-gradient(ellipse at 94% 65%,#3a269e8a,transparent 52%),
+  linear-gradient(125deg,#170728,#2b0b4e 55%,#11061f)!important;
+  color:#fff!important
+}
+.jv-future-bodega>div{
+  width:100%!important;max-width:1560px!important;margin-inline:auto!important
+}
+.jv-future-bodega .jv-future-header{
+  border-radius:0 0 20px 20px!important;
+  background:linear-gradient(105deg,#230b3b,#351252 65%,#4b1c73)!important
+}
+.jv-future-bodega .jv-future-hero{
+  overflow:hidden!important;min-height:clamp(270px,25vw,370px)!important;
+  border:1px solid #a64bea88!important;border-top:0!important;
+  background:linear-gradient(90deg,#250a41 0%,#4a1570 53%,#180829 100%)!important
+}
+.jv-future-bodega .jv-future-hero-copy{
+  width:57%!important;max-width:770px!important;margin-left:25%!important;
+  position:relative!important;z-index:2!important;text-align:center!important
+}
+.jv-future-bodega .jv-future-isa{
+  width:30%!important;max-width:450px!important;object-fit:contain!important;
+  object-position:left bottom!important;z-index:1!important
+}
+.jv-future-bodega .jv-future-warehouse{width:36%!important}
+.jv-future-bodega .jv-future-hero h1{
+  font-size:clamp(32px,3.8vw,60px)!important;line-height:1.07!important;
+  font-weight:850!important;letter-spacing:-.035em!important
+}
+.jv-future-bodega .jv-future-hero h2{
+  font-size:clamp(18px,1.7vw,28px)!important;line-height:1.22!important
+}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.1vw,17px)!important}
+.jv-future-bodega .jv-future-stats{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:16px!important
+}
+.jv-future-bodega .jv-future-stat{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  justify-content:center!important;min-width:0!important;min-height:128px!important;
+  padding:20px 25px!important;text-align:left!important
+}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(26px,2.5vw,40px)!important}
+.jv-future-bodega .jv-future-stat p{color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-future-stat>span{color:#e5cbff!important}
+.jv-future-bodega .jv-bodega-menu-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:17px!important
+}
+.jv-future-bodega .jv-bodega-menu-card{
+  min-width:0!important;min-height:156px!important;
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  padding:18px!important;gap:14px!important;color:#fff!important;
+  background:linear-gradient(135deg,#622095,#30104e)!important;
+  border:1.5px solid #ad56f4!important;opacity:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{
+  background:linear-gradient(130deg,#244fa6,#2d125a)!important;border-color:#63a6ff!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{
+  background:linear-gradient(130deg,#087c77,#281253)!important;border-color:#4fe2c9!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{
+  background:linear-gradient(130deg,#a25716,#351050)!important;border-color:#ffb360!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{
+  background:linear-gradient(130deg,#a02280,#331052)!important;border-color:#ff77d4!important
+}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong,svg){
+  color:#fff!important;opacity:1!important;visibility:visible!important;
+  -webkit-text-fill-color:#fff!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy{
+  display:block!important;min-width:0!important;flex:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card h3{
+  font-size:clamp(15px,1.15vw,20px)!important;font-weight:800!important;line-height:1.2!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{
+  display:block!important;font-size:clamp(11px,.85vw,14px)!important;
+  color:#f1e2ff!important;line-height:1.45!important
+}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+  flex:0 0 58px!important;width:58px!important;height:58px!important
+}
+.jv-future-bodega .jv-future-activity{
+  width:100%!important;min-height:94px!important;margin-top:24px!important
+}
+@media(min-width:681px) and (max-width:1080px){
+  .jv-future-bodega .jv-bodega-menu-card{
+    flex-direction:column!important;align-items:flex-start!important;gap:9px!important;padding:13px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+    flex:0 0 45px!important;width:45px!important;height:45px!important
+  }
+}
+@media(max-width:680px){
+  .jv-future-bodega{padding:0 9px 32px!important}
+  .jv-future-bodega .jv-future-hero{min-height:200px!important}
+  .jv-future-bodega .jv-future-isa{width:35%!important}
+  .jv-future-bodega .jv-future-warehouse{width:32%!important}
+  .jv-future-bodega .jv-future-hero-copy{
+    width:68%!important;margin-left:28%!important;padding:12px 4px!important
+  }
+  .jv-future-bodega .jv-future-hero h1{font-size:clamp(22px,5.5vw,32px)!important}
+  .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3vw,17px)!important}
+  .jv-future-bodega .jv-future-hero p{font-size:10px!important;line-height:1.35!important}
+  .jv-future-bodega .jv-future-stats{gap:6px!important;margin:11px 0 15px!important}
+  .jv-future-bodega .jv-future-stat{
+    min-height:96px!important;padding:10px 7px!important;align-items:center!important;text-align:center!important
+  }
+  .jv-future-bodega .jv-future-stat p{font-size:9px!important;overflow-wrap:anywhere!important}
+  .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+  .jv-future-bodega .jv-bodega-menu-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card{
+    flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    min-height:99px!important;padding:8px 3px!important;gap:7px!important;border-radius:13px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+    flex:0 0 38px!important;width:38px!important;height:38px!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-copy{text-align:center!important}
+  .jv-future-bodega .jv-bodega-menu-card h3{
+    font-size:clamp(9px,2.4vw,12px)!important;line-height:1.15!important;
+    overflow-wrap:anywhere!important;margin:0!important
+  }
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,
+  .jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+}
+
+
+/* V7: pantalla inmersiva y mascota oficial en primer plano */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{
+  background:#180829!important;max-width:none!important;width:100%!important;
+  min-height:100%!important;margin:0!important;padding:0!important
+}
+body:has(.jv-future-bodega){overflow-x:hidden!important}
+.jv-future-bodega{box-sizing:border-box!important;min-height:100dvh!important;width:100%!important;
+  max-width:none!important;margin:0!important;padding:0 clamp(12px,3vw,52px) 45px!important;
+  background:radial-gradient(ellipse at 7% 25%,#5d2186 0%,transparent 53%),
+  radial-gradient(ellipse at 94% 80%,#3b1877 0%,transparent 50%),#170824!important
+}
+.jv-future-bodega>div{max-width:1560px!important;width:100%!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-hero{min-height:clamp(300px,28vw,410px)!important;
+  background:linear-gradient(90deg,#250a43,#3d0d62 56%,#150728)!important;
+  overflow:hidden!important;border-radius:0 0 22px 22px!important}
+.jv-future-bodega .jv-future-isa{left:1.5%!important;bottom:0!important;width:33%!important;
+  height:96%!important;max-width:none!important;object-fit:contain!important;
+  object-position:center bottom!important;filter:drop-shadow(0 9px 18px #0e031b88)!important}
+.jv-future-bodega .jv-future-hero-copy{width:56%!important;margin-left:29%!important;
+  max-width:760px!important;padding:24px 10px!important;text-align:center!important}
+.jv-future-bodega .jv-future-hero h1{font-size:clamp(32px,4.1vw,60px)!important;
+  font-weight:850!important;line-height:1.08!important;letter-spacing:-.03em!important}
+.jv-future-bodega .jv-future-hero h2{font-size:clamp(19px,1.8vw,27px)!important;line-height:1.2!important}
+.jv-future-bodega .jv-future-hero p{font-size:clamp(13px,1.1vw,17px)!important;line-height:1.5!important}
+.jv-future-bodega .jv-future-stats{gap:15px!important;margin:18px 0 20px!important}
+.jv-future-bodega .jv-future-stat{min-height:130px!important;display:flex!important;
+  flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;gap:4px!important}
+.jv-future-bodega .jv-future-stat strong{font-size:clamp(27px,2.6vw,38px)!important}
+.jv-future-bodega .jv-future-stat p{font-size:clamp(12px,1vw,15px)!important}
+.jv-future-bodega .jv-bodega-menu-grid{gap:16px!important}
+.jv-future-bodega .jv-bodega-menu-card{min-height:155px!important;padding:18px!important;
+  box-shadow:0 12px 24px #08031455,inset 0 1px #ffffff33!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(15px,1.15vw,19px)!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(12px,.9vw,14px)!important}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 8px 30px!important}
+ .jv-future-bodega .jv-future-hero{min-height:205px!important}
+ .jv-future-bodega .jv-future-isa{width:37%!important;height:95%!important;left:0!important}
+ .jv-future-bodega .jv-future-hero-copy{width:65%!important;margin-left:33%!important;padding:8px 3px!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(20px,5.5vw,29px)!important}
+ .jv-future-bodega .jv-future-hero h2{font-size:clamp(12px,3vw,16px)!important}
+ .jv-future-bodega .jv-future-hero p{font-size:10px!important}
+ .jv-future-bodega .jv-future-stat{min-height:95px!important;padding:9px 3px!important}
+ .jv-future-bodega .jv-future-stat strong{font-size:23px!important}
+ .jv-future-bodega .jv-future-stat p{font-size:9px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:96px!important;padding:7px 3px!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.3vw,12px)!important}
+}
+/* V6: identidad visual consistente y legibilidad */
+.jv-future-bodega .jv-bodega-menu-card,
+.jv-future-bodega .jv-bodega-menu-card.jv-next-card{
+  background:linear-gradient(135deg,#6725a1,#2d104d)!important;
+  color:#fff!important;border-color:#b763fb!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{
+  background:linear-gradient(130deg,#2354a5,#261054)!important;border-color:#5d9eff!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{
+  background:linear-gradient(130deg,#087e78,#27104f)!important;border-color:#47e4c5!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{
+  background:linear-gradient(130deg,#aa5815,#37104e)!important;border-color:#ffae58!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{
+  background:linear-gradient(130deg,#a42586,#310d50)!important;border-color:#ff7bd3!important
+}
+.jv-future-bodega .jv-bodega-menu-card *{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{
+  background:linear-gradient(135deg,#c244f5,#4a2d9c)!important;
+  box-shadow:0 6px 18px #14052477!important
+}
+.jv-future-bodega .jv-future-stat{
+  background:linear-gradient(125deg,#52218a,#250c45)!important;
+  color:#fff!important;border:1px solid #a855f7!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(2){
+  background:linear-gradient(125deg,#2253a8,#28115a)!important;border-color:#54a4ff!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(3){
+  background:linear-gradient(125deg,#8c2b75,#2b1050)!important;border-color:#ff6fc6!important
+}
+.jv-future-bodega .jv-future-stat *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+.jv-future-bodega .jv-future-isa{
+  object-fit:contain!important;object-position:left bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 8px 18px #10041b88)!important
+}
+.jv-future-bodega .jv-future-hero{
+  background:linear-gradient(90deg,#2c0c4a,#4c1770 55%,#1b0b34)!important
+}
+.jv-future-bodega .jv-future-activity{color:#fff!important}
+
+
+/* JAIVISA NEXT V8: diseño inmersivo y mascota oficial */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bodega) #root{
+  margin:0!important;padding:0!important;width:100%!important;max-width:none!important;
+  background:#160723!important;overflow-x:clip!important
+}
+.jv-future-bodega{
+  box-sizing:border-box!important;width:100%!important;max-width:none!important;
+  min-height:100dvh!important;margin:0!important;
+  padding:0 clamp(12px,3vw,42px) 48px!important;
+  background:radial-gradient(ellipse at 10% 32%,#57248b 0%,transparent 45%),
+             radial-gradient(ellipse at 92% 75%,#40217a 0%,transparent 48%),
+             linear-gradient(120deg,#1a082c,#260b43 62%,#12071f)!important;
+  color:#fff!important
+}
+.jv-future-bodega>div{max-width:1480px!important;width:100%!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-hero{min-height:clamp(300px,28vw,410px)!important}
+.jv-future-bodega .jv-future-isa{
+  width:clamp(220px,29%,430px)!important;height:99%!important;left:0!important;bottom:0!important;
+  object-fit:contain!important;object-position:left bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 9px 22px #09031499)!important
+}
+.jv-future-bodega .jv-future-hero-copy{
+  width:60%!important;margin-left:29%!important;max-width:780px!important;z-index:2!important
+}
+.jv-future-bodega .jv-future-hero h1{
+  font-size:clamp(30px,3.8vw,58px)!important;line-height:1.08!important;
+  letter-spacing:-.035em!important
+}
+.jv-future-bodega .jv-future-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.jv-future-bodega .jv-future-stat{
+  min-height:125px!important;display:flex!important;flex-direction:column!important;
+  align-items:flex-start!important;justify-content:center!important;
+  background:linear-gradient(125deg,#61259d,#2c104d)!important;
+  color:#fff!important;text-align:left!important;padding:20px!important
+}
+.jv-future-bodega .jv-future-stat:nth-child(2){background:linear-gradient(125deg,#2454ac,#24104b)!important}
+.jv-future-bodega .jv-future-stat:nth-child(3){background:linear-gradient(125deg,#9c286e,#2d104d)!important}
+.jv-future-bodega .jv-future-stat *{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.jv-future-bodega .jv-bodega-menu-card{
+  background:linear-gradient(135deg,#61249c,#2b104c)!important;
+  color:#fff!important;border:1px solid #ad5bf1!important;opacity:1!important;
+  min-width:0!important
+}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-azul{background:linear-gradient(135deg,#2552a5,#261150)!important;border-color:#6aa5ff!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-verde{background:linear-gradient(135deg,#087e78,#261150)!important;border-color:#51e2c9!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja{background:linear-gradient(135deg,#9f5518,#30114c)!important;border-color:#ffb565!important}
+.jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa{background:linear-gradient(135deg,#a12686,#30104d)!important;border-color:#ff80d5!important}
+.jv-future-bodega .jv-bodega-menu-card :is(h3,span,strong,svg){
+  color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important
+}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(14px,1.2vw,19px)!important;line-height:1.25!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:clamp(11px,.95vw,14px)!important}
+.jv-future-bodega .jv-future-activity{color:#fff!important}
+@media(max-width:680px){
+ .jv-future-bodega{padding:0 8px 28px!important}
+ .jv-future-bodega .jv-future-hero{min-height:220px!important}
+ .jv-future-bodega .jv-future-isa{width:37%!important;height:94%!important}
+ .jv-future-bodega .jv-future-hero-copy{width:66%!important;margin-left:31%!important}
+ .jv-future-bodega .jv-future-hero h1{font-size:clamp(20px,5vw,31px)!important}
+ .jv-future-bodega .jv-future-stats{gap:6px!important}
+ .jv-future-bodega .jv-future-stat{min-height:95px!important;align-items:center!important;text-align:center!important;padding:8px 4px!important}
+ .jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+ .jv-future-bodega .jv-bodega-menu-card{min-height:99px!important;padding:8px 3px!important;flex-direction:column!important;align-items:center!important;justify-content:center!important}
+ .jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(9px,2.4vw,12px)!important}
+ .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
+}
+
+
+/* JAIVISA NEXT V9 · Acabado inmersivo Bodega · solo presentación */
+html,body,#root{min-height:100%;margin:0}
+body:has(.jv-future-bodega),html:has(.jv-future-bodega),#root:has(.jv-future-bodega){background:#12061f!important}
+.jv-future-bodega{width:100%!important;max-width:none!important;min-height:100vh!important;box-sizing:border-box!important;margin:0!important;padding:0 clamp(14px,3vw,48px) 48px!important;background:radial-gradient(ellipse at 50% 15%,#4c1680 0%,transparent 45%),radial-gradient(ellipse at 100% 90%,#39105b,transparent 48%),#12061f!important;color:#fff!important;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif!important}
+.jv-future-bodega>div{max-width:1480px!important;margin:auto!important}
+.jv-future-header{border-radius:0 0 22px 22px!important;padding:16px clamp(16px,2.5vw,36px)!important;background:linear-gradient(110deg,#210b39 5%,#361052 58%,#512177)!important;border:1px solid #a66af34d!important;box-shadow:0 16px 40px #07020d70!important}
+.jv-future-brand strong{font-size:clamp(17px,2vw,26px)!important;font-weight:850!important;letter-spacing:.2px!important}.jv-future-brand small{font-size:13px!important;color:#d8c0f0!important}.jv-future-brand img{width:clamp(115px,13vw,175px)!important;height:65px!important}
+.jv-future-hero{margin-top:14px!important;min-height:330px!important;border-radius:25px!important;border:1px solid #b265fa70!important;background:radial-gradient(circle at 20% 65%,#9a34ee77,transparent 38%),linear-gradient(110deg,#220938,#42136e 55%,#1c0b35)!important;box-shadow:0 20px 55px #05010c99,inset 0 -3px #a745fa!important}
+.jv-future-isa{width:36%!important;height:100%!important;left:0!important;bottom:0!important;object-fit:contain!important;object-position:center bottom!important;mask-image:linear-gradient(to right,#000 78%,transparent 100%)!important;filter:drop-shadow(0 0 24px #9e41ed88)!important}
+.jv-future-warehouse{width:37%!important;opacity:.86!important}
+.jv-future-hero-copy{width:56%!important;margin-left:12%!important;padding:32px 14px!important;text-align:center!important}
+.jv-future-hero h1{font-size:clamp(30px,3.8vw,58px)!important;line-height:1.08!important;font-weight:900!important;letter-spacing:-1.2px!important;text-shadow:0 3px 22px #b346fa66!important}
+.jv-future-hero h2{font-size:clamp(18px,2vw,28px)!important;line-height:1.25!important;font-weight:800!important}
+.jv-future-hero p{font-size:clamp(14px,1.15vw,17px)!important;line-height:1.6!important}
+.jv-future-stats{gap:18px!important;margin:20px 0 22px!important}
+.jv-future-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;min-height:126px!important;padding:22px 28px!important;text-align:left!important;background:linear-gradient(120deg,#5a1d91,#28124f)!important;border:1px solid #b76df4!important;border-radius:23px!important;box-shadow:inset 0 -2px #d24aff,0 13px 28px #04010d80!important}
+.jv-future-stat:nth-child(2){background:linear-gradient(120deg,#2346a4,#2a155f)!important;border-color:#4b9eff!important;box-shadow:inset 0 -2px #3eb8ff,0 13px 28px #04010d80!important}
+.jv-future-stat:nth-child(3){background:linear-gradient(120deg,#86276e,#321052)!important;border-color:#ef69c5!important;box-shadow:inset 0 -2px #f15eb4,0 13px 28px #04010d80!important}
+.jv-future-stat strong{font-size:34px!important;font-weight:900!important;line-height:1.1!important}.jv-future-stat p{font-size:14px!important;color:#f2e7ff!important;font-weight:700!important;margin:5px 0!important}.jv-future-stat span{font-size:12px!important;color:#edcaff!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px!important}
+.jv-future-bodega .jv-bodega-menu-card{display:flex!important;align-items:center!important;gap:17px!important;min-height:148px!important;padding:20px!important;border-radius:23px!important;border:1px solid #b468f0!important;background:linear-gradient(125deg,#57208e,#2a114e)!important;color:#fff!important;box-shadow:0 13px 25px #0702127a,inset 0 1px #ffffff27!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+2){background:linear-gradient(125deg,#2a4b9e,#271355)!important;border-color:#588dff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+3){background:linear-gradient(125deg,#126d80,#291455)!important;border-color:#3cbec5!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+4){background:linear-gradient(125deg,#8d3e24,#35124c)!important;border-color:#ed9b5b!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(16px,1.45vw,22px)!important;line-height:1.25!important;margin:0 0 7px!important;color:#fff!important;font-weight:850!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{display:block!important;font-size:13px!important;line-height:1.5!important;color:#f3e7ff!important;font-weight:500!important}
+.jv-future-bodega .jv-bodega-menu-card strong{display:block!important;margin-top:10px!important;color:#f7d4ff!important;font-size:12px!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex:0 0 62px!important;width:62px!important;height:62px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(135deg,#bd3df4,#5432b3)!important;border:1px solid #d29dff!important;border-radius:18px!important;color:white!important;box-shadow:0 8px 22px #16042199!important}
+.jv-future-activity{margin-top:26px!important;padding:23px 28px!important;background:linear-gradient(110deg,#632390,#241143)!important;border-radius:22px!important}
+.jv-future-bodega footer{color:#c8a7e6!important;padding:24px!important}
+.jv-future-bodega .jv-bodega-menu-card:hover,.jv-future-stat:hover{transform:translateY(-3px)!important;filter:brightness(1.1)!important}
+@media(max-width:1050px){.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.jv-future-hero{min-height:285px!important}.jv-future-hero-copy{width:64%!important;margin-left:18%!important}.jv-future-isa{width:35%!important}}
+@media(max-width:650px){.jv-future-bodega{padding:0 10px 28px!important}.jv-future-header{padding:10px!important}.jv-future-brand img{width:77px!important;height:42px!important}.jv-future-brand strong{font-size:12px!important}.jv-future-brand small{font-size:9px!important}.jv-future-hero{min-height:245px!important}.jv-future-isa{width:39%!important;object-position:left bottom!important}.jv-future-warehouse{width:32%!important}.jv-future-hero-copy{width:70%!important;margin-left:24%!important;padding:14px 6px!important}.jv-future-hero h1{font-size:clamp(21px,5vw,30px)!important;letter-spacing:-.5px!important}.jv-future-hero h2{font-size:13px!important}.jv-future-hero p{font-size:11px!important}.jv-future-eyebrow{font-size:8px!important}.jv-future-stats{gap:7px!important}.jv-future-stat{padding:11px 9px!important;min-height:105px!important;border-radius:14px!important}.jv-future-stat strong{font-size:24px!important}.jv-future-stat p{font-size:10px!important}.jv-future-stat span{font-size:9px!important}.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}.jv-future-bodega .jv-bodega-menu-card{padding:12px!important;min-height:118px!important;gap:8px!important;border-radius:15px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex-basis:40px!important;width:40px!important;height:40px!important;border-radius:12px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:13px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:10px!important}.jv-future-bodega .jv-bodega-menu-card strong{font-size:10px!important}.jv-future-activity{padding:14px!important}}
+
+/* JAIVISA NEXT V10 — escenario inmersivo, sin franjas claras */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),#root:has(.jv-future-bodega){margin:0!important;padding:0!important;min-height:100%!important;width:100%!important;max-width:none!important;background:#10051f!important;overflow-x:hidden!important}
+body:has(.jv-future-bodega){background:radial-gradient(ellipse 55% 65% at 4% 40%,#43116b 0%,transparent 78%),radial-gradient(ellipse 60% 55% at 94% 75%,#25165d 0%,transparent 76%),#10051f!important}
+body:has(.jv-future-bodega) #root{background:transparent!important}
+.jv-future-bodega{position:relative!important;isolation:isolate!important;width:100%!important;max-width:none!important;min-height:100dvh!important;background:radial-gradient(ellipse 50% 35% at 10% 18%,#6c20a44d 0%,transparent 75%),radial-gradient(ellipse 50% 50% at 90% 76%,#392da044 0%,transparent 75%),linear-gradient(140deg,#140623 0%,#250d45 48%,#11051f 100%)!important;overflow:hidden!important}
+.jv-future-bodega::before{content:'';position:absolute;z-index:-1;pointer-events:none;inset:0;background:repeating-linear-gradient(118deg,transparent 0 110px,#c38aff0a 111px,transparent 112px 210px),radial-gradient(ellipse 80% 45% at 50% 105%,transparent 58%,#ad42ff30 59%,transparent 60%,transparent 67%,#4479ff20 68%,transparent 69%);opacity:.65}
+.jv-future-bodega::after{content:'';position:absolute;z-index:-1;pointer-events:none;width:80vw;height:80vw;max-width:1100px;max-height:1100px;left:-42vw;top:350px;border:1px solid #b45bff23;border-radius:50%;box-shadow:0 0 90px #9c34ee12,inset 0 0 65px #b83aff0d}
+.jv-future-bodega>div{position:relative;z-index:1;max-width:1480px!important;margin-inline:auto!important}
+.jv-future-header{border:1px solid #bc76f25c!important;box-shadow:0 14px 40px #05010c85,0 1px 0 #c37cff35!important}
+.jv-future-hero{box-shadow:0 18px 45px #05010d99,0 0 32px #903bdb29!important}
+.jv-future-stats,.jv-bodega-menu-grid{position:relative;z-index:1}
+.jv-future-bodega .jv-bodega-menu-card{transition:transform .2s ease,box-shadow .2s ease!important;box-shadow:0 12px 28px #06010e91,inset 0 1px #ffffff25!important}
+.jv-future-bodega .jv-bodega-menu-card:focus-visible{outline:3px solid #c89dff!important;outline-offset:3px!important}
+.jv-future-bodega .jv-bodega-menu-card:hover{box-shadow:0 17px 38px #070116aa,0 0 25px #9a4bff3a!important}
+@media(max-width:650px){.jv-future-bodega{padding-inline:12px!important}.jv-future-bodega::after{display:none}}
+
+
+/* JAIVISA NEXT V11 — brillo cristalino inspirado en maqueta; sin cambiar lógica */
+.jv-future-bodega{background:radial-gradient(ellipse 70% 55% at 48% 24%,#5b159355,transparent 72%),radial-gradient(ellipse 65% 45% at 96% 90%,#2b34a055,transparent 80%),linear-gradient(150deg,#10041d,#250842 54%,#10051f)!important}
+.jv-future-header{position:relative!important;overflow:hidden!important;background:linear-gradient(110deg,#240739,#3a105e 57%,#18082d)!important;border-bottom:2px solid #b63dff!important;box-shadow:0 10px 36px #080013a8,0 2px 19px #bb4aff5c,inset 0 1px #ffffff55!important}
+.jv-future-hero{position:relative!important;overflow:hidden!important;border:1px solid #b56af6a8!important;box-shadow:0 18px 48px #05000dbb,0 0 26px #bc43ff40,inset 0 -3px #c74cff!important}
+.jv-future-hero::after{content:'';position:absolute;z-index:3;pointer-events:none;bottom:0;left:2%;right:2%;height:3px;background:linear-gradient(90deg,transparent,#e75aff 22%,#32cfff 55%,#c33fff 85%,transparent);filter:drop-shadow(0 0 8px #c044ff)}
+.jv-future-bodega .jv-future-isa{object-fit:contain!important;object-position:left bottom!important;mask-image:none!important;-webkit-mask-image:none!important;filter:drop-shadow(0 7px 19px #10021cbd)!important}
+.jv-future-stats{padding:13px!important;border:1px solid #ad50f1a0!important;border-radius:25px!important;background:linear-gradient(110deg,#310a56ba,#16062cdd)!important;box-shadow:0 10px 28px #05000a88,inset 0 1px #ffffff38!important}
+.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card,.jv-future-activity{position:relative!important;isolation:isolate!important;overflow:hidden!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;transition:transform .22s ease,box-shadow .22s ease,filter .22s ease!important}
+.jv-future-bodega .jv-future-stat::before,.jv-future-bodega .jv-bodega-menu-card::before,.jv-future-activity::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(153deg,#ffffff42 0%,#ffffff16 15%,transparent 31%,transparent 66%,#ffffff0d 100%);border-radius:inherit}
+.jv-future-bodega .jv-future-stat::after,.jv-future-bodega .jv-bodega-menu-card::after,.jv-future-activity::after{content:'';position:absolute;pointer-events:none;left:8%;right:8%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#ed71ff,#5abaff,transparent);box-shadow:0 0 12px 2px #a942ff9c}
+.jv-future-bodega .jv-future-stat{border-width:1px!important;border-style:solid!important;box-shadow:0 13px 30px #07010eaa,inset 0 1px #ffffff6e,inset 0 -2px #c544ff!important}
+.jv-future-bodega .jv-bodega-menu-card{border-color:#b87bffb8!important;box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #a342ff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+2){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #42a9ff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+3){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #35ebca!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+4){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #ffae57!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{box-shadow:0 8px 22px #100122aa,inset 0 1px #ffffff9e,0 0 13px #ba55ff58!important}
+.jv-future-bodega .jv-bodega-menu-card:hover,.jv-future-bodega .jv-future-stat:hover,.jv-future-activity:hover{transform:translateY(-3px)!important;filter:brightness(1.13)!important}
+.jv-future-activity{border:1px solid #c26fff!important;box-shadow:0 15px 30px #05000ea8,inset 0 1px #ffffff52!important}
+@media(max-width:650px){.jv-future-stats{padding:7px!important;border-radius:15px!important}.jv-future-bodega .jv-bodega-menu-card::after{left:12%;right:12%}}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card,.jv-future-activity{transition:none!important}}
+
+
+/* JAIVISA NEXT AURORA — Bodega a pantalla completa */
+html,body,#root{width:100%;min-height:100%;margin:0}
+body:has(.jv-future-bodega){background:#160825!important}
+#root:has(.jv-future-bodega){max-width:none!important;padding:0!important}
+.jv-future-bodega{width:100%!important;max-width:none!important;min-height:100dvh!important;margin:0!important;background:radial-gradient(ellipse at 8% 12%,#68249a88,transparent 40%),radial-gradient(ellipse at 95% 82%,#174aaf55,transparent 45%),linear-gradient(145deg,#160825,#2b1051 55%,#10071e)!important;color:#f7eaff!important}
+.jv-future-bodega>div{width:100%!important;max-width:none!important;margin:0 auto!important}
+.jv-future-bodega .jv-future-header,.jv-future-bodega .jv-future-hero,.jv-future-bodega .jv-future-stats,.jv-future-bodega .jv-bodega-menu-grid{width:100%!important;max-width:none!important}
+.jv-future-bodega .jv-future-header{border-radius:20px!important}
+@media(max-width:650px){.jv-future-bodega{padding:10px!important}}
+/* Ajuste final: fondo oscuro y anchura total sin alterar los módulos */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),#root:has(.jv-future-bodega){width:100%!important;max-width:none!important;min-height:100%!important;margin:0!important;padding:0!important;overflow-x:hidden!important;background:#160825!important}
+.jv-future-bodega{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:none!important;min-height:100dvh!important;margin:0!important;padding:clamp(10px,1.6vw,24px)!important;background:radial-gradient(ellipse at 12% 12%,rgba(134,42,218,.38),transparent 42%),radial-gradient(ellipse at 88% 75%,rgba(43,82,184,.25),transparent 42%),linear-gradient(145deg,#160825,#2b1051 55%,#10071e)!important}
+.jv-future-bodega>div{box-sizing:border-box!important;width:100%!important;max-width:none!important;margin:0!important}
+.jv-future-bodega .jv-future-header,.jv-future-bodega .jv-future-hero,.jv-future-bodega .jv-future-stats,.jv-future-bodega .jv-bodega-menu-grid{box-sizing:border-box!important;width:100%!important;max-width:none!important}
+.jv-future-bodega .jv-future-hero{overflow:hidden!important}
+@media(max-width:650px){.jv-future-bodega{padding:10px!important}}
+
 `;
 function MarcoJAIVISANext({ rol, nombre, salir, children }: { rol: string; nombre?: string; salir?: () => Promise<void>; children: React.ReactNode }) {
   return <div className={'jv-unified jv-' + (rol === 'Administración' ? 'administracion' : 'clientes')}>
@@ -2030,9 +2748,9 @@ e.preventDefault(); setMensaje(''); if (!registro.ciudad.trim() || registro.ciud
     if (data.session) { setEstado('cargando'); }
   };
   const cambiarClave = async (e: React.FormEvent) => { e.preventDefault(); if (nuevaClave.length < 8) { setMensaje('Usa al menos 8 caracteres.'); return; } setProcesando(true); const { error } = await supabase.auth.updateUser({ password: nuevaClave }); setProcesando(false); setNuevaClave(''); if (error) { setMensaje('No se pudo actualizar la contraseña: ' + error.message); return; } setMensaje('Contraseña actualizada.'); await salir(); setMensaje('Contraseña actualizada. Ya puedes iniciar sesión.'); };
-  const recuperar = async (e: React.FormEvent) => { e.preventDefault(); setProcesando(true); setMensaje(''); const { error } = await supabase.auth.resetPasswordForEmail(correo.trim(), { redirectTo: window.location.origin }); setProcesando(false); setMensaje(error ? 'No se pudo enviar el enlace. Comprueba la configuración de correo de Supabase.' : 'Si el correo está registrado, recibirás instrucciones para recuperar la contraseña.'); };
+  const recuperar = async (e: React.FormEvent) => { e.preventDefault(); setProcesando(true); setMensaje(''); const { error } = await supabase.auth.resetPasswordForEmail(correo.trim(), { redirectTo: window.location.origin }); setProcesando(false); setMensaje(error ? 'No se pudo enviar el enlace. Comprueba la configuración de correo de JAIVISA.' : 'Si el correo está registrado, recibirás instrucciones para recuperar la contraseña.'); };
   if (estado === 'administrador') return <MarcoJAIVISANext rol="Administración" nombre={perfil?.nombre ?? 'Usuario'} salir={salir}><PortalAdministrador /></MarcoJAIVISANext>;
-  if (estado === 'cliente' && perfil) return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre ?? 'Usuario'}><ClientesMayoristas perfil={perfil} salir={salir} /></MarcoJAIVISANext>;
+  if (estado === 'cliente' && perfil) return <MarcoJAIVISANext rol="Clientes mayoristas" nombre={perfil.nombre ?? 'Usuario'} salir={salir}><ClientesMayoristas perfil={perfil} salir={salir} /></MarcoJAIVISANext>;
   if (estado === 'equipo' && perfil?.rol === 'vendedor') return <PanelVendedor perfil={perfil} salir={salir} />;
   if (estado === 'equipo' && perfil?.rol === 'bodega') return <PanelBodega perfil={perfil} salir={salir} />;
   return <div className="jaivisa-login-fondo" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'radial-gradient(ellipse at 12% 18%,#52258c 0%,transparent 45%),radial-gradient(ellipse at 92% 85%,#203f99 0%,transparent 40%),linear-gradient(135deg,#1b0d29,#4c1d69)', padding: 24, fontFamily: 'Inter,system-ui,sans-serif', position: 'relative', overflow: 'hidden' }}><style>{`
@@ -2081,7 +2799,7 @@ class JaivisaErrorBoundary extends React.Component<
       <div style={{ minHeight: '100vh', padding: 32, background: '#f5effa', color: '#3e185b', fontFamily: 'Arial,sans-serif' }}>
         <div style={{ maxWidth: 650, margin: '10vh auto', padding: 30, background: '#fff', borderRadius: 20 }}>
           <h1>JAIVISA · No se pudo cargar la interfaz</h1>
-          <p>La aplicación encontró un error. No se han modificado tus datos de Supabase.</p>
+          <p>La aplicación encontró un error. No se ha realizado ningún cambio en la información de JAIVISA.</p>
           <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: '#f7f1fa', padding: 14, borderRadius: 10 }}>{this.state.error}</pre>
           <button onClick={() => window.location.reload()} style={{ background: '#592478', color: 'white', padding: '12px 20px', border: 0, borderRadius: 10, cursor: 'pointer' }}>Reintentar</button>
         </div>
@@ -2218,11 +2936,662 @@ function SesionConInactividad({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppProtegida() {
-  return <JaivisaErrorBoundary>
-    <SesionConInactividad>
-      <IsaAsistente />
-      <style>{JAIVISA_SHARED_CSS}</style>
-      <JaivisaApp />
-    </SesionConInactividad>
-  </JaivisaErrorBoundary>;
+  return (
+    <JaivisaErrorBoundary>
+      <SesionConInactividad>
+        <IsaAsistente />
+
+        <style>{JAIVISA_SHARED_CSS}</style>
+
+        <style>{`
+          /* JAIVISA NEXT · Pantalla completa de Bodega, sin alterar los demás portales */
+          html:has(.jv-future-bodega),
+          body:has(.jv-future-bodega),
+          body:has(.jv-future-bodega) #root {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #160825 !important;
+            overflow-x: clip !important;
+          }
+          body:has(.jv-future-bodega) #root {
+            display: block !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-unified.jv-future-bodega {
+            display: block !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+            min-height: 100dvh !important;
+            margin: 0 !important;
+            padding: clamp(12px, 2vw, 30px) !important;
+            background: radial-gradient(ellipse at 12% 16%, #5b218a88, transparent 48%),
+                        radial-gradient(ellipse at 90% 85%, #223f9a66, transparent 52%),
+                        linear-gradient(140deg, #160825, #2b1051 55%, #10071e) !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega > div {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+          }
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-header,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-hero,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-future-stats,
+          body:has(.jv-future-bodega) #root .jv-bodega.jv-future-bodega .jv-bodega-menu-grid {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: none !important;
+          }
+          @media (max-width: 680px) {
+            body:has(.jv-future-bodega) #root .jv-bodega.jv-unified.jv-future-bodega {
+              padding: 10px !important;
+            }
+          }
+        `}</style>
+
+        <style>{`
+          /* JAIVISA NEXT · Sistema visual unificado · 4 portales */
+          body:has(.jv-future-bodega) { background: #f8f5fc !important; }
+          #root:has(.jv-future-bodega) { width: 100% !important; max-width: none !important; }
+          #root .jv-future-bodega.jv-bodega {
+            width: 100% !important; max-width: none !important; padding: 0 !important;
+            min-height: 100dvh !important; background: #f8f5fc !important; color: #321348 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-estructura {
+            width: 100% !important; max-width: none !important; margin: 0 !important;
+            display: grid !important; grid-template-columns: 205px minmax(0,1fr) !important;
+            gap: 0 18px; padding: 0 18px 24px 0 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-estructura > :not(.jv-bodega-lateral) { grid-column: 2; min-width: 0; }
+          #root .jv-future-bodega .jv-bodega-lateral {
+            grid-column: 1; grid-row: 1 / span 30; align-self: stretch;
+            display: flex; flex-direction: column; gap: 22px;
+            background: linear-gradient(170deg,#1e0c30,#37194c 75%,#451d65);
+            color: #fff; padding: 24px 12px; min-height: 100dvh;
+          }
+          .jv-bodega-lateral-marca { display: grid; justify-items: center; gap: 8px; padding: 12px 6px 20px; border-bottom: 1px solid #ffffff22; }
+          .jv-bodega-lateral-marca img { width: min(155px,100%); height: auto; object-fit: contain; }
+          .jv-bodega-lateral-marca small { color: #dec4ef; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; }
+          .jv-bodega-lateral nav { display: grid; gap: 6px; }
+          .jv-bodega-lateral nav button { display: flex; align-items: center; gap: 11px; width: 100%; border: 1px solid transparent; border-radius: 11px; background: transparent; color: #e7d8f3; padding: 12px; font-size: 13px; font-weight: 650; cursor: pointer; text-align: left; }
+          .jv-bodega-lateral nav button:hover,.jv-bodega-lateral nav button.activo { background: #74369b66; border-color: #c68ce1; color: #fff; }
+          .jv-bodega-lateral-pie { margin-top: auto; color: #cbb2df; font-size: 11px; text-align: center; }
+          #root .jv-future-bodega .jv-future-header { margin: 16px 0 12px !important; border-radius: 17px !important; }
+          #root .jv-future-bodega .jv-future-hero { border-radius: 18px !important; margin: 0 0 14px !important; }
+          #root .jv-future-bodega .jv-future-stats { margin: 8px 0 18px !important; }
+          #root .jv-future-bodega .jv-future-stat {
+            background: #fff !important; border: 1px solid #e4c8fa !important;
+            color: #321348 !important; box-shadow: 0 8px 22px #49216616 !important;
+          }
+          #root .jv-future-bodega .jv-future-stat:nth-child(2),
+          #root .jv-future-bodega .jv-future-stat:nth-child(3) { background: #fff !important; border-color: #e4c8fa !important; box-shadow: 0 8px 22px #49216616 !important; }
+          #root .jv-future-bodega .jv-future-stat :is(p,strong,span,svg) { color: #37184e !important; }
+          #root .jv-future-bodega .jv-bodega-menu-card,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-azul,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-verde,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-naranja,
+          #root .jv-future-bodega .jv-bodega-menu-card.jv-tone-rosa {
+            background: linear-gradient(135deg,#fff,#f4e8ff) !important;
+            border: 1px solid #e3c7f9 !important; color: #351449 !important;
+            box-shadow: 0 8px 24px #36114c18 !important;
+          }
+          #root .jv-future-bodega .jv-bodega-menu-card :is(h3,.jv-menu-detail,.jv-menu-copy strong) { color: #351449 !important; }
+          #root .jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol { background: linear-gradient(135deg,#c63df3,#7222b6) !important; color: white !important; }
+          #root .jv-future-bodega .jv-future-activity { background: linear-gradient(100deg,#f3e2ff,#e9d9ff) !important; color: #321348 !important; border: 1px solid #e4c8fa !important; }
+          #root .jv-future-bodega .jv-future-activity :is(strong,small,b) { color: #321348 !important; }
+          /* Unifica la identidad de encabezados, sin cambiar permisos ni lógica. */
+          .jv-global-header { background: linear-gradient(105deg,#230d38,#58217a 70%,#8028ad) !important; }
+          @media(max-width: 800px) {
+            #root .jv-future-bodega .jv-bodega-estructura { grid-template-columns: minmax(0,1fr) !important; padding: 0 12px 20px !important; }
+            #root .jv-future-bodega .jv-bodega-lateral { grid-column: 1; grid-row: auto; min-height: 0; padding: 10px; border-radius: 0 0 16px 16px; }
+            .jv-bodega-lateral-marca,.jv-bodega-lateral-pie { display: none; }
+            .jv-bodega-lateral nav { display: flex; overflow-x: auto; gap: 6px; }
+            .jv-bodega-lateral nav button { width: auto; flex: 0 0 auto; padding: 9px 12px; white-space: nowrap; }
+            #root .jv-future-bodega .jv-bodega-estructura > :not(.jv-bodega-lateral) { grid-column: 1; }
+            #root .jv-future-bodega .jv-future-header { margin-top: 10px !important; }
+          }
+          /* VISIBILIDAD FINAL: texto oscuro en tarjetas claras de Bodega.
+             Selector más específico que las reglas luminosas antiguas. */
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat {
+            background: linear-gradient(145deg,#fff 12%,#f3e5ff 100%) !important;
+            color: #321348 !important;
+            border: 1px solid #cc9aff !important;
+            box-shadow: 0 9px 24px #12051f55, inset 0 -3px #aa43ef !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(2) {
+            background: linear-gradient(145deg,#fff 12%,#e7eaff 100%) !important;
+            border-color: #86a6ff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(3) {
+            background: linear-gradient(145deg,#fff 12%,#ffe5f4 100%) !important;
+            border-color: #f093d3 !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat *,
+          #root main.jv-bodega.jv-future-bodega button.jv-future-stat :is(p,strong,span,svg) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+            background: linear-gradient(145deg,#fff,#f1e5ff) !important;
+            color: #321348 !important;
+            border: 1px solid #d3a9ff !important;
+            box-shadow: 0 8px 22px #16062255, inset 0 -2px #aa52ed !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card *,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card :is(h3,strong,.jv-menu-detail) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card .jv-menu-symbol,
+          #root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card .jv-menu-symbol * {
+            color: #fff !important;
+            -webkit-text-fill-color: #fff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity {
+            background: linear-gradient(135deg,#f4e7ff,#ece0fa) !important;
+            color: #321348 !important;
+            border-color: #d3a9ff !important;
+          }
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity *,
+          #root main.jv-bodega.jv-future-bodega button.jv-future-activity :is(strong,small,b) {
+            color: #321348 !important;
+            -webkit-text-fill-color: #321348 !important;
+          }
+        `}</style>
+
+        <style>{`
+/* JAIVISA NEXT · Arquitectura compartida: Clientes y Vendedores */
+#root .jv-client-estructura,
+#root .jv-vendedor-estructura {
+  display: grid !important;
+  grid-template-columns: 205px minmax(0,1fr) !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: calc(100dvh - 64px);
+  margin: 0 !important;
+  gap: 0 !important;
+}
+#root .jv-vendedor.jv-vendedor-portal {
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  background: linear-gradient(145deg,#210b33,#38204f 55%,#17214b) !important;
+}
+#root .jv-client-shell {
+  width: 100%; max-width: none; min-height: 100dvh;
+  background: linear-gradient(145deg,#210b33,#38204f 55%,#17214b) !important;
+}
+#root .jv-portal-estructura .jv-portal-lateral {
+  grid-column: 1;
+  min-width: 0;
+  background: linear-gradient(170deg,#1d0b2c,#371a51 77%,#46206c);
+  color: #fff;
+  border-right: 1px solid rgba(190,122,240,.18);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px 6px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca img {
+  display: block; width: min(155px,100%); height: auto;
+  max-height: 95px; object-fit: contain;
+}
+#root .jv-portal-estructura .jv-portal-lateral-marca small {
+  color: #dec4ef; font-size: 10px; font-weight: 800; letter-spacing: 1.35px;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav {
+  display: grid; align-content: start; gap: 6px;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button {
+  appearance: none; width: 100%; min-height: 42px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; text-align: left;
+  color: #eadbf6 !important; background: transparent !important;
+  border: 1px solid transparent; border-radius: 11px;
+  font: 650 13px/1.3 Inter,system-ui,sans-serif;
+  cursor: pointer; transition: background .2s,border-color .2s;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button svg {
+  flex: 0 0 auto; width: 19px; height: 19px;
+  color: currentColor !important;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button:hover,
+#root .jv-portal-estructura .jv-portal-lateral nav button.activo {
+  background: rgba(141,76,189,.33) !important;
+  color: #fff !important;
+  border-color: #bd84e3;
+}
+#root .jv-portal-estructura .jv-portal-lateral nav button:focus-visible {
+  outline: 2px solid #e3a5ff; outline-offset: 2px;
+}
+#root .jv-portal-estructura .jv-portal-lateral-pie {
+  margin-top: auto; text-align: center; color: #d0b2e4;
+  font: 600 11px/1.4 Inter,system-ui,sans-serif;
+}
+#root .jv-portal-estructura > .jv-portal-contenido {
+  grid-column: 2; min-width: 0; width: 100% !important;
+  max-width: none !important; margin: 0 !important;
+  padding: clamp(18px,2.1vw,30px) !important;
+  background: radial-gradient(circle at 82% 8%,#f0e0fc,transparent 43%),
+              linear-gradient(135deg,#f7f0fc,#f0e6f8 60%,#eae2f5) !important;
+  color: #301740 !important;
+}
+#root .jv-client-estructura .jv-client-greeting { text-align: left !important; }
+#root .jv-client-estructura .jv-client-tab:not(.active) {
+  background: linear-gradient(145deg,#eee0f8,#e0c9ef) !important;
+  color: #43205d !important;
+  border: 1px solid #d3afeb !important;
+}
+#root .jv-client-estructura .jv-catalog-card,
+#root .jv-client-estructura article,
+#root .jv-client-estructura section[style] {
+  border-color: #d5b6e9;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido > .jv-row,
+#root .jv-vendedor-estructura .jv-vendedor-contenido > header {
+  width: 100% !important;
+  max-width: none !important;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-card,
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-grid > div {
+  background: linear-gradient(145deg,#f0e4fc,#e1c9f1) !important;
+  border-color: #c7a2e6 !important;
+  color: #321548 !important;
+}
+#root .jv-vendedor-estructura .jv-vendedor-contenido .jv-card :is(strong,span) {
+  color: #35174a !important;
+}
+/* Bodega: paneles con color, sin superficies blancas deslumbrantes. */
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat {
+  background: linear-gradient(140deg,#4f2179,#352057 95%) !important;
+  color: #fff !important;
+  border: 1px solid #a96cdf !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.17),0 10px 24px rgba(16,4,38,.40) !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(2) {
+  background: linear-gradient(140deg,#274e91,#28245c) !important;
+  border-color: #57a5ef !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat:nth-child(3) {
+  background: linear-gradient(140deg,#7c276d,#4d1e6a) !important;
+  border-color: #e173ca !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+  background: linear-gradient(140deg,#4a206f,#2e1553) !important;
+  color: #fff !important;
+  border: 1px solid #a35de4 !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.14),0 8px 24px #0e041d70 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-azul {
+  background: linear-gradient(140deg,#29468a,#26225b) !important;
+  border-color: #57a3ff !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-verde {
+  background: linear-gradient(140deg,#146b72,#1d285f) !important;
+  border-color: #3fcbc9 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-naranja {
+  background: linear-gradient(140deg,#93502d,#512354) !important;
+  border-color: #f7a65c !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card.jv-tone-rosa {
+  background: linear-gradient(140deg,#862c82,#4f1d63) !important;
+  border-color: #e477d9 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat *,
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card *,
+#root main.jv-bodega.jv-future-bodega button.jv-future-stat :is(p,strong,span,svg),
+#root main.jv-bodega.jv-future-bodega button.jv-bodega-menu-card :is(h3,strong,span,p,svg,.jv-menu-detail) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity {
+  background: linear-gradient(120deg,#5a287f,#32205f) !important;
+  color: #fff !important;
+  border: 1px solid #a76bea !important;
+  box-shadow: 0 9px 25px #10051f65 !important;
+}
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity *,
+#root main.jv-bodega.jv-future-bodega button.jv-future-activity :is(strong,small,b) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+@media (max-width: 800px) {
+  #root .jv-client-estructura,
+  #root .jv-vendedor-estructura {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  #root .jv-client-estructura > .jv-portal-lateral,
+  #root .jv-vendedor-estructura > .jv-portal-lateral { display: none !important; }
+  #root .jv-portal-estructura > .jv-portal-contenido { grid-column: 1; padding: 15px !important; }
+  #root .jv-vendedor-estructura .jv-vendedor-contenido { padding-bottom: 90px !important; }
+  #root .jv-client-estructura .jv-client-greeting { text-align: center !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .jv-portal-estructura *, #root .jv-future-bodega .jv-future-stat,
+  #root .jv-future-bodega .jv-bodega-menu-card { transition: none !important; }
+}
+
+/* =============================================
+   JAIVISA NEXT · ISA INTEGRADA EN LOS 4 PORTALES
+   No modifica permisos, Supabase ni pedidos.
+   ============================================= */
+.jv-isa-mano-saludo {
+  display:inline-block!important; width:clamp(28px,3.4vw,52px)!important;
+  height:clamp(28px,3.4vw,52px)!important;
+  margin-left:4px!important; vertical-align:-.19em!important;
+  object-fit:contain!important; border:0!important; box-shadow:none!important;
+  transform-origin:80% 88%; animation:jvIsaSaluda 2.6s ease-in-out infinite;
+}
+.jv-isa-mano-pequena {width:46px;height:46px;object-fit:contain;flex:none;animation:jvIsaSaluda 2.8s ease-in-out infinite;transform-origin:80% 88%}
+@keyframes jvIsaSaluda {0%,45%,100%{transform:rotate(-7deg)}15%,30%{transform:rotate(12deg)}}
+/* Bodega: Isa de cuerpo completo, brillo suave y fondo sin corte rectangular */
+#root main.jv-bodega.jv-future-bodega .jv-future-hero {
+  isolation:isolate!important; overflow:hidden!important;
+  background:radial-gradient(ellipse at 21% 56%,rgba(158,55,226,.50),transparent 46%),
+  radial-gradient(ellipse at 79% 80%,rgba(34,111,255,.28),transparent 48%),
+  linear-gradient(105deg,#230a42 3%,#4a176f 48%,#1d0d43 100%)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-hero::before {
+  content:""!important;position:absolute!important;inset:-10% auto -12% -7%!important;
+  display:block!important;width:49%!important;z-index:1!important;
+  pointer-events:none!important;
+  background:radial-gradient(ellipse at 53% 57%,rgba(191,87,255,.35) 0%,rgba(115,26,224,.18) 39%,transparent 75%),
+  radial-gradient(ellipse at 45% 93%,rgba(230,89,255,.34),transparent 62%)!important;
+  filter:blur(17px)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-isa {
+  display:block!important;position:absolute!important;
+  z-index:3!important;left:1%!important;bottom:0!important;
+  width:35%!important;height:98%!important;max-width:none!important;
+  object-fit:contain!important;object-position:center bottom!important;
+  mask-image:none!important;-webkit-mask-image:none!important;
+  filter:drop-shadow(0 0 19px rgba(205,75,255,.30))!important;
+  pointer-events:none!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-warehouse {
+  z-index:1!important;width:42%!important;opacity:.92!important;
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 16%,#000 46%)!important;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.25) 16%,#000 46%)!important;
+}
+#root main.jv-bodega.jv-future-bodega .jv-future-hero-copy {position:relative!important;z-index:4!important}
+/* Clientes: Isa ayuda sin desplazar el catálogo a una columna estrecha */
+#root .jv-isa-portal-mensaje {
+  position:relative;isolation:isolate;min-height:126px;overflow:hidden;
+  display:flex;align-items:center;gap:17px;
+  padding:10px 18px; margin:0 0 20px;
+  border:1px solid rgba(187,112,246,.6);border-radius:19px;
+  background:radial-gradient(circle at 20% 50%,#7736bb70,transparent 42%),
+  linear-gradient(110deg,#2c104c,#532077 65%,#1d2a60);
+  box-shadow:0 12px 30px rgba(33,9,58,.22);color:#fff!important;
+}
+#root .jv-isa-portal-mensaje>img:first-child {
+  height:132px;width:145px;flex:0 0 145px;object-fit:contain;align-self:end;
+  filter:drop-shadow(0 0 15px rgba(194,72,255,.35));
+}
+#root .jv-isa-portal-mensaje strong {display:block;font-size:17px;line-height:1.3;color:#fff!important}
+#root .jv-isa-portal-mensaje p {margin:6px 0 0;font-size:13px;line-height:1.5;color:#f4e8ff!important}
+/* Vendedores: Isa con la tableta ocupa el lugar del gráfico decorativo */
+#root .jv-vendedor .jv-next-hero-graphic {width:205px!important;height:190px!important;flex:0 0 205px!important;margin-right:12px!important}
+#root .jv-vendedor .jv-isa-vendedores-hero {
+  display:block;width:205px;height:205px;position:relative;z-index:3;
+  object-fit:contain;object-position:center bottom;
+  filter:drop-shadow(0 0 17px rgba(180,67,247,.45));
+}
+/* Administración: Isa de apoyo a la organización dentro del panel */
+#root .layout .jvWelcome {min-height:108px;overflow:hidden}
+#root .layout .jv-isa-administracion-hero {
+  display:block;flex:0 0 114px;width:114px;height:118px;
+  object-fit:contain;align-self:end;margin-left:auto;
+  filter:drop-shadow(0 0 10px rgba(168,71,222,.20));
+}
+#root .layout .jvWelcome .jvAdminTag {margin-left:0!important}
+@media(max-width:780px) {
+  #root main.jv-bodega.jv-future-bodega .jv-future-isa{width:41%!important;height:94%!important;left:-1%!important}
+  #root main.jv-bodega.jv-future-bodega .jv-future-hero-copy{z-index:4!important}
+  #root .jv-isa-portal-mensaje{gap:9px;padding:8px 12px;min-height:99px}
+  #root .jv-isa-portal-mensaje>img:first-child{width:87px;flex-basis:87px;height:100px}
+  #root .jv-isa-portal-mensaje strong{font-size:13px}
+  #root .jv-isa-portal-mensaje p{font-size:11px}
+  #root .jv-isa-portal-mensaje .jv-isa-mano-pequena{width:27px;height:27px}
+  #root .jv-vendedor .jv-next-hero-graphic{width:110px!important;height:130px!important;flex-basis:110px!important;margin-right:0!important}
+  #root .jv-vendedor .jv-isa-vendedores-hero{width:116px;height:136px}
+  #root .layout .jv-isa-administracion-hero{height:78px;width:73px;flex-basis:73px}
+}
+@media(max-width:500px) {
+  #root .jv-isa-portal-mensaje>img:first-child{height:88px;width:72px;flex-basis:72px}
+  #root .jv-isa-portal-mensaje .jv-isa-mano-pequena{display:none}
+  #root .layout .jv-isa-administracion-hero{height:62px;width:55px;flex-basis:55px}
+}
+@media(prefers-reduced-motion:reduce){.jv-isa-mano-saludo,.jv-isa-mano-pequena{animation:none!important}}
+
+`}</style>
+
+        <style>{`
+/* ===========================================================
+   JAIVISA NEXT · AURORA UNIFICADO · 4 PORTALES
+   Interiores oscuros con alto contraste y controles legibles.
+   Solo estilos: no modifica componentes, estados ni Supabase.
+   =========================================================== */
+:root {
+  --jva-surface:linear-gradient(145deg,#4a2072 0%,#32144f 56%,#211139 100%);
+  --jva-surface-blue:linear-gradient(145deg,#284d82 0%,#202b62 55%,#25133f 100%);
+  --jva-surface-soft:linear-gradient(150deg,#35164e,#271037);
+  --jva-text:#f8efff;
+  --jva-text-muted:#e1cff2;
+  --jva-border:rgba(206,143,255,.36);
+  --jva-shadow:0 13px 35px rgba(11,3,28,.30),inset 0 1px 0 rgba(255,255,255,.08);
+}
+/* 1. Fondo detrás de los módulos (NO de la pantalla de ingreso). */
+#root .layout,
+#root .layout .main,
+#root .jv-client-shell,
+#root .jv-client-shell .jv-portal-estructura>.jv-portal-contenido,
+#root .jv-vendedor.jv-vendedor-portal,
+#root .jv-vendedor .jv-portal-estructura>.jv-portal-contenido,
+#root main.jv-future-bodega,
+#root main.jv-future-bodega .jv-bodega-estructura {
+  background:radial-gradient(ellipse at 13% 14%,rgba(152,57,239,.27),transparent 43%),
+             radial-gradient(ellipse at 94% 80%,rgba(35,113,239,.20),transparent 46%),
+             linear-gradient(135deg,#1b0a2e,#30134b 58%,#170a2d) !important;
+  color:var(--jva-text) !important;
+}
+/* 2. Superficies de tarjetas reales en Administración. */
+#root .layout .main :is(
+  .panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,
+  .categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,
+  .fusionAIWorkspace,.fusionAIBannerManager,.themeEditor,.themeColor,
+  .jvOrder,.jvActions button:not(.jvActionPrimary)
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* Los recuadros con cifras se distinguen en azul. */
+#root .layout .main :is(.jvStat,.fusionAIMetric):nth-child(even) {
+  background:var(--jva-surface-blue) !important;
+}
+/* 3. Clientes: catálogo, productos, cuenta y botones de navegación. */
+#root .jv-client-shell .jv-portal-contenido :is(
+  .jv-client-tab,.jv-catalog-card,.jv-catalog-grid article,
+  section[style*="background:"],
+  article[style*="background:"]
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+#root .jv-client-shell .jv-portal-contenido .jv-client-tab.active {
+  background:linear-gradient(130deg,#9940d4,#59208c) !important;
+  border-color:#d5a1ff !important;
+}
+/* 4. Vendedores: formularios, listas y tarjetas. */
+#root .jv-vendedor .jv-portal-contenido :is(
+  .jv-card,.jv-grid>div,.jv-next-status,.jv-product,
+  section[style*="background:"],
+  article[style*="background:"]
+) {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* La bienvenida ilustrada de Isa conserva su fondo luminoso. */
+#root .jv-vendedor .jv-next-welcome,
+#root .jv-client-shell .jv-isa-portal-mensaje {
+  color:#fff !important;
+}
+/* 5. Bodega: solo paneles de trabajo internos. Se mantienen
+   las tarjetas de colores y la imagen de Isa de la portada. */
+#root main.jv-future-bodega .jv-bodega-estructura>section[style*="background:"],
+#root main.jv-future-bodega .jv-bodega-inventario-card,
+#root main.jv-future-bodega .jv-bodega-estructura form[style*="background:"] {
+  background:var(--jva-surface) !important;
+  color:var(--jva-text) !important;
+  border:1px solid var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* 6. Tarjetas HTML con fondo blanco definido directamente en React.
+   Solo dentro del contenido de los portales; no afecta el login,
+   el cuadro de seguridad, ni la ventana flotante de Isa. */
+#root .layout .main :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .jv-client-shell .jv-portal-contenido :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .jv-vendedor .jv-portal-contenido :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root main.jv-future-bodega .jv-bodega-estructura :is(div,section,article,form)[style*="background: rgb(255, 255, 255)"],
+#root .layout .main :is(div,section,article,form)[style*="background: white"],
+#root .jv-client-shell .jv-portal-contenido :is(div,section,article,form)[style*="background: white"],
+#root .jv-vendedor .jv-portal-contenido :is(div,section,article,form)[style*="background: white"],
+#root main.jv-future-bodega .jv-bodega-estructura :is(div,section,article,form)[style*="background: white"] {
+  background:var(--jva-surface-soft) !important;
+  color:var(--jva-text) !important;
+  border-color:var(--jva-border) !important;
+  box-shadow:var(--jva-shadow) !important;
+}
+/* 7. Texto de las superficies oscuras: contrasta incluso si
+   alguna etiqueta tenía un color gris o morado inline. */
+#root .layout .main :is(.panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,.categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,.fusionAIWorkspace,.fusionAIBannerManager,.jvOrder,.jvActions button):is(h1,h2,h3,h4,p,span,strong,small,b,em),
+#root .layout .main :is(.panel,.card,.jvPanel,.jvStat,.jvWelcome,.jvFooterTools,.bannerManager,.categoryCard,.catalogProduct,.securityPanel,.fusionAIMetric,.fusionAIWorkspace,.fusionAIBannerManager,.jvOrder,.jvActions button) :is(h1,h2,h3,h4,p,span,strong,small,b,em),
+#root .jv-client-shell .jv-portal-contenido :is(h1,h2,h3,h4,p,small,strong,em),
+#root .jv-vendedor .jv-portal-contenido :is(h1,h2,h3,h4,p,small,strong,em),
+#root main.jv-future-bodega .jv-bodega-estructura>section[style*="background:"] :is(h1,h2,h3,h4,p,span,strong,small,th,td,label),
+#root main.jv-future-bodega .jv-bodega-inventario-card :is(h1,h2,h3,h4,p,span,strong,small,th,td,label) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* No borrar ni esconder textos secundarios. */
+#root .layout .main :is(.jvMuted,.muted,.hint,.jvEmptyOrders),
+#root .jv-client-shell .jv-portal-contenido :is(.muted,small),
+#root .jv-vendedor .jv-portal-contenido :is(.jv-muted,.muted),
+#root main.jv-future-bodega .jv-bodega-estructura :is(.jv-muted,.muted) {
+  color:var(--jva-text-muted) !important;
+  -webkit-text-fill-color:var(--jva-text-muted) !important;
+}
+/* 8. Centros de Pedidos, Operaciones empresariales y tablas. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  section[style*="font-family:"] {
+  color:var(--jva-text) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table {
+  background:transparent !important;
+  color:var(--jva-text) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table :is(th,td) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+  border-bottom-color:rgba(213,166,255,.25) !important;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  table tr:hover {
+  background:rgba(199,113,255,.08) !important;
+}
+/* Encabezados fuera de las tarjetas conservan contraste en fondo morado. */
+#root .layout .main>.top :is(h1,h2,h3),
+#root .jv-client-shell .jv-portal-contenido>.jv-client-greeting,
+#root .jv-client-shell .jv-portal-contenido>.jv-client-greeting span {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* Textos de los componentes de pedidos/operaciones con estilos inline. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  section[style*="font-family:"] :is(h1,h2,h3,h4,p,small,strong,span,label) {
+  color:var(--jva-text) !important;
+  -webkit-text-fill-color:var(--jva-text) !important;
+}
+/* 9. Formularios: campos blancos para leer y escribir bien,
+   listas desplegables y campos deshabilitados incluidos. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),textarea,select) {
+  background-color:#fff !important;
+  color:#29143c !important;
+  -webkit-text-fill-color:#29143c !important;
+  caret-color:#60278a !important;
+  border-color:#b991d8 !important;
+  color-scheme:light;
+}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(input,textarea)::placeholder {color:#73657d !important;-webkit-text-fill-color:#73657d !important;opacity:1}
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+  :is(select option) {background:#fff!important;color:#29143c!important}
+/* 10. Colores de estado y notificaciones: evitar mensajes ilegibles. */
+#root :is(.layout .main,.jv-client-shell .jv-portal-contenido,.jv-vendedor .jv-portal-contenido,main.jv-future-bodega)
+ :is([role="alert"],[role="status"])[style*="background:"] {
+   background:#3b2058 !important;
+   color:#fff !important;
+   border:1px solid #cb91f4 !important;
+ }
+/* La interfaz clara se reserva a imágenes, entradas de texto y
+   vistas previas configurables, no a las tarjetas del portal. */
+@media (prefers-reduced-motion:reduce){
+  #root .layout .main *,
+  #root .jv-vendedor .jv-portal-contenido *,
+  #root .jv-client-shell .jv-portal-contenido *,
+  #root main.jv-future-bodega .jv-bodega-estructura * {transition:none!important}
+}
+
+`}</style>
+
+        <style>{JV_PANORAMA_CSS}</style>
+        <style>{`
+          /* Isa contextual: se aplica solamente a las tarjetas del módulo. */
+          #root .jv-isa-en-seccion{display:flex;align-items:center;gap:14px;width:100%;max-width:620px;min-height:96px;padding:8px 15px;margin:9px 0 18px;border-radius:18px;border:1px solid rgba(200,126,255,.43);background:linear-gradient(105deg,rgba(100,42,151,.85),rgba(35,18,69,.94));box-shadow:0 8px 24px rgba(12,3,28,.26);color:#fff;box-sizing:border-box}
+          #root .jv-isa-en-seccion img{width:105px;height:86px;flex-shrink:0;object-fit:contain;border-radius:12px}
+          #root .jv-isa-en-seccion div{min-width:0;display:grid;gap:6px}
+          #root .jv-isa-en-seccion strong{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:14px;line-height:1.3}
+          #root .jv-isa-en-seccion small{color:#ead4ff!important;-webkit-text-fill-color:#ead4ff!important;font-size:12px;line-height:1.3}
+          @media(max-width:540px){#root .jv-isa-en-seccion{gap:10px;padding:8px;min-height:84px}#root .jv-isa-en-seccion img{width:82px;height:68px}#root .jv-isa-en-seccion strong{font-size:12px}}
+        `}</style>
+
+        <JaivisaApp />
+      </SesionConInactividad>
+    </JaivisaErrorBoundary>
+  );
 }
