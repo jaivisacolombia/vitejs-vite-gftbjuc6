@@ -1,165 +1,254 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* =========================================
+   JAIVISA NEXT AURORA
+   ESTILOS GENERALES
+   ========================================= */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+   :root {
+    --text: #e9dff5;
+    --text-h: #ffffff;
+    --bg: #160825;
+    --border: rgba(194, 112, 255, 0.28);
+    --code-bg: #29133d;
+    --accent: #b84dff;
+    --accent-bg: rgba(170, 59, 255, 0.14);
+    --accent-border: rgba(192, 132, 252, 0.55);
+    --social-bg: rgba(94, 38, 144, 0.25);
+  
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      0 12px 35px rgba(8, 2, 20, 0.35),
+      0 0 22px rgba(165, 54, 255, 0.12);
+  
+    --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+    --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, Consolas, monospace;
+  
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: 0.1px;
+  
+    color-scheme: dark;
+    color: var(--text);
+    background: var(--bg);
+  
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  
+  /* =========================================
+     ESTRUCTURA DE PANTALLA COMPLETA
+     ========================================= */
+  
+  * {
+    box-sizing: border-box;
   }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    background: #160825;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+  
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  
+    background:
+      radial-gradient(
+        ellipse at 12% 15%,
+        rgba(151, 49, 255, 0.24),
+        transparent 38%
+      ),
+      radial-gradient(
+        ellipse at 88% 78%,
+        rgba(33, 108, 255, 0.18),
+        transparent 42%
+      ),
+      linear-gradient(
+        135deg,
+        #170725 0%,
+        #300c52 48%,
+        #11071f 100%
+      );
+  
+    background-attachment: fixed;
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
-
-/* ==========================================
-   JAIVISA - CORRECCIÓN PARA CELULARES
-   Campos de texto visibles en Android,
-   iPhone, Chrome, Safari y WhatsApp
-   ========================================== */
-
-   input:not([type="checkbox"]):not([type="radio"]),
-   textarea,
-   select {
-     color: #241331 !important;
-     -webkit-text-fill-color: #241331 !important;
-     background-color: #ffffff !important;
-     caret-color: #592078 !important;
-     opacity: 1 !important;
-     color-scheme: light;
-   }
-   
-   /* Texto de ayuda dentro de los campos */
-   input::placeholder,
-   textarea::placeholder {
-     color: #797080 !important;
-     -webkit-text-fill-color: #797080 !important;
-     opacity: 1 !important;
-   }
-   
-   /* Campos seleccionados para escribir */
-   input:focus,
-   textarea:focus,
-   select:focus {
-     color: #241331 !important;
-     -webkit-text-fill-color: #241331 !important;
-     caret-color: #592078 !important;
-   }
-   
-   /* Corrección del autocompletado de Chrome */
-   input:-webkit-autofill,
-   input:-webkit-autofill:hover,
-   input:-webkit-autofill:focus {
-     -webkit-text-fill-color: #241331 !important;
-     -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-     box-shadow: 0 0 0 1000px #ffffff inset !important;
-     caret-color: #592078 !important;
-   }
-   
-   /* Evitar zoom automático en formularios de iPhone */
-   @media (max-width: 768px) {
-     input,
-     textarea,
-     select {
-       font-size: 16px !important;
-     }
-   }
-   
+  
+  #root {
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    display: block;
+    position: relative;
+    isolation: isolate;
+  }
+  
+  /* =========================================
+     DESTELLOS Y LUCES FUTURISTAS
+     ========================================= */
+  
+  #root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  
+    background:
+      radial-gradient(
+        circle at 8% 38%,
+        rgba(211, 87, 255, 0.18),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at 92% 22%,
+        rgba(64, 145, 255, 0.16),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at 50% 100%,
+        rgba(149, 44, 255, 0.14),
+        transparent 35%
+      );
+  }
+  
+  #root::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  
+    background:
+      linear-gradient(
+        115deg,
+        transparent 0%,
+        transparent 46%,
+        rgba(185, 89, 255, 0.055) 50%,
+        transparent 54%,
+        transparent 100%
+      );
+  
+    background-size: 220% 220%;
+    animation: jaivisaAurora 16s ease-in-out infinite alternate;
+  }
+  
+  @keyframes jaivisaAurora {
+    from {
+      background-position: 0% 50%;
+      opacity: 0.45;
+    }
+  
+    to {
+      background-position: 100% 50%;
+      opacity: 0.9;
+    }
+  }
+  
+  /* =========================================
+     TIPOGRAFÍA
+     ========================================= */
+  
+  h1,
+  h2 {
+    font-family: var(--heading);
+    color: var(--text-h);
+  }
+  
+  h1 {
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.15;
+  }
+  
+  h2 {
+    font-size: clamp(20px, 2.5vw, 28px);
+    line-height: 1.2;
+  }
+  
+  p {
+    line-height: 1.5;
+  }
+  
+  code {
+    font-family: var(--mono);
+    border-radius: 6px;
+    color: #f4e9ff;
+    background: var(--code-bg);
+    padding: 4px 8px;
+  }
+  
+  /* =========================================
+     CAMPOS DE FORMULARIOS
+     VISIBLES EN COMPUTADOR Y CELULAR
+     ========================================= */
+  
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    color: #241331 !important;
+    -webkit-text-fill-color: #241331 !important;
+    background-color: #ffffff !important;
+    caret-color: #592078 !important;
+    opacity: 1 !important;
+    color-scheme: light;
+  }
+  
+  input::placeholder,
+  textarea::placeholder {
+    color: #797080 !important;
+    -webkit-text-fill-color: #797080 !important;
+    opacity: 1 !important;
+  }
+  
+  input:focus,
+  textarea:focus,
+  select:focus {
+    color: #241331 !important;
+    -webkit-text-fill-color: #241331 !important;
+    caret-color: #592078 !important;
+  }
+  
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #241331 !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+    caret-color: #592078 !important;
+  }
+  
+  /* =========================================
+     ADAPTACIÓN A CELULARES
+     ========================================= */
+  
+  @media (max-width: 768px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  
+    body {
+      background-attachment: scroll;
+    }
+  }
+  
+  /* =========================================
+     ACCESIBILIDAD
+     ========================================= */
+  
+  @media (prefers-reduced-motion: reduce) {
+    #root::after {
+      animation: none;
+    }
+  }
+  

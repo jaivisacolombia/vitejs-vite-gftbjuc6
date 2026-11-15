@@ -2463,6 +2463,79 @@ html:has(.jv-future-bodega),body:has(.jv-future-bodega),body:has(.jv-future-bode
  .jv-future-bodega .jv-bodega-menu-card .jv-menu-detail,.jv-future-bodega .jv-bodega-menu-card .jv-menu-copy strong{display:none!important}
 }
 
+
+/* JAIVISA NEXT V9 · Acabado inmersivo Bodega · solo presentación */
+html,body,#root{min-height:100%;margin:0}
+body:has(.jv-future-bodega),html:has(.jv-future-bodega),#root:has(.jv-future-bodega){background:#12061f!important}
+.jv-future-bodega{width:100%!important;max-width:none!important;min-height:100vh!important;box-sizing:border-box!important;margin:0!important;padding:0 clamp(14px,3vw,48px) 48px!important;background:radial-gradient(ellipse at 50% 15%,#4c1680 0%,transparent 45%),radial-gradient(ellipse at 100% 90%,#39105b,transparent 48%),#12061f!important;color:#fff!important;font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif!important}
+.jv-future-bodega>div{max-width:1480px!important;margin:auto!important}
+.jv-future-header{border-radius:0 0 22px 22px!important;padding:16px clamp(16px,2.5vw,36px)!important;background:linear-gradient(110deg,#210b39 5%,#361052 58%,#512177)!important;border:1px solid #a66af34d!important;box-shadow:0 16px 40px #07020d70!important}
+.jv-future-brand strong{font-size:clamp(17px,2vw,26px)!important;font-weight:850!important;letter-spacing:.2px!important}.jv-future-brand small{font-size:13px!important;color:#d8c0f0!important}.jv-future-brand img{width:clamp(115px,13vw,175px)!important;height:65px!important}
+.jv-future-hero{margin-top:14px!important;min-height:330px!important;border-radius:25px!important;border:1px solid #b265fa70!important;background:radial-gradient(circle at 20% 65%,#9a34ee77,transparent 38%),linear-gradient(110deg,#220938,#42136e 55%,#1c0b35)!important;box-shadow:0 20px 55px #05010c99,inset 0 -3px #a745fa!important}
+.jv-future-isa{width:36%!important;height:100%!important;left:0!important;bottom:0!important;object-fit:contain!important;object-position:center bottom!important;mask-image:linear-gradient(to right,#000 78%,transparent 100%)!important;filter:drop-shadow(0 0 24px #9e41ed88)!important}
+.jv-future-warehouse{width:37%!important;opacity:.86!important}
+.jv-future-hero-copy{width:56%!important;margin-left:12%!important;padding:32px 14px!important;text-align:center!important}
+.jv-future-hero h1{font-size:clamp(30px,3.8vw,58px)!important;line-height:1.08!important;font-weight:900!important;letter-spacing:-1.2px!important;text-shadow:0 3px 22px #b346fa66!important}
+.jv-future-hero h2{font-size:clamp(18px,2vw,28px)!important;line-height:1.25!important;font-weight:800!important}
+.jv-future-hero p{font-size:clamp(14px,1.15vw,17px)!important;line-height:1.6!important}
+.jv-future-stats{gap:18px!important;margin:20px 0 22px!important}
+.jv-future-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;min-height:126px!important;padding:22px 28px!important;text-align:left!important;background:linear-gradient(120deg,#5a1d91,#28124f)!important;border:1px solid #b76df4!important;border-radius:23px!important;box-shadow:inset 0 -2px #d24aff,0 13px 28px #04010d80!important}
+.jv-future-stat:nth-child(2){background:linear-gradient(120deg,#2346a4,#2a155f)!important;border-color:#4b9eff!important;box-shadow:inset 0 -2px #3eb8ff,0 13px 28px #04010d80!important}
+.jv-future-stat:nth-child(3){background:linear-gradient(120deg,#86276e,#321052)!important;border-color:#ef69c5!important;box-shadow:inset 0 -2px #f15eb4,0 13px 28px #04010d80!important}
+.jv-future-stat strong{font-size:34px!important;font-weight:900!important;line-height:1.1!important}.jv-future-stat p{font-size:14px!important;color:#f2e7ff!important;font-weight:700!important;margin:5px 0!important}.jv-future-stat span{font-size:12px!important;color:#edcaff!important}
+.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px!important}
+.jv-future-bodega .jv-bodega-menu-card{display:flex!important;align-items:center!important;gap:17px!important;min-height:148px!important;padding:20px!important;border-radius:23px!important;border:1px solid #b468f0!important;background:linear-gradient(125deg,#57208e,#2a114e)!important;color:#fff!important;box-shadow:0 13px 25px #0702127a,inset 0 1px #ffffff27!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+2){background:linear-gradient(125deg,#2a4b9e,#271355)!important;border-color:#588dff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+3){background:linear-gradient(125deg,#126d80,#291455)!important;border-color:#3cbec5!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+4){background:linear-gradient(125deg,#8d3e24,#35124c)!important;border-color:#ed9b5b!important}
+.jv-future-bodega .jv-bodega-menu-card h3{font-size:clamp(16px,1.45vw,22px)!important;line-height:1.25!important;margin:0 0 7px!important;color:#fff!important;font-weight:850!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{display:block!important;font-size:13px!important;line-height:1.5!important;color:#f3e7ff!important;font-weight:500!important}
+.jv-future-bodega .jv-bodega-menu-card strong{display:block!important;margin-top:10px!important;color:#f7d4ff!important;font-size:12px!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex:0 0 62px!important;width:62px!important;height:62px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(135deg,#bd3df4,#5432b3)!important;border:1px solid #d29dff!important;border-radius:18px!important;color:white!important;box-shadow:0 8px 22px #16042199!important}
+.jv-future-activity{margin-top:26px!important;padding:23px 28px!important;background:linear-gradient(110deg,#632390,#241143)!important;border-radius:22px!important}
+.jv-future-bodega footer{color:#c8a7e6!important;padding:24px!important}
+.jv-future-bodega .jv-bodega-menu-card:hover,.jv-future-stat:hover{transform:translateY(-3px)!important;filter:brightness(1.1)!important}
+@media(max-width:1050px){.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.jv-future-hero{min-height:285px!important}.jv-future-hero-copy{width:64%!important;margin-left:18%!important}.jv-future-isa{width:35%!important}}
+@media(max-width:650px){.jv-future-bodega{padding:0 10px 28px!important}.jv-future-header{padding:10px!important}.jv-future-brand img{width:77px!important;height:42px!important}.jv-future-brand strong{font-size:12px!important}.jv-future-brand small{font-size:9px!important}.jv-future-hero{min-height:245px!important}.jv-future-isa{width:39%!important;object-position:left bottom!important}.jv-future-warehouse{width:32%!important}.jv-future-hero-copy{width:70%!important;margin-left:24%!important;padding:14px 6px!important}.jv-future-hero h1{font-size:clamp(21px,5vw,30px)!important;letter-spacing:-.5px!important}.jv-future-hero h2{font-size:13px!important}.jv-future-hero p{font-size:11px!important}.jv-future-eyebrow{font-size:8px!important}.jv-future-stats{gap:7px!important}.jv-future-stat{padding:11px 9px!important;min-height:105px!important;border-radius:14px!important}.jv-future-stat strong{font-size:24px!important}.jv-future-stat p{font-size:10px!important}.jv-future-stat span{font-size:9px!important}.jv-future-bodega .jv-bodega-menu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}.jv-future-bodega .jv-bodega-menu-card{padding:12px!important;min-height:118px!important;gap:8px!important;border-radius:15px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{flex-basis:40px!important;width:40px!important;height:40px!important;border-radius:12px!important}.jv-future-bodega .jv-bodega-menu-card h3{font-size:13px!important}.jv-future-bodega .jv-bodega-menu-card .jv-menu-detail{font-size:10px!important}.jv-future-bodega .jv-bodega-menu-card strong{font-size:10px!important}.jv-future-activity{padding:14px!important}}
+
+/* JAIVISA NEXT V10 — escenario inmersivo, sin franjas claras */
+html:has(.jv-future-bodega),body:has(.jv-future-bodega),#root:has(.jv-future-bodega){margin:0!important;padding:0!important;min-height:100%!important;width:100%!important;max-width:none!important;background:#10051f!important;overflow-x:hidden!important}
+body:has(.jv-future-bodega){background:radial-gradient(ellipse 55% 65% at 4% 40%,#43116b 0%,transparent 78%),radial-gradient(ellipse 60% 55% at 94% 75%,#25165d 0%,transparent 76%),#10051f!important}
+body:has(.jv-future-bodega) #root{background:transparent!important}
+.jv-future-bodega{position:relative!important;isolation:isolate!important;width:100%!important;max-width:none!important;min-height:100dvh!important;background:radial-gradient(ellipse 50% 35% at 10% 18%,#6c20a44d 0%,transparent 75%),radial-gradient(ellipse 50% 50% at 90% 76%,#392da044 0%,transparent 75%),linear-gradient(140deg,#140623 0%,#250d45 48%,#11051f 100%)!important;overflow:hidden!important}
+.jv-future-bodega::before{content:'';position:absolute;z-index:-1;pointer-events:none;inset:0;background:repeating-linear-gradient(118deg,transparent 0 110px,#c38aff0a 111px,transparent 112px 210px),radial-gradient(ellipse 80% 45% at 50% 105%,transparent 58%,#ad42ff30 59%,transparent 60%,transparent 67%,#4479ff20 68%,transparent 69%);opacity:.65}
+.jv-future-bodega::after{content:'';position:absolute;z-index:-1;pointer-events:none;width:80vw;height:80vw;max-width:1100px;max-height:1100px;left:-42vw;top:350px;border:1px solid #b45bff23;border-radius:50%;box-shadow:0 0 90px #9c34ee12,inset 0 0 65px #b83aff0d}
+.jv-future-bodega>div{position:relative;z-index:1;max-width:1480px!important;margin-inline:auto!important}
+.jv-future-header{border:1px solid #bc76f25c!important;box-shadow:0 14px 40px #05010c85,0 1px 0 #c37cff35!important}
+.jv-future-hero{box-shadow:0 18px 45px #05010d99,0 0 32px #903bdb29!important}
+.jv-future-stats,.jv-bodega-menu-grid{position:relative;z-index:1}
+.jv-future-bodega .jv-bodega-menu-card{transition:transform .2s ease,box-shadow .2s ease!important;box-shadow:0 12px 28px #06010e91,inset 0 1px #ffffff25!important}
+.jv-future-bodega .jv-bodega-menu-card:focus-visible{outline:3px solid #c89dff!important;outline-offset:3px!important}
+.jv-future-bodega .jv-bodega-menu-card:hover{box-shadow:0 17px 38px #070116aa,0 0 25px #9a4bff3a!important}
+@media(max-width:650px){.jv-future-bodega{padding-inline:12px!important}.jv-future-bodega::after{display:none}}
+
+
+/* JAIVISA NEXT V11 — brillo cristalino inspirado en maqueta; sin cambiar lógica */
+.jv-future-bodega{background:radial-gradient(ellipse 70% 55% at 48% 24%,#5b159355,transparent 72%),radial-gradient(ellipse 65% 45% at 96% 90%,#2b34a055,transparent 80%),linear-gradient(150deg,#10041d,#250842 54%,#10051f)!important}
+.jv-future-header{position:relative!important;overflow:hidden!important;background:linear-gradient(110deg,#240739,#3a105e 57%,#18082d)!important;border-bottom:2px solid #b63dff!important;box-shadow:0 10px 36px #080013a8,0 2px 19px #bb4aff5c,inset 0 1px #ffffff55!important}
+.jv-future-hero{position:relative!important;overflow:hidden!important;border:1px solid #b56af6a8!important;box-shadow:0 18px 48px #05000dbb,0 0 26px #bc43ff40,inset 0 -3px #c74cff!important}
+.jv-future-hero::after{content:'';position:absolute;z-index:3;pointer-events:none;bottom:0;left:2%;right:2%;height:3px;background:linear-gradient(90deg,transparent,#e75aff 22%,#32cfff 55%,#c33fff 85%,transparent);filter:drop-shadow(0 0 8px #c044ff)}
+.jv-future-bodega .jv-future-isa{object-fit:contain!important;object-position:left bottom!important;mask-image:none!important;-webkit-mask-image:none!important;filter:drop-shadow(0 7px 19px #10021cbd)!important}
+.jv-future-stats{padding:13px!important;border:1px solid #ad50f1a0!important;border-radius:25px!important;background:linear-gradient(110deg,#310a56ba,#16062cdd)!important;box-shadow:0 10px 28px #05000a88,inset 0 1px #ffffff38!important}
+.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card,.jv-future-activity{position:relative!important;isolation:isolate!important;overflow:hidden!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;transition:transform .22s ease,box-shadow .22s ease,filter .22s ease!important}
+.jv-future-bodega .jv-future-stat::before,.jv-future-bodega .jv-bodega-menu-card::before,.jv-future-activity::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(153deg,#ffffff42 0%,#ffffff16 15%,transparent 31%,transparent 66%,#ffffff0d 100%);border-radius:inherit}
+.jv-future-bodega .jv-future-stat::after,.jv-future-bodega .jv-bodega-menu-card::after,.jv-future-activity::after{content:'';position:absolute;pointer-events:none;left:8%;right:8%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#ed71ff,#5abaff,transparent);box-shadow:0 0 12px 2px #a942ff9c}
+.jv-future-bodega .jv-future-stat{border-width:1px!important;border-style:solid!important;box-shadow:0 13px 30px #07010eaa,inset 0 1px #ffffff6e,inset 0 -2px #c544ff!important}
+.jv-future-bodega .jv-bodega-menu-card{border-color:#b87bffb8!important;box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #a342ff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+2){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #42a9ff!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+3){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #35ebca!important}
+.jv-future-bodega .jv-bodega-menu-card:nth-child(4n+4){box-shadow:0 15px 30px #05000eb0,inset 0 1px #ffffff61,inset 0 -2px #ffae57!important}
+.jv-future-bodega .jv-bodega-menu-card .jv-menu-symbol{box-shadow:0 8px 22px #100122aa,inset 0 1px #ffffff9e,0 0 13px #ba55ff58!important}
+.jv-future-bodega .jv-bodega-menu-card:hover,.jv-future-bodega .jv-future-stat:hover,.jv-future-activity:hover{transform:translateY(-3px)!important;filter:brightness(1.13)!important}
+.jv-future-activity{border:1px solid #c26fff!important;box-shadow:0 15px 30px #05000ea8,inset 0 1px #ffffff52!important}
+@media(max-width:650px){.jv-future-stats{padding:7px!important;border-radius:15px!important}.jv-future-bodega .jv-bodega-menu-card::after{left:12%;right:12%}}
+@media(prefers-reduced-motion:reduce){.jv-future-bodega .jv-future-stat,.jv-future-bodega .jv-bodega-menu-card,.jv-future-activity{transition:none!important}}
+
 `;
 function MarcoJAIVISANext({ rol, nombre, salir, children }: { rol: string; nombre?: string; salir?: () => Promise<void>; children: React.ReactNode }) {
   return <div className={'jv-unified jv-' + (rol === 'Administración' ? 'administracion' : 'clientes')}>
